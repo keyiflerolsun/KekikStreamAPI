@@ -6,7 +6,7 @@ from httpx     import AsyncClient
 
 async def main():
     api    = "http://127.0.0.1:3310/api/v1"
-    oturum = AsyncClient()
+    oturum = AsyncClient(timeout=10)
 
     plugin_name = "Dizilla"
 
