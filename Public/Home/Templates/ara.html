@@ -1,0 +1,38 @@
+{% extends "_html_taban.html" %}
+{% block icerik %}
+
+<div class="detail-container">
+    <div class="detail-header">
+        <h1 class="detail-title">Arama Sonuçları: "{{ sorgu }}"</h1>
+        <p>{{ eklenti_adi }} içinde arama yapıldı</p>
+    </div>
+
+    <div class="search-container">
+        <form method="GET" action="/ara/{{ eklenti_adi }}" class="search-form">
+            <input type="text" name="sorgu" value="{{ sorgu }}" class="search-input" placeholder="Ara..." required>
+            <button type="submit" class="search-button">
+                <i class="fas fa-search"></i>
+            </button>
+        </form>
+    </div>
+
+    <div class="grid">
+        {% for item in results %}
+            <a href="/icerik/{{ eklenti_adi }}?url={{ item.url }}" class="card">
+                {% if item.poster %}
+                    <img src="{{ item.poster }}" alt="{{ item.title }}" class="card-image">
+                {% endif %}
+
+                <div class="card-content">
+                    <h3 class="card-title">{{ item.title }}</h3>
+                </div>
+            </a>
+        {% else %}
+            <div style="grid-column: 1 / -1; text-align: center;">
+                <p>Arama sonucu bulunamadı.</p>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% endblock %}

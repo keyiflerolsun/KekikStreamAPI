@@ -1,0 +1,51 @@
+{% extends "_html_taban.html" %}
+{% block icerik %}
+
+<div class="detail-container">
+    <div class="detail-header">
+        <h1 class="detail-title">{{ baslik }}</h1>
+        <p>Sayfa : {{ sayfa }}</p>
+    </div>
+
+    <div class="grid">
+        {% if items %}
+            {% for item in items %}
+                <a href="/icerik/{{ eklenti_adi }}?url={{ item.url }}" class="card">
+                    {% if item.poster %}
+                        <img src="{{ item.poster }}" alt="{{ item.title }}" class="card-image">
+                    {% endif %}
+
+                    <div class="card-content">
+                        <h3 class="card-title">{{ item.title }}</h3>
+                    </div>
+                </a>
+            {% endfor %}
+        {% else %}
+            <div style="grid-column: 1 / -1; text-align: center;">
+                <p>Bu kategoride içerik bulunamadı.</p>
+            </div>
+            <a href="/eklenti/{{ eklenti_adi }}" class="button button-secondary">
+                <i class="fas fa-arrow-left"></i> Eklenti Sayfasına Dön
+            </a>
+        {% endif %}
+    </div>
+
+    {% if items %}
+        <div style="display: flex; justify-content: space-between; margin-top: 2rem;">
+            {% if sayfa > 1 %}
+                <a href="/kategori/{{ eklenti_adi }}?kategori_url={{ kategori_url }}&kategori_adi={{ kategori_adi }}&sayfa={{ sayfa - 1 }}" class="button button-secondary">
+                    <i class="fas fa-arrow-left"></i> Önceki Sayfa
+                </a>
+            {% else %}
+               <div></div>
+            {% endif %}
+            
+            <a href="/kategori/{{ eklenti_adi }}?kategori_url={{ kategori_url }}&kategori_adi={{ kategori_adi }}&sayfa={{ sayfa + 1 }}" class="button">
+                Sonraki Sayfa <i class="fas fa-arrow-right"></i>
+            </a>
+
+        </div>
+    {% endif %}
+</div>
+
+{% endblock %}

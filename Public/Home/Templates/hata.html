@@ -1,0 +1,21 @@
+{% extends "_html_taban.html" %}
+{% block icerik %}
+
+<div class="detail-container">
+    <div class="detail-header">
+        <h1 class="detail-title">Bir sorun oluştu</h1>
+        
+        <div class="error-box">
+            <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: var(--primary-color);"></i>
+            <p>{{ hata }}</p>
+        </div>
+        
+        <div style="margin-top: 2rem;">
+            <a href="/" class="button button-secondary">
+                <i class="fas fa-home"></i> Ana Sayfaya Dön
+            </a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,386 @@
+{% extends "_html_taban.html" %}
+{% block icerik %}
+
+<style>
+/* Video Oynatıcı Özel Stilleri - Ana CSS ile Uyumlu */
+.video-links h1 {
+  margin-bottom: var(--spacing-md);
+  color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--hover-color);
+  padding-bottom: var(--spacing-sm);
+}
+
+.video-links h1:before {
+  content: "▶";
+  margin-right: 10px;
+  color: var(--primary-color);
+}
+
+#video-links-ui {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+#video-links-ui .button {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--card-bg-color);
+  border: 1px solid var(--primary-color);
+  color: var(--text-color);
+  transition: all var(--transition-speed);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+#video-links-ui .button:hover {
+  background-color: var(--hover-color);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+#video-links-ui .button.active {
+  background-color: var(--primary-color);
+  color: var(--background-color);
+  box-shadow: 0 0 0 3px rgba(239, 127, 26, 0.3);
+  transform: translateY(-2px);
+}
+
+#video-player-container {
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  background-color: #000;
+  border: 1px solid var(--card-bg-color);
+}
+
+#video-player-wrapper {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%; /* 16:9 oranı */
+  background-color: #000;
+}
+
+#video-player {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  outline: none;
+}
+
+.player-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.7);
+  z-index: 10;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid rgba(255, 255, 255, 0.2);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 768px) {
+  #video-links-ui .button {
+    flex-basis: calc(50% - 12px);
+  }
+}
+
+@media (max-width: 480px) {
+  #video-links-ui .button {
+    flex-basis: 100%;
+  }
+}
+</style>
+
+<div class="detail-container">
+    <h1 class="detail-title" style="display:none;">{{ baslik }}</h1>
+
+    <div class="video-links">
+        <h1>{{ baslik }}</h1>
+        <div id="video-links-ui"></div>
+    </div>
+
+    <div id="video-player-container">
+        <div id="video-player-wrapper">
+            <div id="loading-overlay" class="player-loading" style="display: none;">
+                <div class="spinner"></div>
+            </div>
+            <video id="video-player" controls>
+                Tarayıcınız video etiketini desteklemiyor.
+            </video>
+        </div>
+    </div>
+
+    <div id="video-links-data" style="display: none;">
+        {% for link in links %}
+            <div class="video-link-item" data-name="{{ link.name }}" data-url="{{ link.url }}" data-referer="{{ link.referer }}" data-headers="{{ link.headers }}">
+                {% for subtitle in link.subtitles %}
+                    <div class="subtitle-item" data-name="{{ subtitle.name }}" data-url="{{ subtitle.url }}"></div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+    </div>
+    
+    <div style="margin-top: var(--spacing-lg);">
+        <a href="/eklenti/{{ eklenti_adi }}" class="button button-secondary">
+            <i class="fas fa-arrow-left"></i> Eklenti Sayfasına Dön
+        </a>
+    </div>
+</div>
+
+
+<!-- Video yükleme ve oynatma fonksiyonunda düzeltme -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const videoPlayer = document.getElementById('video-player');
+        const videoLinksUI = document.getElementById('video-links-ui');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        
+        // Video linkleri veri elementlerini topla
+        const videoLinks = Array.from(document.querySelectorAll('.video-link-item'));
+        const videoData = videoLinks.map(link => {
+            // Altyazıları topla
+            const subtitles = Array.from(link.querySelectorAll('.subtitle-item')).map(sub => {
+                return {
+                    name: sub.dataset.name,
+                    url: sub.dataset.url
+                };
+            });
+
+            return {
+                name: link.dataset.name,
+                url: link.dataset.url,
+                referer: link.dataset.referer,
+                headers: JSON.parse(link.dataset.headers),
+                subtitles: subtitles
+            };
+        });
+        
+        // UI'a tıklanabilir videolar ekle
+        videoData.forEach((video, index) => {
+            const linkButton = document.createElement('button');
+            linkButton.className = 'button';
+            linkButton.textContent = video.name;
+            linkButton.onclick = function() {
+                loadVideo(index);
+            };
+            videoLinksUI.appendChild(linkButton);
+        });
+        
+        // Video yükle ve oynat
+        function loadVideo(index) {
+            const selectedVideo = videoData[index];
+            // Loading overlay'i göster
+            loadingOverlay.style.display = 'flex';
+            
+            // Video ayarları
+            videoPlayer.muted = false;
+            
+            // Mevcut track'leri temizle
+            while (videoPlayer.firstChild) {
+                videoPlayer.removeChild(videoPlayer.firstChild);
+            }
+
+            // Orijinal URL'i al
+            const originalUrl = selectedVideo.url;
+            // Referer bilgisini al
+            const referer = selectedVideo.referer || window.location.href;
+            const headers = selectedVideo.headers || {};
+            
+            // Proxy URL'i oluştur
+            let proxyUrl = `/proxy/video?url=${encodeURIComponent(originalUrl)}`;
+            if (referer) {
+                proxyUrl += `&referer=${encodeURIComponent(referer)}`;
+            }
+            if (headers) {
+                proxyUrl += `&headers=${encodeURIComponent(JSON.stringify(headers))}`;
+            }
+
+            // Video kaynağını ayarla
+            if (originalUrl.includes('.m3u8')) {
+                // HLS video için
+                if (Hls.isSupported()) {
+                    // HLS.js yapılandırması
+                    const hlsConfig = {
+                        capLevelToPlayerSize: true, // Adaptive bitrate için
+                        maxLoadingDelay: 4,
+                        minAutoBitrate: 0,
+                        // Çok önemli: HLS parçalarını yüklerken tümünü proxy üzerinden geçirecek konfigürasyon
+                        xhrSetup: function(xhr, url) {
+                            // Harici URL kontrolü
+                            if (url.startsWith('http')) {
+                                // Doğrudan orijinal sunucuya istek yapılıyor
+                                console.log("Original URL intercepted:", url);
+                                
+                                // Orijinal URL'in referans noktasını belirleyelim
+                                const originalVideoUrl = new URL(originalUrl);
+                                
+                                // Eğer istek URL'si göreceli ise (m3u8 içindeki segment dosyaları)
+                                if (!url.includes('://')) {
+                                    // Orijinal video URL'sini baz alıp tam URL oluşturalım
+                                    const baseUrl = originalVideoUrl.href.substring(0, originalVideoUrl.href.lastIndexOf('/') + 1);
+                                    url = baseUrl + url;
+                                } else if (
+                                    // Mevcut sayfa URL'sini kontrol et
+                                    url.includes(window.location.hostname)
+                                ) {
+                                    // Bu durumda URL'yi parse edelim ve gerçek URL'yi çıkaralım
+                                    const urlObj = new URL(url);
+                                    
+                                    // URL path kısmında dosya adını çıkaralım
+                                    const pathParts = urlObj.pathname.split('/');
+                                    const filename = pathParts[pathParts.length - 1]; // Son kısım dosya adı
+                                    
+                                    // Orijinal video sunucusunu temel alarak yeni URL oluşturalım
+                                    const baseDomain = originalVideoUrl.origin;
+                                    const basePath = originalVideoUrl.pathname.substring(0, originalVideoUrl.pathname.lastIndexOf('/') + 1);
+                                    
+                                    // urlset dizininden gelen dosyayı doğru şekilde yapılandır
+                                    if (originalUrl.includes('.urlset/')) {
+                                        // .urlset/ dizinine doğru yönlendir
+                                        const urlsetBase = originalUrl.substring(0, originalUrl.indexOf('.urlset/') + 8); // .urlset/ dahil
+                                        url = urlsetBase + filename + urlObj.search;
+                                    } else {
+                                        // Standart yönlendirme
+                                        url = baseDomain + basePath + filename + urlObj.search;
+                                    }
+                                    
+                                    console.log("Fixed URL:", url);
+                                }
+                                
+                                // Proxy URL'i oluştur
+                                const newProxyUrl = `/proxy/video?url=${encodeURIComponent(url)}&referer=${encodeURIComponent(referer)}&headers=${encodeURIComponent(JSON.stringify(headers))}`;
+                                xhr.open('GET', newProxyUrl, true);
+                            }
+                        }
+                    };
+                    
+                    const hls = new Hls(hlsConfig);
+                    
+                    hls.loadSource(proxyUrl);
+                    hls.attachMedia(videoPlayer);
+                    hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                        // Loading overlay'i gizle
+                        loadingOverlay.style.display = 'none';
+                        videoPlayer.play().catch(e => {
+                            console.warn('Video otomatik başlatılamadı:', e);
+                        });
+                    });
+                    
+                    hls.on(Hls.Events.ERROR, function(event, data) {
+                        console.error('HLS hatası:', data);
+                        if (data.fatal) {
+                            loadingOverlay.style.display = 'none';
+                            alert('Video yüklenirken bir hata oluştu. Lütfen başka bir kaynak deneyin.');
+                        }
+                    });
+                } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+                    // Native HLS desteği var (Safari, iOS)
+                    videoPlayer.src = proxyUrl;
+                    videoPlayer.addEventListener('loadedmetadata', function() {
+                        loadingOverlay.style.display = 'none';
+                        videoPlayer.play().catch(e => {
+                            console.warn('Video otomatik başlatılamadı:', e);
+                        });
+                    });
+                    
+                    videoPlayer.addEventListener('error', function() {
+                        loadingOverlay.style.display = 'none';
+                        console.error('Video yüklenirken hata:', videoPlayer.error);
+                        alert('Video yüklenirken bir hata oluştu. Lütfen başka bir kaynak deneyin.');
+                    });
+                }
+            } else {
+                // Normal video
+                if (originalUrl.includes('.mkv')) {
+                    // MKV dosyaları için ek seçenekler
+                    videoPlayer.setAttribute('type', 'video/x-matroska');
+                }
+                
+                videoPlayer.src = proxyUrl;
+                videoPlayer.addEventListener('loadedmetadata', function() {
+                    loadingOverlay.style.display = 'none';
+                    videoPlayer.play().catch(e => {
+                        console.warn('Video otomatik başlatılamadı:', e);
+                    });
+                });
+                
+                videoPlayer.addEventListener('error', function() {
+                    loadingOverlay.style.display = 'none';
+                    console.error('Video yüklenirken hata:', videoPlayer.error);
+                    alert('Video yüklenirken bir hata oluştu. Lütfen başka bir kaynak deneyin.');
+                });
+            }
+            
+            // Altyazıları ekle
+            if (selectedVideo.subtitles && selectedVideo.subtitles.length > 0) {
+                selectedVideo.subtitles.forEach(subtitle => {
+                    // Altyazı proxy URL'ini oluştur
+                    const subtitleProxyUrl = `/proxy/subtitle?url=${encodeURIComponent(subtitle.url)}&referer=${encodeURIComponent(referer)}&headers=${encodeURIComponent(JSON.stringify(headers))}`;
+                    
+                    // Altyazı track elementini oluştur
+                    const track = document.createElement('track');
+                    track.kind = 'subtitles';
+                    track.label = subtitle.name;
+                    track.srclang = subtitle.name.toLowerCase();
+                    track.src = subtitleProxyUrl; // Proxy URL'ini kullan
+                    
+                    // FORCED veya TR altyazıları varsayılan olarak aç
+                    if (subtitle.name === 'FORCED' || subtitle.name === 'TR') {
+                        track.default = true;
+                    }
+                    
+                    videoPlayer.appendChild(track);
+                });
+            }
+            
+            // Aktif buton stilini güncelle
+            const allButtons = videoLinksUI.querySelectorAll('button');
+            allButtons.forEach((btn, i) => {
+                if (i === index) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+        
+        // HLS.js entegrasyonu için script ekle
+        const hlsScript = document.createElement('script');
+        hlsScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.12/hls.min.js';
+        hlsScript.onload = function() {
+            // Sayfa yüklendiğinde ilk videoyu yükle (HLS.js yüklendikten sonra)
+            if (videoData.length > 0) {
+                loadVideo(0);
+            }
+        };
+        document.head.appendChild(hlsScript);
+        
+        // Video player hata yönetimi
+        videoPlayer.addEventListener('error', function(e) {
+            loadingOverlay.style.display = 'none';
+            console.error('Video Player hatası:', videoPlayer.error);
+        });
+    });
+</script>
+
+{% endblock %}

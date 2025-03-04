@@ -1,0 +1,48 @@
+{% extends "_html_taban.html" %}
+{% block icerik %}
+
+<div class="detail-container">
+    <div class="detail-header">
+        <div class="card-header">
+            {% if plugin.favicon %}
+                <img src="{{ plugin.favicon }}" alt="{{ plugin.name }}" class="plugin-favicon">
+            {% else %}
+                <i class="fas fa-film plugin-icon"></i>
+            {% endif %}
+
+            <h1 class="detail-title">{{ plugin.name }}</h1>
+        </div>
+
+        <div class="detail-meta">
+            <span class="detail-meta-item">Dil: {{ plugin.language }}</span>
+            <a href="{{ plugin.main_url }}" target="_blank" class="detail-meta-item">
+                <i class="fas fa-external-link-alt"></i> {{ plugin.main_url }}
+            </a>
+        </div>
+        <p>{{ plugin.description }}</p>
+    </div>
+
+    <div class="search-container">
+        <form method="GET" action="/ara/{{ plugin.name }}" class="search-form">
+            <input type="text" name="sorgu" class="search-input" placeholder="Bu eklenti içinde ara..." required>
+            <button type="submit" class="search-button">
+                <i class="fas fa-search"></i>
+            </button>
+        </form>
+    </div>
+
+    <div>
+        <h2>Kategoriler</h2>
+        <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));">
+            {% for url, category in plugin.main_page.items() %}
+                <a href="/kategori/{{ plugin.name }}?kategori_url={{ url }}&kategori_adi={{ category }}" class="card">
+                    <div class="card-content">
+                        <h3 class="card-title unquote">{{ category }}</h3>
+                    </div>
+                </a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}

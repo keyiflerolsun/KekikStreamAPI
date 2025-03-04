@@ -1,0 +1,85 @@
+{% extends "_html_taban.html" %}
+{% block icerik %}
+
+<div class="detail-container">
+    <div class="detail-info">
+        {% if content.poster %}
+            <img src="{{ content.poster }}" alt="{{ content.title }}" class="detail-poster">
+        {% endif %}
+        
+        <div class="detail-description">
+            <h1 class="detail-title">{{ content.title }}</h1>
+            
+            <div class="detail-meta">
+                <span class="detail-meta-item">{{ eklenti_adi }}</span>
+
+                {% if content.year %}
+                    <span class="detail-meta-item">{{ content.year }}</span>
+                {% endif %}
+                
+                {% if content.rating %}
+                    <span class="detail-meta-item">{{ content.rating }} / 10</span>
+                {% endif %}
+
+                {% if content.duration %}
+                    <span class="detail-meta-item">{{ content.duration }} dk.</span>
+                {% endif %}
+            </div>
+            
+            {% if content.description %}
+                <div class="content-description">
+                    <p>{{ content.description }}</p>
+                </div>
+            {% endif %}
+
+            {% if content.tags %}
+                <div class="content-info">
+                    <hr style="margin: 1rem 0;">
+                    {% for tag in content.tags.split(',') %}
+                        <span class="detail-meta-item">{{ tag | trim }}</span>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            {% if content.actors %}
+                <hr style="margin: 1rem 0;">
+                <div class="content-info">
+                    <p><strong>Oyuncular:</strong> {{ content.actors }}</p>
+                </div>
+            {% endif %}
+
+
+            {% if not content.episodes %}
+                <div style="margin-top: 2rem;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;">
+                        <a href="/izle/{{ eklenti_adi }}?url={{ content.url }}&baslik={{ content.title }}" class="button">
+                            <i class="fas fa-play"></i> İzle
+                        </a>
+                        <a href="/api/v1/load_links?plugin={{ eklenti_adi }}&encoded_url={{ content.url }}" class="button">
+                            <i class="fas fa-database"></i> API
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if content.episodes %}
+        <div class="episodes-container">
+            <h2 class="episodes-title">Bölümler</h2>
+            
+            <div class="episodes-grid">
+                {% for episode in content.episodes %}
+                    <a href="/izle/{{ eklenti_adi }}?url={{ episode.url }}&baslik={{ content.title }} - {{ episode.season }}x{{ episode.episode }}" class="episode-card">
+                        <div class="episode-title">{{ episode.title }}</div>
+                        {% if episode.season and episode.episode %}
+                            <div class="episode-info">{{ episode.season }}x{{ episode.episode }}</div>
+                        {% endif %}
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+{% endblock %}

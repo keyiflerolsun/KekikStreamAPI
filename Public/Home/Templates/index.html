@@ -1,0 +1,38 @@
+{% extends "_html_taban.html" %}
+{% block icerik %}
+
+<section>
+    <div class="grid">
+        {% for plugin in plugins %}
+            <div class="card">
+                <div class="card-content">
+
+                    <div class="card-header">
+                        {% if plugin.favicon %}
+                            <img src="{{ plugin.favicon }}" alt="{{ plugin.name }}" class="plugin-favicon">
+                        {% else %}
+                            <i class="fas fa-film plugin-icon"></i>
+                        {% endif %}
+
+                        <h3 class="card-title">{{ plugin.name }}</h3>
+                    </div>
+
+                    <p class="card-text">{{ plugin.description }}</p>
+                    <p class="card-text"><small>Dil: {{ plugin.language }}</small></p>
+
+                    <div class="card-actions">
+                        <a href="{{ plugin.main_url }}" target="_blank" class="button button-secondary">
+                            <i class="fas fa-external-link-alt"></i> Site
+                        </a>
+                        <a href="/eklenti/{{ plugin.name }}" class="button">
+                            <i class="fas fa-eye"></i> Detay
+                        </a>
+                    </div>
+
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</section>
+
+{% endblock %}
