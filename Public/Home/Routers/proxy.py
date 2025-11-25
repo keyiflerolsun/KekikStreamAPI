@@ -109,7 +109,7 @@ async def video_proxy(request: Request, url: str, referer: str = None, headers: 
         except json.JSONDecodeError as e:
             konsol.print(f"[yellow]Header parsing hatası: {str(e)}[/yellow]")
     
-    konsol.print(f"[cyan]Video proxy:[/cyan] {decoded_url[:100]}...")
+    # konsol.print(f"[cyan]Video proxy:[/cyan] {decoded_url[:100]}...")
     
     # Request headers hazırla
     request_headers = prepare_request_headers(request, referer, custom_headers)
@@ -126,10 +126,10 @@ async def video_proxy(request: Request, url: str, referer: str = None, headers: 
             
             # Stream başlat
             async with client.stream("GET", decoded_url, headers=request_headers) as response:
-                konsol.print(f"[cyan]Stream başlatıldı: HTTP {response.status_code}[/cyan]")
+                # konsol.print(f"[cyan]Stream başlatıldı: HTTP {response.status_code}[/cyan]")
                 
                 original_content_type = response.headers.get('content-type', 'bilinmiyor')
-                konsol.print(f"[cyan]Content-Type (sunucu): {original_content_type}[/cyan]")
+                # konsol.print(f"[cyan]Content-Type (sunucu): {original_content_type}[/cyan]")
                 
                 # Hata kontrolü
                 if response.status_code >= 400:
@@ -143,14 +143,14 @@ async def video_proxy(request: Request, url: str, referer: str = None, headers: 
                 async for chunk in response.aiter_bytes(chunk_size=DEFAULT_CHUNK_SIZE):
                     if first_chunk is None:
                         first_chunk = chunk
-                        konsol.print(f"[green]İlk chunk alındı ({len(chunk)} bytes)[/green]")
+                        # konsol.print(f"[green]İlk chunk alındı ({len(chunk)} bytes)[/green]")
                         
                         # İçerik kontrolü - HLS manifest mi?
                         try:
                             content_preview = first_chunk[:100].decode('utf-8', errors='ignore')
                             if content_preview.strip().startswith('#EXTM3U'):
                                 corrected_content_type = 'application/vnd.apple.mpegurl'
-                                konsol.print(f"[yellow]⚠️  HLS manifest tespit edildi, Content-Type düzeltildi![/yellow]")
+                                # konsol.print(f"[yellow]⚠️  HLS manifest tespit edildi, Content-Type düzeltildi![/yellow]")
                         except:
                             pass
                         
@@ -160,7 +160,7 @@ async def video_proxy(request: Request, url: str, referer: str = None, headers: 
                     
                     yield chunk
                 
-                konsol.print(f"[green]Stream tamamlandı[/green]")
+                # konsol.print(f"[green]Stream tamamlandı[/green]")
         
         except httpx.RequestError as e:
             konsol.print(f"[red]Stream request hatası: {str(e)}[/red]")
@@ -181,7 +181,7 @@ async def video_proxy(request: Request, url: str, referer: str = None, headers: 
     # URL bazlı tahmin (PHP endpoint'leri ve .txt manifest'leri genelde HLS döndürür)
     if '.m3u8' in decoded_url or '/m.php' in decoded_url or '/l.php' in decoded_url or '/ld.php' in decoded_url or 'master.txt' in decoded_url:
         detected_content_type = 'application/vnd.apple.mpegurl'
-        konsol.print(f"[yellow]URL'den HLS formatı tahmin edildi[/yellow]")
+        # konsol.print(f"[yellow]URL'den HLS formatı tahmin edildi[/yellow]")
     
     
     # Default headers hazırlama fonksiyonu
@@ -205,24 +205,24 @@ async def video_proxy(request: Request, url: str, referer: str = None, headers: 
                     # Content-Type düzeltmesi - URL'den tahmin ettiyse override et
                     if detected_content_type:
                         response_headers["Content-Type"] = detected_content_type
-                        konsol.print(f"[yellow]Content-Type düzeltildi: {detected_content_type}[/yellow]")
+                        # konsol.print(f"[yellow]Content-Type düzeltildi: {detected_content_type}[/yellow]")
                 else:
                     # HEAD başarısız, default headers kullan
                     raise Exception("HEAD failed")
             
             except:
                 # HEAD başarısız veya desteklenmiyor, default headers kullan
-                konsol.print(f"[yellow]HEAD request başarısız, default headers kullanılıyor[/yellow]")
+                # konsol.print(f"[yellow]HEAD request başarısız, default headers kullanılıyor[/yellow]")
                 response_headers = get_default_headers()
     
     except Exception as e:
-        konsol.print(f"[yellow]Header alma hatası (devam ediliyor): {str(e)}[/yellow]")
+        # konsol.print(f"[yellow]Header alma hatası (devam ediliyor): {str(e)}[/yellow]")
         # Hata olsa bile default headers ile devam et
         response_headers = get_default_headers()
     
     # HEAD request ise sadece headers döndür (StreamingResponse döndürme)
     if request.method == "HEAD":
-        konsol.print(f"[cyan]HEAD request - sadece headers döndürülüyor[/cyan]")
+        # konsol.print(f"[cyan]HEAD request - sadece headers döndürülüyor[/cyan]")
         return Response(
             content     = b"",  # Boş content
             status_code = 200,
@@ -255,7 +255,7 @@ async def subtitle_proxy(request: Request, url: str, referer: str = None, header
             except json.JSONDecodeError as e:
                 konsol.print(f"[yellow]Altyazı header parsing hatası: {str(e)}[/yellow]")
         
-        konsol.print(f"[cyan]Altyazı proxy:[/cyan] {decoded_url[:100]}...")
+        # konsol.print(f"[cyan]Altyazı proxy:[/cyan] {decoded_url[:100]}...")
         
         # Request headers hazırla (video proxy ile aynı fonksiyonu kullan)
         request_headers = prepare_request_headers(request, referer, custom_headers)
@@ -269,7 +269,7 @@ async def subtitle_proxy(request: Request, url: str, referer: str = None, header
             
             # Hata kontrolü
             if response.status_code >= 400:
-                konsol.print(f"[red]Altyazı kaynağı hatası: HTTP {response.status_code}[/red]")
+                # konsol.print(f"[red]Altyazı kaynağı hatası: HTTP {response.status_code}[/red]")
                 return Response(
                     content     = f"Altyazı kaynağı hatası: HTTP {response.status_code}",
                     status_code = response.status_code,
@@ -317,7 +317,7 @@ async def subtitle_proxy(request: Request, url: str, referer: str = None, header
             )
     
     except httpx.RequestError as e:
-        konsol.print(f"[red]Altyazı istek hatası: {str(e)}[/red]")
+        # konsol.print(f"[red]Altyazı istek hatası: {str(e)}[/red]")
         return Response(
             content     = f"Altyazı istek hatası: {str(e)}",
             status_code = 502,
@@ -326,7 +326,7 @@ async def subtitle_proxy(request: Request, url: str, referer: str = None, header
         )
     
     except httpx.TimeoutException as e:
-        konsol.print(f"[red]Altyazı zaman aşımı: {str(e)}[/red]")
+        # konsol.print(f"[red]Altyazı zaman aşımı: {str(e)}[/red]")
         return Response(
             content     = f"Altyazı zaman aşımı: {str(e)}",
             status_code = 504,
@@ -335,8 +335,8 @@ async def subtitle_proxy(request: Request, url: str, referer: str = None, header
         )
     
     except Exception as e:
-        konsol.print(f"[red]Altyazı proxy hatası: {str(e)}[/red]")
-        konsol.print(traceback.format_exc())
+        # konsol.print(f"[red]Altyazı proxy hatası: {str(e)}[/red]")
+        # konsol.print(traceback.format_exc())
         return Response(
             content     = f"Altyazı proxy hatası: {str(e)}",
             status_code = 500,

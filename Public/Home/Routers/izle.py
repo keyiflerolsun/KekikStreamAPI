@@ -20,7 +20,6 @@ async def izle(request: Request, eklenti_adi: str, url: str, baslik: str):
         load_links = await plugin.load_links(url)
 
         links = []
-        must_extract = False
         if hasattr(plugin, "play") and callable(getattr(plugin, "play", None)):
             for link in load_links:
                 links.append({
@@ -31,7 +30,6 @@ async def izle(request: Request, eklenti_adi: str, url: str, baslik: str):
                     "subtitles" : [sub.dict() for sub in link.get("subtitles", [])]
                 })
         else:
-            must_extract = True
             for link in load_links:
                 if extractor := extractor_manager.find_extractor(link.get("url")):
                     try:
@@ -53,7 +51,6 @@ async def izle(request: Request, eklenti_adi: str, url: str, baslik: str):
             "request"      : request,
             "baslik"       : f"{baslik}",
             "eklenti_adi"  : f"{eklenti_adi}",
-            "must_extract" : must_extract,
             "links"        : links
         }
 

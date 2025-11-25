@@ -53,7 +53,7 @@
 
     <div id="video-links-data" style="display: none;">
         {% for link in links %}
-            <div class="video-link-item" data-name="{{ link.name if must_extract else eklenti_adi }}" data-url="{{ link.url }}" data-referer="{{ link.referer }}" data-headers="{{ link.headers }}">
+            <div class="video-link-item" data-name="{{ link.name }}" data-url="{{ link.url }}" data-referer="{{ link.referer }}" data-headers="{{ link.headers }}">
                 {% for subtitle in link.subtitles %}
                     <div class="subtitle-item" data-name="{{ subtitle.name }}" data-url="{{ subtitle.url }}"></div>
                 {% endfor %}
