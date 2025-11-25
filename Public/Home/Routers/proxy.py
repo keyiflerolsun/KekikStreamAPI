@@ -179,8 +179,8 @@ async def video_proxy(request: Request, url: str, referer: str = None, headers: 
     detected_content_type = None
     
     # URL bazlı tahmin (PHP endpoint'leri ve .txt manifest'leri genelde HLS döndürür)
-    if '.m3u8' in decoded_url or '/m.php' in decoded_url or '/l.php' in decoded_url or '/ld.php' in decoded_url or 'master.txt' in decoded_url:
-        detected_content_type = 'application/vnd.apple.mpegurl'
+    if any(x in decoded_url for x in (".m3u8", "/m.php", "/l.php", "/ld.php", "master.txt", "embed/sheila")):
+        detected_content_type = "application/vnd.apple.mpegurl"
         # konsol.print(f"[yellow]URL'den HLS formatı tahmin edildi[/yellow]")
     
     
