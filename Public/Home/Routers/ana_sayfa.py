@@ -31,9 +31,10 @@ async def ana_sayfa(request: Request, csrf_protect: CsrfProtect = Depends()):
         })
 
     context = {
-        "request"  : request,
-        "baslik"   : "Tüm Eklentiler",
-        "plugins"  : plugins
+        "request"     : request,
+        "title"       : "KekikStream - Tüm Eklentiler",
+        "description" : "KekikStream API Tüm Eklentiler Sayfası",
+        "plugins"     : plugins
     }
 
     # CSRF token

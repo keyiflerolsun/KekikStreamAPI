@@ -22,7 +22,8 @@ async def ara(request: Request, eklenti_adi: str, sorgu: str):
 
         context = {
             "request"     : request,
-            "baslik"      : f"{eklenti_adi} - {sorgu}",
+            "title"       : f"{eklenti_adi} - {sorgu}",
+            "description" : f"{eklenti_adi} eklentisinde '{sorgu}' için arama sonuçları",
             "eklenti_adi" : eklenti_adi,
             "sorgu"       : sorgu,
             "results"     : results
@@ -31,8 +32,9 @@ async def ara(request: Request, eklenti_adi: str, sorgu: str):
         return home_template.TemplateResponse("ara.html.j2", context)
     except Exception as hata:
         context = {
-            "request"  : request,
-            "baslik"   : "Hata",
-            "hata"     : hata
+            "request"     : request,
+            "title"       : f"Hata - {eklenti_adi} - {sorgu}",
+            "description" : "Bir hata oluştu",
+            "hata"        : hata
         }
         return home_template.TemplateResponse("hata.html.j2", context)

@@ -25,7 +25,8 @@ async def icerik(request: Request, eklenti_adi: str, url: str):
 
         context = {
             "request"     : request,
-            "baslik"      : f"{eklenti_adi} - {content.title}",
+            "title"       : f"{eklenti_adi} - {content.title}",
+            "description" : f"{content.title} içeriği",
             "eklenti_adi" : eklenti_adi,
             "content"     : content
         }
@@ -33,8 +34,9 @@ async def icerik(request: Request, eklenti_adi: str, url: str):
         return home_template.TemplateResponse("icerik.html.j2", context)
     except Exception as hata:
         context = {
-            "request"  : request,
-            "baslik"   : "Hata",
-            "hata"     : hata
+            "request"     : request,
+            "title"       : f"Hata - {eklenti_adi} - {content.title}",
+            "description" : "Bir hata oluştu",
+            "hata"        : hata
         }
         return home_template.TemplateResponse("hata.html.j2", context)

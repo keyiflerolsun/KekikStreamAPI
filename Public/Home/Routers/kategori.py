@@ -21,7 +21,8 @@ async def kategori(request: Request, eklenti_adi: str, kategori_url: str, katego
 
         context = {
             "request"      : request,
-            "baslik"       : f"{eklenti_adi} - {kategori_adi}",
+            "title"        : f"{eklenti_adi} - {kategori_adi}",
+            "description"  : f"{eklenti_adi} eklentisinde '{kategori_adi}' kategorisi",
             "eklenti_adi"  : eklenti_adi,
             "items"        : items,
             "kategori_url" : quote_plus(kategori_url),
@@ -32,8 +33,9 @@ async def kategori(request: Request, eklenti_adi: str, kategori_url: str, katego
         return home_template.TemplateResponse("kategori.html.j2", context)
     except Exception as hata:
         context = {
-            "request"  : request,
-            "baslik"   : "Hata",
-            "hata"     : hata
+            "request"     : request,
+            "title"       : f"Hata - {eklenti_adi} - {kategori_adi}",
+            "description" : "Bir hata oluştu",
+            "hata"        : hata
         }
         return home_template.TemplateResponse("hata.html.j2", context)
