@@ -88,7 +88,8 @@ def prepare_response_headers(response_headers: dict, url: str, detected_content_
     # Transfer edilecek headerlar
     important_headers = [
         "content-range", "accept-ranges",
-        "etag", "cache-control", "content-disposition"
+        "etag", "cache-control", "content-disposition",
+        "content-length"
     ]
     
     for header in important_headers:
@@ -108,17 +109,9 @@ def detect_hls_from_url(url: str) -> bool:
 
 # --- Video Proxy Logic ---
 
-async def stream_generator(client: httpx.AsyncClient, url: str, headers: dict):
-    """Video içeriğini stream eder ve HLS kontrolü yapar"""
-    response = None
+async def stream_wrapper(response: httpx.Response):
+    """Response içeriğini yield eder ve HLS kontrolü yapar"""
     try:
-        req = client.build_request("GET", url, headers=headers)
-        response = await client.send(req, stream=True)
-        
-        if response.status_code >= 400:
-            konsol.print(f"[red]Kaynak sunucu hatası: HTTP {response.status_code}[/red]")
-            return
-
         original_ct  = response.headers.get('content-type', 'bilinmiyor')
         first_chunk  = None
         corrected_ct = None
@@ -138,18 +131,17 @@ async def stream_generator(client: httpx.AsyncClient, url: str, headers: dict):
                 if 'text/html' in original_ct.lower() and not corrected_ct:
                     konsol.print(f"[red]⚠️  UYARI: Kaynak HTML döndürüyor![/red]")
             
-            try:
-                yield chunk
-            except GeneratorExit:
-                # Client bağlantıyı kesti, döngüden çık
-                break
+            yield chunk
             
+    except GeneratorExit:
+        pass
     except Exception as e:
         konsol.print(f"[red]Stream hatası: {str(e)}[/red]")
         konsol.print(traceback.format_exc())
+    except BaseException:
+        pass
     finally:
-        if response:
-            await response.aclose()
+        await response.aclose()
 
 @home_router.get("/proxy/video")
 @home_router.head("/proxy/video")
@@ -159,50 +151,53 @@ async def video_proxy(request: Request, url: str, referer: str = None, headers: 
     custom_headers  = parse_custom_headers(headers)
     request_headers = prepare_request_headers(request, referer, custom_headers)
     
-    # HLS Tahmini
-    detected_content_type = "application/vnd.apple.mpegurl" if detect_hls_from_url(decoded_url) else None
-    
-    # HEAD Request ile headerları almayı dene
-    response_headers = {}
-    head_status      = 200
-    try:
-        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
-            resp = await client.head(decoded_url, headers=request_headers)
-            if resp.status_code < 400:
-                response_headers = dict(resp.headers)
-                head_status = resp.status_code
-    except:
-        pass # HEAD başarısızsa varsayılanları kullanacağız
-
-    # Response headerlarını hazırla
-    final_headers = prepare_response_headers(response_headers, decoded_url, detected_content_type)
-
-    # Status Code Belirle (206 Partial Content desteği)
-    status_code = 206 if (head_status == 206 or "Content-Range" in final_headers) else 200
-
-    # HEAD isteği ise sadece header dön
-    if request.method == "HEAD":
-        return Response(
-            content     = b"",
-            status_code = status_code,
-            headers     = final_headers,
-            media_type  = final_headers.get("Content-Type")
-        )
-
-    # GET isteği ise stream başlat
     # Client oluştur
     client = httpx.AsyncClient(
         follow_redirects = True,
         timeout          = httpx.Timeout(connect=10.0, read=60.0, write=10.0, pool=10.0),
     )
     
-    return StreamingResponse(
-        stream_generator(client, decoded_url, request_headers),
-        status_code     = status_code,
-        headers         = final_headers,
-        media_type      = final_headers.get("Content-Type"),
-        background      = BackgroundTask(client.aclose)
-    )
+    try:
+        # GET isteğini başlat
+        req = client.build_request("GET", decoded_url, headers=request_headers)
+        response = await client.send(req, stream=True)
+        
+        if response.status_code >= 400:
+            await response.aclose()
+            await client.aclose()
+            konsol.print(f"[red]Kaynak sunucu hatası: HTTP {response.status_code}[/red]")
+            return Response(status_code=response.status_code)
+
+        # Response headerlarını hazırla
+        # HLS Tahmini (URL'den)
+        detected_content_type = "application/vnd.apple.mpegurl" if detect_hls_from_url(decoded_url) else None
+        
+        final_headers = prepare_response_headers(dict(response.headers), decoded_url, detected_content_type)
+        
+        # HEAD isteği ise stream yapma, kapat ve dön
+        if request.method == "HEAD":
+            await response.aclose()
+            await client.aclose()
+            return Response(
+                content     = b"",
+                status_code = response.status_code,
+                headers     = final_headers,
+                media_type  = final_headers.get("Content-Type")
+            )
+
+        # GET isteği - StreamingResponse döndür
+        return StreamingResponse(
+            stream_wrapper(response),
+            status_code = response.status_code,
+            headers     = final_headers,
+            media_type  = final_headers.get("Content-Type"),
+            background  = BackgroundTask(client.aclose)
+        )
+        
+    except Exception as e:
+        await client.aclose()
+        konsol.print(f"[red]Proxy başlatma hatası: {str(e)}[/red]")
+        return Response(status_code=502, content=f"Proxy Error: {str(e)}")
 
 # --- Subtitle Proxy Logic ---
 
