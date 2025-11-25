@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from CLI         import konsol
-from Core        import kekik_FastAPI, Request, JSONResponse
+from Core        import kekik_FastAPI, Request, JSONResponse, Response
 from time        import time
 from user_agents import parse
 from ._IP_Log    import ip_log
@@ -56,6 +56,10 @@ async def istekten_once_sonra(request: Request, call_next):
     except asyncio.TimeoutError:
         log_veri["kod"] = 504
         response        = JSONResponse(status_code=log_veri["kod"], content={"ups": "Zaman Aşımı.."})
+    except RuntimeError as exc:
+        if "No response returned" in str(exc):
+            return Response(status_code=204)
+        raise
 
     for skip_path in ("/favicon.ico", "/static", "/webfonts", "/manifest.json", "com.chrome.devtools.json"):
         if skip_path in request.url.path:
