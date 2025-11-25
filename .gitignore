@@ -164,3 +164,6 @@ cython_debug/
 SineWixDB*
 cookies.txt
 youtubeCheck.py
+__data_dump/
+**/**.min.js
+**/**.min.css

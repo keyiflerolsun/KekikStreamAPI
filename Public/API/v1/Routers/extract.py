@@ -1,12 +1,10 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from .        import api_v1_router, api_v1_global_message
-from Core     import Request, JSONResponse, kekik_cache
+from Core     import Request, JSONResponse
 from ..Libs   import extractor_manager
-from Settings import CACHE_TIME
 
 @api_v1_router.get("/extract")
-@kekik_cache(ttl=CACHE_TIME, is_fastapi=True)
 async def extract(request:Request):
     istek = request.state.req_veri
     if not istek:

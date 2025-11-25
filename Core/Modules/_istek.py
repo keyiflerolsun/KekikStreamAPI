@@ -1,17 +1,17 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from CLI         import konsol
-from Core        import KekikStreamAPI, Request, JSONResponse
+from Core        import kekik_FastAPI, Request, JSONResponse
 from time        import time
 from user_agents import parse
 from ._IP_Log    import ip_log
 import asyncio
 
-@KekikStreamAPI.middleware("http")
+@kekik_FastAPI.middleware("http")
 async def istekten_once_sonra(request: Request, call_next):
     baslangic_zamani = time()
 
-    if request.method == "GET":
+    if request.method in ("GET", "HEAD"):
         request.state.req_veri = dict(request.query_params) if request.query_params else None
     else:
         try:
@@ -47,8 +47,7 @@ async def istekten_once_sonra(request: Request, call_next):
     }
 
     try:
-        # async with asyncio.timeout(7.5):
-        response = await asyncio.wait_for(call_next(request), timeout=7.5)
+        response = await asyncio.wait_for(call_next(request), timeout=10)
         if response:
             log_veri["kod"] = response.status_code
         else:
@@ -58,7 +57,7 @@ async def istekten_once_sonra(request: Request, call_next):
         log_veri["kod"] = 504
         response        = JSONResponse(status_code=log_veri["kod"], content={"ups": "Zaman Aşımı.."})
 
-    for skip_path in ("/favicon.ico", "/static", "/webfonts"):
+    for skip_path in ("/favicon.ico", "/static", "/webfonts", "/manifest.json", "com.chrome.devtools.json"):
         if skip_path in request.url.path:
             return response
 

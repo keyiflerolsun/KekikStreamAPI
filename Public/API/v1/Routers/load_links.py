@@ -1,15 +1,13 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from .        import api_v1_router, api_v1_global_message
-from Core     import Request, JSONResponse, kekik_cache
+from Core     import Request, JSONResponse
 from ..Libs   import plugin_manager
-from Settings import CACHE_TIME
 
 from random       import choice
 from urllib.parse import quote_plus
 
 @api_v1_router.get("/load_links")
-@kekik_cache(ttl=CACHE_TIME, is_fastapi=True)
 async def load_links(request:Request):
     istek = request.state.req_veri
     plugin_names = plugin_manager.get_plugin_names()
@@ -28,16 +26,14 @@ async def load_links(request:Request):
     if hasattr(plugin, "play") and callable(getattr(plugin, "play", None)):
         result = []
         for link in links:
-            data = plugin._data.get(link, {})
             result.append({
-                "name"      : data.get("name"),
-                "url"       : link,
-                "referer"   : data.get("referer"),
-                "headers"   : data.get("headers"),
-                "subtitles" : data.get("subtitles")
+                "name"      : link.get("name"),
+                "url"       : link.get("url"),
+                "referer"   : link.get("referer"),
+                "headers"   : link.get("headers"),
+                "subtitles" : link.get("subtitles")
             })
 
-        plugin._data.clear()
         return {**api_v1_global_message, "must_extract": False, "result": result}
 
-    return {**api_v1_global_message, "must_extract": True, "result": [quote_plus(link) for link in links]}
+    return {**api_v1_global_message, "must_extract": True, "result": [{"name": link.get("name"), "url": quote_plus(link.get("url"))} for link in links]}

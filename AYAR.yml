@@ -4,5 +4,4 @@ PROJE : KekikStreamAPI
 APP   :
   HOST    : 0.0.0.0
   PORT    : 3310
-  WORKERS : 1
   CACHE   : 15        # ! Minutes

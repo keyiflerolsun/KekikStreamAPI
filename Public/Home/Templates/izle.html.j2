@@ -1,4 +1,4 @@
-{% extends "_html_taban.html" %}
+{% extends "_html_taban.html.j2" %}
 
 
 {% block breadcrumbs %}
@@ -62,6 +62,6 @@
     </div>
 </div>
 
-<script defer src="{{ url_for('static_home', path='JS/player.js') }}"></script>
+<script defer src="{{ url_for('static_home', path='JS/player.min.js') }}"></script>
 
 {% endblock %}

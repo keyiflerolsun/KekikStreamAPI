@@ -1,40 +1,23 @@
 from CLI               import konsol
 from fastapi           import Request, Response
 from fastapi.responses import StreamingResponse
-from .            import home_router
-from urllib.parse import unquote
-import httpx, asyncio, json, time, traceback
+from .                 import home_router
+from urllib.parse      import unquote
+import httpx, json, traceback
 
 # Sabit değerler
 DEFAULT_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5)"
 DEFAULT_REFERER    = "https://twitter.com/"
-DEFAULT_CHUNK_SIZE = 1024 * 64   # 64KB
-HLS_BUFFER_SIZE    = 1024 * 256  # 256KB
-TS_BUFFER_SIZE     = 1024 * 512  # 512KB
-MAX_BUFFER_SIZE    = 1024 * 1024 # 1MB
+DEFAULT_CHUNK_SIZE = 1024 * 64  # 64KB
 
-# Content-Type helpers
+# Content-Type mapping
 CONTENT_TYPES = {
-    ".m3u8"   : "application/vnd.apple.mpegurl",
-    ".ts"     : "video/mp2t",
-    ".mp4"    : "video/mp4",
-    ".webm"   : "video/webm",
-    ".mkv"    : "video/x-matroska",
-    "default" : "video/mp4",
+    ".m3u8" : "application/vnd.apple.mpegurl",
+    ".ts"   : "video/mp2t",
+    ".mp4"  : "video/mp4",
+    ".webm" : "video/webm",
+    ".mkv"  : "video/x-matroska",
 }
-
-# Önemli HTTP başlıkları
-IMPORTANT_HEADERS = [
-    "Content-Length",
-    "Content-Range",
-    "Content-Type",
-    "Accept-Ranges",
-    "ETag",
-    "Cache-Control",
-    "X-Content-Duration",
-    "Content-Duration",
-    "Content-Disposition",
-]
 
 # CORS ayarları
 CORS_HEADERS = {
@@ -43,398 +26,316 @@ CORS_HEADERS = {
     "Access-Control-Allow-Headers" : "Origin, Content-Type, Accept, Range",
 }
 
-# HLS özel başlıkları
-HLS_HEADERS = {
-    "Cache-Control" : "no-cache, no-store, must-revalidate",
-    "Pragma"        : "no-cache",
-    "Expires"       : "0",
-}
 
-async def create_httpx_client():
-    """Gelişmiş yapılandırma ile HTTPX istemci oluştur"""
-    return httpx.AsyncClient(
-        follow_redirects = True,
-        # Daha yüksek zaman aşımı değerleri
-        timeout          = httpx.Timeout(
-            connect = 10.0,  # Bağlantı zaman aşımı
-            read    = 120.0,    # Okuma zaman aşımı (2 dakika)
-            write   = 10.0,    # Yazma zaman aşımı
-            pool    = 10.0      # Havuz zaman aşımı
-        ),
-        # Geliştirilmiş yeniden deneme stratejisi
-        transport        = httpx.AsyncHTTPTransport(
-            retries = 3,  # 3 yeniden deneme
-        ),
-        # Daha büyük bağlantı havuzu
-        limits           = httpx.Limits(
-            max_keepalive_connections = 20,
-            max_connections           = 50,
-            keepalive_expiry          = 30.0
-        )
-    )
+def get_content_type(url: str, response_headers: dict) -> str:
+    """URL ve response headers'dan content-type belirle"""
+    # Response'dan gelen content-type'ı kontrol et
+    content_type = response_headers.get("content-type", "")
+    if content_type:
+        return content_type
+    
+    # URL uzantısına göre belirle
+    for ext, ct in CONTENT_TYPES.items():
+        if ext in url.lower():
+            return ct
+    
+    # Varsayılan
+    return "video/mp4"
 
 
-async def get_client_headers(request: Request, referer: str, headers: dict):
-    """İstemci başlıklarını hazırla"""
-    # User-Agent belirleme
-    user_agent = headers.get("User-Agent", DEFAULT_USER_AGENT)
-
-    # Temel başlıklar
-    client_headers = {
-        "User-Agent"      : user_agent,
+def prepare_request_headers(request: Request, referer: str, custom_headers: dict) -> dict:
+    """İstek başlıklarını hazırla"""
+    headers = {
+        "User-Agent"      : custom_headers.get("User-Agent", DEFAULT_USER_AGENT),
         "Accept"          : "*/*",
         "Accept-Encoding" : "identity",
         "Connection"      : "keep-alive",
-        "Cache-Control"   : "no-cache",
-    }
-
-    # Range header varsa ekle
-    if "Range" in request.headers:
-        client_headers["Range"] = request.headers["Range"]
-
-    # Referer bilgisi ekle
-    if referer and referer != "None":
-        client_headers["Referer"] = unquote(referer)
-    else:
-        client_headers["Referer"] = DEFAULT_REFERER
-
-    # Ek özel başlıkları ekle
-    for key, value in headers.items():
-        if key.lower() not in [h.lower() for h in client_headers.keys()]:
-            client_headers[key] = value
-
-    return client_headers
-
-
-def get_response_headers(response_headers: dict[str, str], url: str):
-    """Yanıt başlıklarını hazırla"""
-    resp_headers = {}
-
-    # Önemli başlıkları kopyala
-    for header in IMPORTANT_HEADERS:
-        if header.lower() in response_headers:
-            resp_headers[header] = response_headers[header.lower()]
-
-    # Content-Type kontrolü
-    if "Content-Type" not in resp_headers:
-        # URL'e göre uygun Content-Type belirleme
-        for ext, content_type in CONTENT_TYPES.items():
-            if ext in url:
-                resp_headers["Content-Type"] = content_type
-                break
-        else:
-            resp_headers["Content-Type"] = CONTENT_TYPES["default"]
-
-    # CORS başlıklarını ekle
-    resp_headers.update(CORS_HEADERS)
-
-    # HLS için özel handling
-    content_type = resp_headers.get("Content-Type", "").lower()
-    if "mpegurl" in content_type or content_type == "application/vnd.apple.mpegurl":
-        resp_headers.update(HLS_HEADERS)
-
-    # Accept-Ranges header'ı yoksa ekle
-    if "Accept-Ranges" not in resp_headers:
-        resp_headers["Accept-Ranges"] = "bytes"
-
-    return resp_headers
-
-
-async def stream_video_content(response, url: str, content_type: str):
-    """Video içeriğini akışlı olarak gönder - İyileştirilmiş"""
-    try:
-        buffer      = b""
-        chunk_size  = DEFAULT_CHUNK_SIZE
-        buffer_size = DEFAULT_CHUNK_SIZE
-        total_bytes = 0
-        is_hls      = False
-        is_ts       = False
-        start_time  = time.time()
-        
-        # İçerik türüne göre tampon boyutunu ayarla
-        if "mpegurl" in content_type.lower() or content_type == "application/vnd.apple.mpegurl":
-            buffer_size = HLS_BUFFER_SIZE
-            is_hls      = True
-        elif "mp2t" in content_type.lower() or url.endswith(".ts"):
-            buffer_size = TS_BUFFER_SIZE
-            is_ts       = True
-        
-        # Maksimum tampon boyutunu sınırla
-        buffer_size = min(buffer_size, MAX_BUFFER_SIZE)
-        
-        async for chunk in response.aiter_bytes(chunk_size=chunk_size):
-            # Veri toplam boyutu
-            total_bytes += len(chunk)
-            
-            # HLS veya TS segment'leri için buffer kullan
-            if is_hls or is_ts:
-                buffer += chunk
-                # Tampon eşiğini belirle
-                if len(buffer) >= buffer_size:
-                    yield buffer
-                    buffer = b""
-            else:
-                # Normal video için direkt gönder
-                yield chunk
-            
-            # Çok fazla CPU kullanımını önlemek için her 1MB veri sonrasında kısa bekleme
-            if total_bytes % (1024 * 1024) == 0:
-                await asyncio.sleep(0.001)  # 1ms bekleme
-        
-        # Kalan tampon varsa gönder
-        if buffer:
-            yield buffer
-        
-        elapsed = time.time() - start_time
-        konsol.print(f"Video akışı tamamlandı: {total_bytes/1024/1024:.2f}MB, {elapsed:.2f}s içinde")
-    except Exception as stream_error:
-        konsol.print(f"Stream hatası: {str(stream_error)}")
-        konsol.print(traceback.format_exc())
-        # Hatayı ana fonksiyona bildir
-        raise
-
-
-async def handle_errors(status_code, message):
-    """Hata yanıtları için yardımcı fonksiyon"""
-    headers = {
-        "Content-Type": "text/plain",
-        **CORS_HEADERS
     }
     
-    return {
-        "status_code" : status_code,
-        "headers"     : headers,
-        "content"     : message.encode()
-    }
+    # Range header varsa ekle
+    if "Range" in request.headers:
+        headers["Range"] = request.headers["Range"]
+    
+    # Referer ekle
+    if referer and referer != "None":
+        headers["Referer"] = unquote(referer)
+    else:
+        headers["Referer"] = DEFAULT_REFERER
+    
+    # Özel başlıkları ekle
+    for key, value in custom_headers.items():
+        if key not in headers:
+            headers[key] = value
+    
+    return headers
+
+
+def prepare_response_headers(response_headers: dict, url: str) -> dict:
+    """Yanıt başlıklarını hazırla"""
+    headers = {**CORS_HEADERS}
+    
+    # Content-Type belirle ve ekle
+    headers["Content-Type"] = get_content_type(url, response_headers)
+    
+    # Önemli başlıkları kopyala (Content-Length HARİÇ - streaming'de sorun çıkarır!)
+    important_headers = [
+        "content-range", "accept-ranges",
+        "etag", "cache-control", "content-disposition"
+    ]
+    
+    for header in important_headers:
+        if header in response_headers:
+            headers[header.title()] = response_headers[header]
+    
+    # Accept-Ranges yoksa ekle
+    if "Accept-Ranges" not in headers:
+        headers["Accept-Ranges"] = "bytes"
+    
+    return headers
 
 
 @home_router.get("/proxy/video")
+@home_router.head("/proxy/video")
 async def video_proxy(request: Request, url: str, referer: str = None, headers: str = None):
-    """Video proxy endpoint'i - İyileştirilmiş"""
-    start_time = time.time()
+    """Video proxy endpoint'i"""
+    # URL'i decode et
+    decoded_url = unquote(url)
+    
+    # Custom headers'ı parse et
+    custom_headers = {}
+    if headers:
+        try:
+            custom_headers = json.loads(headers)
+        except json.JSONDecodeError as e:
+            konsol.print(f"[yellow]Header parsing hatası: {str(e)}[/yellow]")
+    
+    konsol.print(f"[cyan]Video proxy:[/cyan] {decoded_url[:100]}...")
+    
+    # Request headers hazırla
+    request_headers = prepare_request_headers(request, referer, custom_headers)
+    
+    # Generator fonksiyonu - kendi client'ını yönetir
+    async def stream_with_client():
+        client = None
+        try:
+            # Client oluştur
+            client = httpx.AsyncClient(
+                follow_redirects = True,
+                timeout          = httpx.Timeout(connect=10.0, read=60.0, write=10.0, pool=10.0),
+            )
+            
+            # Stream başlat
+            async with client.stream("GET", decoded_url, headers=request_headers) as response:
+                konsol.print(f"[cyan]Stream başlatıldı: HTTP {response.status_code}[/cyan]")
+                
+                original_content_type = response.headers.get('content-type', 'bilinmiyor')
+                konsol.print(f"[cyan]Content-Type (sunucu): {original_content_type}[/cyan]")
+                
+                # Hata kontrolü
+                if response.status_code >= 400:
+                    konsol.print(f"[red]Kaynak sunucu hatası: HTTP {response.status_code}[/red]")
+                    return
+                
+                # İlk chunk'ı al ve içeriği kontrol et
+                first_chunk = None
+                corrected_content_type = None
+                
+                async for chunk in response.aiter_bytes(chunk_size=DEFAULT_CHUNK_SIZE):
+                    if first_chunk is None:
+                        first_chunk = chunk
+                        konsol.print(f"[green]İlk chunk alındı ({len(chunk)} bytes)[/green]")
+                        
+                        # İçerik kontrolü - HLS manifest mi?
+                        try:
+                            content_preview = first_chunk[:100].decode('utf-8', errors='ignore')
+                            if content_preview.strip().startswith('#EXTM3U'):
+                                corrected_content_type = 'application/vnd.apple.mpegurl'
+                                konsol.print(f"[yellow]⚠️  HLS manifest tespit edildi, Content-Type düzeltildi![/yellow]")
+                        except:
+                            pass
+                        
+                        # HTML uyarısı
+                        if 'text/html' in original_content_type.lower() and not corrected_content_type:
+                            konsol.print(f"[red]⚠️  UYARI: Kaynak HTML döndürüyor, video değil![/red]")
+                    
+                    yield chunk
+                
+                konsol.print(f"[green]Stream tamamlandı[/green]")
+        
+        except httpx.RequestError as e:
+            konsol.print(f"[red]Stream request hatası: {str(e)}[/red]")
+        except httpx.TimeoutException as e:
+            konsol.print(f"[red]Stream timeout hatası: {str(e)}[/red]")
+        except Exception as e:
+            konsol.print(f"[red]Stream hatası: {str(e)}[/red]")
+            konsol.print(traceback.format_exc())
+        finally:
+            # Client'ı temizle
+            if client:
+                await client.aclose()
+    
+    # StreamingResponse döndür - headers'ı belirleme için HEAD request dene
+    # Ancak Content-Type'ı URL'den ve içerikten tahmin edelim
+    detected_content_type = None
+    
+    # URL bazlı tahmin (PHP endpoint'leri ve .txt manifest'leri genelde HLS döndürür)
+    if '.m3u8' in decoded_url or '/m.php' in decoded_url or '/l.php' in decoded_url or '/ld.php' in decoded_url or 'master.txt' in decoded_url:
+        detected_content_type = 'application/vnd.apple.mpegurl'
+        konsol.print(f"[yellow]URL'den HLS formatı tahmin edildi[/yellow]")
+    
+    
+    # Default headers hazırlama fonksiyonu
+    def get_default_headers():
+        return {
+            "Content-Type": detected_content_type or get_content_type(decoded_url, {}),
+            **CORS_HEADERS,
+            "Accept-Ranges": "bytes"
+        }
     
     try:
-        # URL'i decode et
-        decoded_url = unquote(url)
-        
-        # İstemci başlıklarını decode et
-        decoded_headers = {}
-        if headers:
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+            # Önce HEAD request dene
             try:
-                decoded_headers = json.loads(headers)
-            except json.JSONDecodeError as e:
-                konsol.print(f"Header parsing hatası: {str(e)}")
-        
-        # İstemci başlıklarını hazırla
-        client_headers = await get_client_headers(request, referer, decoded_headers)
-        
-        konsol.print(f"Proxy isteği: {decoded_url[:100]}...")
-        
-        # Stream yanıtı için generator
-        async def stream_generator():
-            # Geliştirilmiş HTTPX istemcisi oluştur
-            try:
-                async with await create_httpx_client() as client:
-                    try:
-                        async with client.stream("GET", decoded_url, headers=client_headers) as response:
-                            if response.status_code >= 400:
-                                error_msg = f"Kaynak sunucu hatası: HTTP {response.status_code}"
-                                konsol.print(f"Hata: {error_msg}")
-                                yield await handle_errors(response.status_code, error_msg)
-                                return
-                            
-                            # Yanıt başlıklarını hazırla
-                            resp_headers = get_response_headers(response.headers, decoded_url)
-                            
-                            # İlk yanıt başlıklarını gönder
-                            yield {
-                                "status_code" : response.status_code,
-                                "headers"     : resp_headers,
-                                "content"     : None
-                            }
-                            
-                            # İçerik akışını başlat
-                            content_type = resp_headers.get("Content-Type", "")
-                            async for chunk in stream_video_content(response, decoded_url, content_type):
-                                yield {"content": chunk}
-                            
-                    except httpx.RequestError as e:
-                        error_msg = f"İstek hatası: {str(e)}"
-                        konsol.print(error_msg)
-                        yield await handle_errors(502, error_msg)
-                    except httpx.TimeoutException as e:
-                        error_msg = f"Zaman aşımı hatası: {str(e)}"
-                        konsol.print(error_msg)
-                        yield await handle_errors(504, error_msg)
-                    except Exception as e:
-                        error_msg = f"Beklenmeyen hata: {str(e)}"
-                        konsol.print(error_msg)
-                        konsol.print(traceback.format_exc())
-                        yield await handle_errors(500, error_msg)
-            except Exception as client_error:
-                error_msg = f"HTTP istemci hatası: {str(client_error)}"
-                konsol.print(error_msg)
-                konsol.print(traceback.format_exc())
-                yield await handle_errors(500, error_msg)
-        
-        # İlk yanıtı al
-        stream_iter = stream_generator()
-        first_yield = await stream_iter.__anext__()
-        
-        # Eğer içerik varsa, bu bir hata yanıtıdır
-        if first_yield.get("content") is not None:
-            return Response(
-                content     = first_yield["content"],
-                status_code = first_yield["status_code"],
-                headers     = first_yield["headers"],
-                media_type  = "text/plain"
-            )
-        
-        # Normal yanıt için StreamingResponse hazırla
-        status_code  = first_yield["status_code"]
-        resp_headers = first_yield["headers"]
-        
-        elapsed = time.time() - start_time
-        konsol.print(f"Proxy yanıtı başlatıldı: Status: {status_code}, {elapsed:.2f}s içinde")
-        
-        # İçerik filtreleme fonksiyonu
-        async def content_generator():
-            try:
-                # İlk değeri zaten işledik, şimdi sadece içerik gönder
-                async for item in stream_iter:
-                    if "content" in item and item["content"] is not None:
-                        yield item["content"]
-            except Exception as gen_error:
-                konsol.print(f"İçerik akışı hatası: {str(gen_error)}")
-                konsol.print(traceback.format_exc())
+                response = await client.head(decoded_url, headers=request_headers)
                 
-        # Stream yanıtı döndür
-        return StreamingResponse(
-            content_generator(),
-            status_code = status_code,
-            headers     = resp_headers,
-            media_type  = resp_headers.get("Content-Type", "video/mp4"),
-        )
-        
+                # HEAD başarılıysa headers'ı al
+                if response.status_code < 400:
+                    response_headers = prepare_response_headers(dict(response.headers), decoded_url)
+                    
+                    # Content-Type düzeltmesi - URL'den tahmin ettiyse override et
+                    if detected_content_type:
+                        response_headers["Content-Type"] = detected_content_type
+                        konsol.print(f"[yellow]Content-Type düzeltildi: {detected_content_type}[/yellow]")
+                else:
+                    # HEAD başarısız, default headers kullan
+                    raise Exception("HEAD failed")
+            
+            except:
+                # HEAD başarısız veya desteklenmiyor, default headers kullan
+                konsol.print(f"[yellow]HEAD request başarısız, default headers kullanılıyor[/yellow]")
+                response_headers = get_default_headers()
+    
     except Exception as e:
-        elapsed = time.time() - start_time
-        konsol.print(f"Video proxy hatası ({elapsed:.2f}s): {str(e)}")
-        konsol.print(traceback.format_exc())
+        konsol.print(f"[yellow]Header alma hatası (devam ediliyor): {str(e)}[/yellow]")
+        # Hata olsa bile default headers ile devam et
+        response_headers = get_default_headers()
+    
+    # HEAD request ise sadece headers döndür (StreamingResponse döndürme)
+    if request.method == "HEAD":
+        konsol.print(f"[cyan]HEAD request - sadece headers döndürülüyor[/cyan]")
         return Response(
-            content     = f"Video proxy hatası: {str(e)}",
-            status_code = 500,
-            media_type  = "text/plain",
-            headers     = CORS_HEADERS
+            content     = b"",  # Boş content
+            status_code = 200,
+            headers     = response_headers,
+            media_type  = response_headers.get("Content-Type", "video/mp4")
         )
+    
+    # GET request - normal streaming
+    return StreamingResponse(
+        stream_with_client(),
+        status_code = 200,
+        headers     = response_headers,
+        media_type  = response_headers.get("Content-Type", "video/mp4")
+    )
+
 
 
 @home_router.get("/proxy/subtitle")
 async def subtitle_proxy(request: Request, url: str, referer: str = None, headers: str = None):
-    """Altyazı proxy endpoint'i - İyileştirilmiş"""
+    """Altyazı proxy endpoint'i"""
     try:
         # URL'i decode et
         decoded_url = unquote(url)
         
-        # İstemci başlıklarını decode et
-        decoded_headers = {}
+        # Custom headers'ı parse et
+        custom_headers = {}
         if headers:
             try:
-                decoded_headers = json.loads(headers)
+                custom_headers = json.loads(headers)
             except json.JSONDecodeError as e:
-                konsol.print(f"Altyazı header parsing hatası: {str(e)}")
+                konsol.print(f"[yellow]Altyazı header parsing hatası: {str(e)}[/yellow]")
         
-        # İstemciden gelen User-Agent bilgisini al
-        user_agent = decoded_headers.get("User-Agent", DEFAULT_USER_AGENT)
+        konsol.print(f"[cyan]Altyazı proxy:[/cyan] {decoded_url[:100]}...")
         
-        # Hedef sunucuya gönderilecek başlıkları ayarla
-        client_headers = {
-            "User-Agent"      : user_agent,
-            "Accept"          : "*/*",
-            "Accept-Encoding" : "identity",
-            "Connection"      : "keep-alive",
-        }
+        # Request headers hazırla (video proxy ile aynı fonksiyonu kullan)
+        request_headers = prepare_request_headers(request, referer, custom_headers)
         
-        # Referer bilgisi varsa ekle
-        if referer:
-            client_headers["Referer"] = unquote(referer)
-        
-        konsol.print(f"Altyazı proxy isteği: {decoded_url[:100]}...")
-        
-        # Altyazı içeriğini al ve işle
-        try:
-            async with await create_httpx_client() as client:
-                response = await client.get(decoded_url, headers=client_headers, timeout=30.0)
+        # HTTPX client oluştur
+        async with httpx.AsyncClient(
+            follow_redirects = True,
+            timeout          = 30.0
+        ) as client:
+            response = await client.get(decoded_url, headers=request_headers)
+            
+            # Hata kontrolü
+            if response.status_code >= 400:
+                konsol.print(f"[red]Altyazı kaynağı hatası: HTTP {response.status_code}[/red]")
+                return Response(
+                    content     = f"Altyazı kaynağı hatası: HTTP {response.status_code}",
+                    status_code = response.status_code,
+                    media_type  = "text/plain",
+                    headers     = CORS_HEADERS
+                )
+            
+            content = response.content
+            content_type = response.headers.get("content-type", "")
+            
+            # VTT formatını düzelt
+            if "text/vtt" in content_type or content.startswith(b"WEBVTT") or content.startswith(b"\xef\xbb\xbfWEBVTT"):
+                # UTF-8 BOM'u kaldır
+                if content.startswith(b"\xef\xbb\xbf"):
+                    content = content[3:]
                 
-                if response.status_code >= 400:
-                    error_msg = f"Altyazı kaynağı {response.status_code} hatası döndürdü"
-                    konsol.print(f"Altyazı hatası: {error_msg}")
-                    return Response(
-                        content     = error_msg,
-                        status_code = response.status_code,
-                        media_type  = "text/plain",
-                        headers     = CORS_HEADERS
-                    )
-                
-                content      = response.content
-                content_type = response.headers.get("Content-Type", "")
-                
-                # VTT formatını düzeltme
-                if "text/vtt" in content_type or any(content.startswith(prefix) for prefix in [b"WEBVTT", b"\xef\xbb\xbfWEBVTT"]):
-                    # UTF-8 BOM kontrolü
-                    if content.startswith(b"\xef\xbb\xbf"):
-                        content = content[3:]  # BOM'u kaldır
-                    
-                    # WEBVTT başlığı kontrolü
+                # WEBVTT başlığı yoksa ekle
+                if not content.startswith(b"WEBVTT"):
+                    content = b"WEBVTT\n\n" + content
+            
+            # SRT formatını VTT'ye dönüştür
+            elif content_type == "application/x-subrip" or decoded_url.endswith(".srt") or \
+                 content.strip().startswith(b"1\r\n") or content.strip().startswith(b"1\n"):
+                try:
+                    # WEBVTT başlığı ekle
                     if not content.startswith(b"WEBVTT"):
+                        content = content.replace(b"\r\n", b"\n")
                         content = b"WEBVTT\n\n" + content
-                
-                # SRT formatını VTT'ye dönüştür
-                elif content_type == "application/x-subrip" or decoded_url.endswith(".srt") or content.strip().startswith(b"1\r\n") or content.strip().startswith(b"1\n"):
-                    try:
-                        # SRT formatını VTT'ye dönüştür - basit bir yöntem
-                        if not content.startswith(b"WEBVTT"):
-                            # Yeni satır karakterlerini normalize et
-                            content = content.replace(b"\r\n", b"\n")
-                            # WEBVTT başlığı ekle
-                            content = b"WEBVTT\n\n" + content
-                            # Zaman formatını düzelt (,000 -> .000)
-                            content = content.replace(b",", b".")
-                    except Exception as srt_error:
-                        konsol.print(f"SRT dönüştürme hatası: {str(srt_error)}")
-        
-        except httpx.RequestError as e:
-            konsol.print(f"Altyazı istek hatası: {str(e)}")
+                        # Zaman formatını düzelt (,000 -> .000)
+                        content = content.replace(b",", b".")
+                except Exception as e:
+                    konsol.print(f"[yellow]SRT dönüştürme hatası: {str(e)}[/yellow]")
+            
+            # Response headers
+            response_headers = {
+                "Content-Type": "text/vtt; charset=utf-8",
+                **CORS_HEADERS
+            }
+            
             return Response(
-                content     = f"Altyazı istek hatası: {str(e)}",
-                status_code = 502,
-                media_type  = "text/plain",
-                headers     = CORS_HEADERS
+                content     = content,
+                status_code = 200,
+                headers     = response_headers,
+                media_type  = "text/vtt"
             )
-        except httpx.TimeoutException as e:
-            konsol.print(f"Altyazı zaman aşımı: {str(e)}")
-            return Response(
-                content     = f"Altyazı zaman aşımı: {str(e)}",
-                status_code = 504,
-                media_type  = "text/plain",
-                headers     = CORS_HEADERS
-            )
-        
-        # CORS başlıklarını içeren yanıt başlıkları
-        resp_headers = {
-            "Content-Type": "text/vtt; charset=utf-8",
-            **CORS_HEADERS
-        }
-        
-        # Altyazı içeriğini döndür
+    
+    except httpx.RequestError as e:
+        konsol.print(f"[red]Altyazı istek hatası: {str(e)}[/red]")
         return Response(
-            content     = content,
-            status_code = 200,
-            headers     = resp_headers,
-            media_type  = "text/vtt",
+            content     = f"Altyazı istek hatası: {str(e)}",
+            status_code = 502,
+            media_type  = "text/plain",
+            headers     = CORS_HEADERS
         )
-        
+    
+    except httpx.TimeoutException as e:
+        konsol.print(f"[red]Altyazı zaman aşımı: {str(e)}[/red]")
+        return Response(
+            content     = f"Altyazı zaman aşımı: {str(e)}",
+            status_code = 504,
+            media_type  = "text/plain",
+            headers     = CORS_HEADERS
+        )
+    
     except Exception as e:
-        konsol.print(f"Altyazı proxy hatası: {str(e)}")
+        konsol.print(f"[red]Altyazı proxy hatası: {str(e)}[/red]")
         konsol.print(traceback.format_exc())
         return Response(
             content     = f"Altyazı proxy hatası: {str(e)}",

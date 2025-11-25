@@ -1,13 +1,10 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from httpx    import AsyncClient
-from Core     import kekik_cache
-from Settings import CACHE_TIME
+from curl_cffi import AsyncSession
 
-@kekik_cache(ttl=CACHE_TIME)
 async def ip_log(hedef_ip:str) -> dict[str, str]:
     try:
-        oturum = AsyncClient(timeout=3)
+        oturum = AsyncSession(timeout=3)
 
         istek = await oturum.get(f"http://ip-api.com/json/{hedef_ip}")
         veri  = istek.json()

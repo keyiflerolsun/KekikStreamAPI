@@ -370,8 +370,38 @@ document.addEventListener('DOMContentLoaded', function () {
 
         logger.info('Proxy URL oluşturuldu', proxyUrl);
 
-        // Video kaynağını ayarla
-        if (originalUrl.includes('.m3u8')) {
+        // Video formatını proxy'den Content-Type ile belirle
+        logger.info('Video formatı tespit ediliyor (Content-Type sorgulanıyor)...');
+        
+        fetch(proxyUrl, { method: 'HEAD' })
+            .then(response => {
+                const contentType = response.headers.get('content-type') || '';
+                logger.info(`Content-Type: ${contentType}`);
+                
+                // HLS mi kontrol et (proxy Content-Type'ı düzeltiyor)
+                const isHLS = contentType.includes('mpegurl') || 
+                              contentType.includes('application/vnd.apple.mpegurl') ||
+                              contentType.includes('application/x-mpegurl');
+                
+                if (isHLS) {
+                    loadHLSVideo();
+                } else {
+                    loadNormalVideo();
+                }
+            })
+            .catch(error => {
+                logger.error('Content-Type alınamadı, .m3u8 uzantısından tahmin ediliyor', error.message);
+                
+                // Fallback: sadece açık .m3u8 uzantıları
+                if (originalUrl.includes('.m3u8')) {
+                    loadHLSVideo();
+                } else {
+                    loadNormalVideo();
+                }
+            });
+        
+        // HLS video yükleme fonksiyonu
+        function loadHLSVideo() {
             logger.info('HLS video formatı tespit edildi');
 
             // HLS video için
@@ -514,8 +544,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 logger.error('Bu tarayıcı HLS formatını desteklemiyor');
                 onVideoError();
             }
-        } else {
-            // Normal video
+        }
+        
+        // Normal video yükleme fonksiyonu
+        function loadNormalVideo() {
             logger.info('Normal video formatı yükleniyor');
 
             try {

@@ -1,14 +1,12 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from Core     import kekik_cache, Request, HTMLResponse
+from Core     import Request, HTMLResponse
 from .        import home_router, home_template
-from Settings import CACHE_TIME
 
 from Public.API.v1.Libs import plugin_manager
 from urllib.parse       import quote_plus
 
 @home_router.get("/eklenti/{eklenti_adi}", response_class=HTMLResponse)
-@kekik_cache(ttl=CACHE_TIME, is_fastapi=True)
 async def eklenti(request: Request, eklenti_adi: str):
     try:
         plugin_names = plugin_manager.get_plugin_names()
@@ -37,11 +35,11 @@ async def eklenti(request: Request, eklenti_adi: str):
             "plugin"   : plugin
         }
 
-        return home_template.TemplateResponse("eklenti.html", context)
+        return home_template.TemplateResponse("eklenti.html.j2", context)
     except Exception as hata:
         context = {
             "request"  : request,
             "baslik"   : "Hata",
             "hata"     : hata
         }
-        return home_template.TemplateResponse("hata.html", context)
+        return home_template.TemplateResponse("hata.html.j2", context)

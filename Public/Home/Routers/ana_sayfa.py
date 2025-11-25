@@ -1,16 +1,12 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from CLI      import konsol
-from Core     import kekik_cache, Request, HTMLResponse
-from .        import home_router, home_template
-from Settings import CACHE_TIME
-
+from Core import Request, HTMLResponse, CsrfProtect, Depends
+from .    import home_router, home_template
 from Public.API.v1.Libs import plugin_manager
 from cloudscraper       import CloudScraper
 
 @home_router.get("/", response_class=HTMLResponse)
-@kekik_cache(ttl=CACHE_TIME, is_fastapi=True)
-async def ana_sayfa(request: Request):
+async def ana_sayfa(request: Request, csrf_protect: CsrfProtect = Depends()):
 
     # oturum = CloudScraper()
 
@@ -40,4 +36,13 @@ async def ana_sayfa(request: Request):
         "plugins"  : plugins
     }
 
-    return home_template.TemplateResponse("index.html", context)
+    # CSRF token
+    csrf_token, signed_token = csrf_protect.generate_csrf_tokens()
+    context["csrf_token"]    = csrf_token
+
+    # Response
+    response = home_template.TemplateResponse("index.html.j2", context)
+    csrf_protect.set_csrf_cookie(signed_token, response)
+
+    response.headers["X-Robots-Tag"] = "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1"
+    return response
