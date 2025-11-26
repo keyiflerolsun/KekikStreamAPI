@@ -8,7 +8,6 @@
   overflow: hidden;
   background-color: #000;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  margin-top: var(--spacing-lg);
 }
 
 #video-player-wrapper {
@@ -149,3 +148,34 @@
 .log-entry-error { color: var(--error-color, #e74c3c); font-weight: bold; }
 .log-entry-message { color: var(--text-color); }
 .log-entry-data { margin-left: 20px; font-size: 11px; color: var(--text-muted); }
+
+/* Mobile: Control buttons in single row */
+@media (max-width: 767px) {
+  .control-buttons {
+    flex-wrap: nowrap;
+    overflow-x: auto; /* Safety for very small screens */
+  }
+  
+  .control-buttons .button {
+    flex: 1;
+    white-space: nowrap;
+    min-width: auto; /* Allow shrinking if needed */
+    padding-left: var(--spacing-xs);
+    padding-right: var(--spacing-xs);
+  }
+}
+
+/* Desktop: Source selection inline */
+@media (min-width: 768px) {
+  .source-selection {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+  }
+
+  .source-selection h3 {
+    margin-bottom: 0;
+    white-space: nowrap;
+  }
+}

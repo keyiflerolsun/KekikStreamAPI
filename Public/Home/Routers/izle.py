@@ -53,7 +53,7 @@ async def izle(request: Request, eklenti_adi: str, url: str, baslik: str):
             "title"       : baslik,
             "description" : f"{baslik} izleme sayfası",
             "eklenti_adi" : f"{eklenti_adi}",
-            "icerik_url"  : request.headers.get("referer").split("?url=")[1],
+            "icerik_url"  : request.headers.get("referer").split("?url=")[1] if request.headers.get("referer") else None,
             "links"       : links
         }
 
