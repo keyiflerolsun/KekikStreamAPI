@@ -1,0 +1,56 @@
+/* Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır. */
+
+/* ==================== FOOTER ==================== */
+
+.footer {
+  text-align: center;
+  padding: var(--spacing-xl) 0;
+  margin-top: var(--spacing-xxl);
+  background-color: var(--background-alt);
+  border-top: 1px solid var(--border-color);
+  box-shadow: 0 -2px 10px var(--shadow-color);
+}
+
+.footer p {
+  margin-bottom: var(--spacing-sm);
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.footer a {
+  color: var(--text-color);
+  transition: color var(--transition-speed) ease-out;
+}
+
+.footer a:hover {
+  color: var(--primary-color);
+}
+
+.social-links {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-md);
+}
+
+.social-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border-light);
+  transition: all var(--transition-speed) ease-out;
+  color: var(--text-color);
+  background-color: var(--card-bg-color);
+  box-shadow: 0 2px 5px var(--shadow-color);
+}
+
+.social-link:hover {
+  background-color: var(--background-color);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  transform: translateY(-3px) scale(1.1);
+  box-shadow: 0 5px 15px rgba(239, 127, 26, 0.3);
+}

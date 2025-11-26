@@ -1,0 +1,58 @@
+/* Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır. */
+
+/* ==================== BUTONLAR ==================== */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background-color: var(--primary-color);
+  color: var(--background-color);
+  border-radius: var(--border-radius);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--transition-speed) ease-out;
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  text-align: center;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(239, 127, 26, 0.3);
+  min-height: 44px;
+  min-width: 100px;
+}
+
+.button:hover {
+  background-color: var(--primary-light);
+  color: var(--background-color);
+  box-shadow: 0 4px 12px rgba(239, 127, 26, 0.4);
+  transform: translateY(-2px);
+}
+
+.button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 3px rgba(239, 127, 26, 0.4);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--primary-light);
+  outline-offset: 2px;
+}
+
+.button i {
+  margin-right: var(--spacing-sm);
+  font-size: 0.9em;
+}
+
+.button-secondary {
+  background-color: transparent;
+  border: 1px solid var(--primary-color);
+  color: var(--primary-color);
+  box-shadow: none;
+}
+
+.button-secondary:hover {
+  background-color: var(--primary-color);
+  color: var(--background-color);
+  box-shadow: 0 4px 12px rgba(239, 127, 26, 0.3);
+}

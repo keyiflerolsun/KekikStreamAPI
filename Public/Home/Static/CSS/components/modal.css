@@ -1,0 +1,54 @@
+/* Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır. */
+
+/* ==================== MODAL & BİLDİRİMLER ==================== */
+
+/* No Results */
+.no-results {
+  text-align: center;
+  padding: var(--spacing-xxl);
+  background-color: var(--card-bg-color);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-light);
+}
+
+.no-results i {
+  font-size: 3rem;
+  color: var(--text-muted);
+  margin-bottom: var(--spacing-md);
+}
+
+.no-results h3 {
+  color: var(--text-color);
+  margin-bottom: var(--spacing-sm);
+}
+
+.no-results p {
+  color: var(--text-muted);
+}
+
+/* Error Box */
+.error-box {
+  background-color: rgba(255, 0, 0, 0.1);
+  border-left: 4px solid var(--primary-color);
+  padding: var(--spacing-lg);
+  margin: var(--spacing-md) 0;
+  border-radius: var(--border-radius);
+  box-shadow: 0 2px 8px var(--shadow-color);
+  animation: fadeIn 0.5s ease;
+}
+
+.error-box i {
+  margin-right: var(--spacing-sm);
+  color: var(--primary-color);
+  font-size: var(--font-size-xl);
+}
+
+/* Error Message */
+.error-message {
+  background-color: rgba(255, 0, 0, 0.1);
+  border-left: 3px solid red;
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: var(--border-radius);
+  color: var(--text-color);
+}

@@ -2,6 +2,7 @@
 
 
 {% block breadcrumbs %}
+<nav class="breadcrumbs">
     <div class="breadcrumbs-item">
         <a href="/" class="breadcrumbs-link"><i class="fas fa-home"></i> Ana Sayfa</a>
     </div>
@@ -11,6 +12,7 @@
     <div class="breadcrumbs-item">
         <span class="breadcrumbs-current"><i class="fas fa-play"></i> {{ title }}</span>
     </div>
+</nav>
 {% endblock %}
 
 
@@ -67,6 +69,8 @@
     </div>
 </div>
 
-<script defer src="{{ url_for('static_home', path='JS/player.min.js') }}"></script>
+{% endblock %}
 
+{% block js %}
+    <script defer src="{{ url_for('static_home', path='JS/player.min.js') }}"></script>
 {% endblock %}

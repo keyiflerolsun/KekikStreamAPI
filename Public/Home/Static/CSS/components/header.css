@@ -1,0 +1,70 @@
+/* Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır. */
+
+/* ==================== HEADER & NAVİGASYON ==================== */
+
+.header {
+  padding: var(--spacing-lg) 0;
+  text-align: center;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: var(--spacing-lg);
+  background-color: var(--background-alt);
+  box-shadow: 0 2px 8px var(--shadow-color);
+}
+
+.logo {
+  font-size: var(--font-size-xxl);
+  font-weight: 800;
+  color: var(--primary-color);
+  letter-spacing: 0.5px;
+  transition: all var(--transition-speed) var(--transition-timing);
+  display: inline-block;
+}
+
+.logo:hover {
+  text-shadow: 0 0 10px rgba(239, 127, 26, 0.5);
+  transform: translateY(-2px);
+}
+
+.header p {
+  margin-top: var(--spacing-sm);
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.nav {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) 0;
+}
+
+.nav-link {
+  margin: 0 var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius);
+  transition: all var(--transition-speed) ease-out;
+  position: relative;
+  color: var(--text-color);
+}
+
+.nav-link:hover {
+  background-color: var(--hover-color);
+  color: var(--primary-color);
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background-color: var(--primary-color);
+  transition: all var(--transition-speed) ease-out;
+  transform: translateX(-50%);
+}
+
+.nav-link:hover::after {
+  width: 70%;
+}

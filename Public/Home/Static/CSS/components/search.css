@@ -1,0 +1,126 @@
+/* Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır. */
+
+/* ==================== ARAMA BİLEŞENİ ==================== */
+
+.search-container {
+  display: flex;
+  justify-content: center;
+  margin: var(--spacing-xl) 0;
+}
+
+.search-form {
+  display: flex;
+  width: 100%;
+  max-width: 600px;
+  box-shadow: 0 2px 10px var(--shadow-color);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  border: 1px solid var(--border-light);
+}
+
+.search-input {
+  flex: 1;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: none;
+  background-color: var(--card-bg-color);
+  color: var(--text-color);
+  font-family: var(--font-family);
+  transition: background-color var(--transition-speed) ease-out;
+  font-size: var(--font-size-base);
+}
+
+.search-input:focus {
+  outline: none;
+  background-color: var(--card-bg-hover);
+}
+
+.search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.search-button {
+  padding: 0 var(--spacing-lg);
+  background-color: var(--primary-color);
+  color: var(--background-color);
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--transition-speed) ease-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 60px;
+}
+
+.search-button:hover {
+  background-color: var(--primary-light);
+}
+
+/* Search Status */
+.search-status {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  min-height: 24px;
+  text-align: center;
+  padding: var(--spacing-md) 0;
+  margin-top: var(--spacing-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  font-weight: 500;
+  font-size: larger;
+}
+
+.search-status.searching {
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.search-status.searching::before {
+  content: '';
+  width: 16px;
+  height: 16px;
+  border: 3px solid var(--primary-color);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+.search-status.success {
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.search-status.error {
+  color: var(--text-muted);
+}
+
+/* Search Results Section */
+.search-results {
+  margin-bottom: var(--spacing-xxl);
+  animation: fadeIn 0.4s ease-out;
+}
+
+.search-results .detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+}
+
+.search-results .detail-title {
+  flex: 1;
+  margin-bottom: 0;
+  padding-left: 0;
+  border-left: none;
+}
+
+.search-results .card {
+  position: relative;
+}
+
+#search-query-display {
+  color: var(--text-color);
+  font-weight: 600;
+}

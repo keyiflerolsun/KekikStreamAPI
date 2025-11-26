@@ -62,7 +62,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Mulish:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'" crossorigin="anonymous">
 
     <!-- ? Statik CSS -->
-    <link rel="stylesheet" href="{{ url_for('static_home', path='CSS/stil.min.css') }}" fetchpriority="high">
+    <link rel="stylesheet" href="{{ url_for('static_home', path='CSS/style.bundle.min.css') }}" fetchpriority="high">
 
     <!-- ? Ek CSS -->
     {%- block css %}
@@ -80,55 +80,21 @@
 
 <body>
 
-    <header class="header">
-        <div class="container">
-            <a href="/" class="logo">KekikStream</a>
-            <p>Açık Kaynak Kodlu İçerik Ayıklayıcı</p>
-        </div>
-    </header>
+    {% include 'components/header.html.j2'%}
 
     <main class="container">
-        <!-- Breadcrumbs navigasyon -->
-        <nav class="breadcrumbs">
-            {% block breadcrumbs %}
-                <div class="breadcrumbs-item">
-                    <span class="breadcrumbs-current"><i class="fas fa-home"></i> Ana Sayfa</span>
-                </div>
-            {% endblock %}
-        </nav>
+        {% block breadcrumbs %}
+            {% include 'components/breadcrumbs.html.j2'%}
+        {% endblock %}
 
         {% block icerik %}
         {% endblock %}
     </main>
 
-    <footer class="footer">
-        <div class="container">
-            <p>© 2025</p>
-            <p><a href="https://github.com/keyiflerolsun/KekikStreamAPI" target="_blank">Kaynak Kodu</a> | <a href="https://t.me/KekikAkademi" target="_blank">KekikAkademi</a></p>
-
-            <div class="social-links">
-                <a href="https://github.com/keyiflerolsun" target="_blank" class="social-link">
-                    <i class="fab fa-github"></i>
-                </a>
-                <a href="https://linkedin.com/in/keyiflerolsun" target="_blank" class="social-link">
-                    <i class="fab fa-linkedin"></i>
-                </a>
-                <a href="https://t.me/keyiflerolsunDev" target="_blank" class="social-link">
-                    <i class="fab fa-telegram"></i>
-                </a>
-                <a href="https://wa.me/908503093493" target="_blank" class="social-link">
-                    <i class="fab fa-whatsapp"></i>
-                </a>
-                <a href="https://buymeacoffee.com/keyiflerolsun" target="_blank" class="social-link">
-                    <i class="fas fa-coffee"></i>
-                </a>
-            </div>
-        </div>
-    </footer>
-
+    {% include 'components/footer.html.j2'%}
 
     <!-- ? Statik JS -->
-    <script type="module" src="{{ url_for('static_home', path='JS/bakalim.min.js') }}" defer crossorigin="anonymous"></script>
+    <script type="module" src="{{ url_for('static_home', path='JS/main.min.js') }}" defer crossorigin="anonymous"></script>
 
     <!-- ? Ek JS -->
     {%- block js %}

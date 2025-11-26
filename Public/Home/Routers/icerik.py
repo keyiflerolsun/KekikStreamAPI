@@ -31,7 +31,7 @@ async def icerik(request: Request, eklenti_adi: str, url: str):
             "content"     : content
         }
 
-        return home_template.TemplateResponse("icerik.html.j2", context)
+        return home_template.TemplateResponse("pages/content.html.j2", context)
     except Exception as hata:
         context = {
             "request"     : request,
@@ -39,4 +39,4 @@ async def icerik(request: Request, eklenti_adi: str, url: str):
             "description" : "Bir hata oluştu",
             "hata"        : hata
         }
-        return home_template.TemplateResponse("hata.html.j2", context)
+        return home_template.TemplateResponse("pages/error.html.j2", context)

@@ -36,7 +36,7 @@ async def eklenti(request: Request, eklenti_adi: str):
             "plugin"      : plugin
         }
 
-        return home_template.TemplateResponse("eklenti.html.j2", context)
+        return home_template.TemplateResponse("pages/plugin_detail.html.j2", context)
     except Exception as hata:
         context = {
             "request"     : request,
@@ -44,4 +44,4 @@ async def eklenti(request: Request, eklenti_adi: str):
             "description" : "Bir hata oluştu",
             "hata"        : hata
         }
-        return home_template.TemplateResponse("hata.html.j2", context)
+        return home_template.TemplateResponse("pages/error.html.j2", context)

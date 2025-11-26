@@ -1,0 +1,227 @@
+/* Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır. */
+
+/* ==================== VİDEO OYNATICI SAYFASI ==================== */
+
+/* Video Links */
+.video-links h1 {
+  margin-bottom: var(--spacing-md);
+  color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--hover-color);
+  padding-bottom: var(--spacing-sm);
+}
+
+.video-links h1:before {
+  content: "▶";
+  margin-right: 10px;
+  color: var(--primary-color);
+}
+
+#video-links-ui {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+#video-links-ui .button {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--card-bg-color);
+  border: 1px solid var(--primary-color);
+  color: var(--text-color);
+  transition: all var(--transition-speed);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+#video-links-ui .button:hover {
+  background-color: var(--hover-color);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+#video-links-ui .button.active {
+  background-color: var(--primary-color);
+  color: var(--background-color);
+  box-shadow: 0 0 0 3px rgba(239, 127, 26, 0.3);
+  transform: translateY(-2px);
+}
+
+/* Video Player Container */
+#video-player-container {
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  background-color: #000;
+  border: 1px solid var(--card-bg-color);
+}
+
+#video-player-wrapper {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%; /* 16:9 oranı */
+  background-color: #000;
+}
+
+#video-player {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  outline: none;
+}
+
+/* Control Buttons */
+.control-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+}
+
+.control-buttons .button {
+  flex: 1;
+  min-width: 140px;
+  justify-content: center;
+}
+
+/* Diagnostics Panel */
+#diagnostics-panel {
+  margin-top: 20px;
+  padding: 16px;
+  background-color: var(--card-bg-color);
+  border-radius: var(--border-radius);
+  display: none;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--hover-color);
+  color: var(--text-color);
+}
+
+#diagnostics-panel h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  font-size: 1.1rem;
+  color: var(--primary-color);
+  border-bottom: 1px solid var(--hover-color);
+  padding-bottom: 8px;
+}
+
+#diagnostics-panel h3::before {
+  content: "🔍";
+  margin-right: 8px;
+}
+
+.diagnostics-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.diagnostics-toolbar button {
+  padding: 4px 10px;
+  font-size: 12px;
+  background-color: var(--background-color);
+  border: 1px solid var(--hover-color);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-color);
+}
+
+.diagnostics-toolbar button:hover {
+  background-color: var(--hover-color);
+  color: var(--text-color);
+}
+
+#diagnostics-panel pre {
+  max-height: 400px;
+  overflow: auto;
+  background-color: var(--background-color);
+  padding: 16px;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--hover-color);
+  font-family: "Consolas", "Monaco", "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  color: var(--text-color);
+}
+
+/* Scrollbar for diagnostics */
+#diagnostics-panel pre::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+#diagnostics-panel pre::-webkit-scrollbar-track {
+  background: var(--background-color);
+  border-radius: 4px;
+}
+
+#diagnostics-panel pre::-webkit-scrollbar-thumb {
+  background-color: var(--hover-color);
+  border-radius: 4px;
+}
+
+#diagnostics-panel pre::-webkit-scrollbar-thumb:hover {
+  background-color: var(--primary-color);
+}
+
+/* Log Entry Styles */
+.log-entry {
+  border-bottom: 1px solid var(--border-light);
+}
+
+.log-entry-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.log-entry-time {
+  font-weight: 500;
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+.log-entry-info {
+  color: var(--primary-color);
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.log-entry-warn {
+  color: #f39c12;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.log-entry-error {
+  color: #e74c3c;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.log-entry-message {
+  padding-left: 4px;
+  word-break: break-word;
+}
+
+.log-entry-data {
+  margin-top: 4px;
+  margin-left: 12px;
+  padding-left: 8px;
+  border-left: 2px solid var(--hover-color);
+  font-size: 12px;
+  opacity: 0.9;
+  word-break: break-word;
+}

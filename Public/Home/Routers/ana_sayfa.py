@@ -42,7 +42,7 @@ async def ana_sayfa(request: Request, csrf_protect: CsrfProtect = Depends()):
     context["csrf_token"]    = csrf_token
 
     # Response
-    response = home_template.TemplateResponse("index.html.j2", context)
+    response = home_template.TemplateResponse("pages/home.html.j2", context)
     csrf_protect.set_csrf_cookie(signed_token, response)
 
     response.headers["X-Robots-Tag"] = "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1"

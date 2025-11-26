@@ -1,0 +1,167 @@
+/* Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır. */
+
+/* ==================== DETAY SAYFASI STİLLERİ ==================== */
+
+.detail-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  background-color: var(--card-bg-color);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-lg);
+  box-shadow: 0 4px 16px var(--shadow-color);
+  border: 1px solid var(--border-light);
+}
+
+.detail-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: var(--spacing-lg);
+}
+
+.detail-title {
+  font-size: var(--font-size-xxl);
+  color: var(--primary-color);
+  font-weight: 800;
+  line-height: 1.2;
+  margin-bottom: var(--spacing-sm);
+  position: relative;
+  padding-left: var(--spacing-md);
+  border-left: 4px solid var(--primary-color);
+}
+
+.detail-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-lg);
+  align-items: flex-start;
+}
+
+.detail-poster {
+  width: 100%;
+  max-width: 300px;
+  border-radius: var(--border-radius);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  transition: all var(--transition-speed) ease-out;
+  border: 1px solid var(--border-light);
+}
+
+.detail-poster:hover {
+  transform: scale(1.02);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+  border-color: var(--primary-color);
+}
+
+.detail-description {
+  flex: 1;
+  min-width: 300px;
+}
+
+.detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-lg);
+  margin-bottom: var(--spacing-sm);
+}
+
+.detail-meta-item {
+  background-color: var(--background-alt);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-sm);
+  transition: all var(--transition-speed) ease-out;
+  border: 1px solid var(--border-light);
+}
+
+.detail-meta-item:hover {
+  background-color: var(--hover-color);
+  border-color: var(--primary-color);
+  transform: translateY(-2px);
+}
+
+.content-description {
+  line-height: var(--line-height-loose);
+  color: var(--text-color);
+  padding: var(--spacing-sm) 0;
+}
+
+.content-info {
+  margin: var(--spacing-md) 0;
+}
+
+.content-info p {
+  margin-bottom: var(--spacing-sm);
+}
+
+.content-info strong {
+  color: var(--primary-color);
+}
+
+/* Bölümler Bölümü */
+.episodes-container {
+  margin-top: var(--spacing-xl);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--border-color);
+}
+
+.episodes-title {
+  color: var(--primary-color);
+  margin-bottom: var(--spacing-lg);
+  border-bottom: 1px solid var(--border-light);
+  padding-bottom: var(--spacing-sm);
+  font-size: var(--font-size-xl);
+  position: relative;
+  padding-left: var(--spacing-md);
+}
+
+.episodes-title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 4px;
+  background-color: var(--primary-color);
+  border-radius: var(--border-radius-sm);
+}
+
+.episodes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.episode-card {
+  background-color: var(--card-bg-color);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-md);
+  transition: all var(--transition-speed) ease-out;
+  border: 1px solid var(--border-light);
+  box-shadow: 0 2px 6px var(--shadow-color);
+}
+
+.episode-card:hover {
+  background-color: var(--card-bg-hover);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 15px var(--shadow-color-hover);
+  border-color: var(--primary-color);
+}
+
+.episode-title {
+  font-weight: 600;
+  margin-bottom: var(--spacing-sm);
+  color: var(--text-color);
+}
+
+.episode-info {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  display: inline-block;
+  background-color: var(--background-alt);
+  padding: 2px 6px;
+  border-radius: var(--border-radius-sm);
+  margin-top: var(--spacing-xs);
+}

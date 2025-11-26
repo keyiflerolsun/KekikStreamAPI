@@ -1,0 +1,44 @@
+/* Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır. */
+
+/* ==================== BREADCRUMBS ==================== */
+
+.breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px solid var(--border-color);
+  font-size: var(--font-size-sm);
+}
+
+.breadcrumbs-item {
+  display: flex;
+  align-items: center;
+}
+
+.breadcrumbs-item:not(:last-child)::after {
+  content: "›";
+  margin: 0 0.5rem;
+  color: var(--text-muted);
+  font-size: 1.2em;
+}
+
+.breadcrumbs-link {
+  color: var(--text-color);
+  transition: color var(--transition-speed) ease-out;
+}
+
+.breadcrumbs-link:hover {
+  color: var(--primary-color);
+}
+
+.breadcrumbs-current {
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.breadcrumbs i {
+  margin-right: 4px;
+  font-size: 0.9em;
+}

@@ -1,0 +1,66 @@
+/* Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır. */
+
+/* ==================== CSS DEĞİŞKENLER ==================== */
+@import "https://fonts.googleapis.com/css2?family=Mulish:wght@300;400;500;600;700;800;900&display=swap";
+
+:root {
+  /* Ana renkler */
+  --primary-color: #ef7f1a;
+  --primary-light: #ff9a3c;
+  --primary-dark: #d16500;
+  --secondary-color: #0087a3;
+  --secondary-light: #00a0c2;
+  --secondary-dark: #006e85;
+  
+  /* Arka plan ve metin renkleri */
+  --background-color: #2b2a29;
+  --background-alt: #252423;
+  --card-bg-color: #333333;
+  --card-bg-hover: #3a3a3a;
+  --text-color: #f5f5f5;
+  --text-muted: #b0b0b0;
+  --hover-color: #444444;
+  
+  /* Kenar ve gölge renkleri */
+  --border-color: #444444;
+  --border-light: rgba(255, 255, 255, 0.1);
+  --shadow-color: rgba(0, 0, 0, 0.2);
+  --shadow-color-hover: rgba(0, 0, 0, 0.35);
+  
+  /* Boyutlar ve boşluklar */
+  --border-radius-sm: 4px;
+  --border-radius: 8px;
+  --border-radius-lg: 12px;
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 0.75rem;
+  --spacing-lg: 1rem;
+  --spacing-xl: 1.5rem;
+  --spacing-xxl: 2rem;
+  
+  /* Tipografi */
+  --font-family: "Mulish", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-md: 1.125rem;
+  --font-size-lg: 1.25rem;
+  --font-size-xl: 1.5rem;
+  --font-size-xxl: 2rem;
+  --line-height-tight: 1.2;
+  --line-height-base: 1.5;
+  --line-height-loose: 1.75;
+  
+  /* Animasyonlar */
+  --transition-speed: 0.2s;
+  --transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Izgara sistemi */
+  --container-max-width: 1200px;
+  --grid-gap: var(--spacing-lg);
+  
+  /* Z-indeksleri */
+  --z-index-dropdown: 1000;
+  --z-index-modal: 2000;
+  --z-index-overlay: 10;
+}

@@ -1,4 +1,6 @@
 {% extends "_html_taban.html.j2" %}
+{% block breadcrumbs %}{% endblock %}
+
 {% block icerik %}
 
 <!-- Global Arama -->
@@ -82,5 +84,5 @@
     <script>
         window.availablePlugins = {{ plugins | tojson | safe }};
     </script>
-    <script src="{{ url_for('static_home', path='JS/global-search.min.js') }}" defer></script>
+    <script type="module" src="{{ url_for('static_home', path='JS/global-search.min.js') }}" defer crossorigin="anonymous"></script>
 {% endblock %}

@@ -57,7 +57,7 @@ async def izle(request: Request, eklenti_adi: str, url: str, baslik: str):
             "links"       : links
         }
 
-        return home_template.TemplateResponse("izle.html.j2", context)
+        return home_template.TemplateResponse("pages/player.html.j2", context)
     except Exception as hata:
         context = {
             "request"     : request,
@@ -65,4 +65,4 @@ async def izle(request: Request, eklenti_adi: str, url: str, baslik: str):
             "description" : "Bir hata oluştu",
             "hata"        : hata
         }
-        return home_template.TemplateResponse("hata.html.j2", context)
+        return home_template.TemplateResponse("pages/error.html.j2", context)
