@@ -1,12 +1,11 @@
 // Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-export default class VideoLogger {
-    constructor(debugMode = false) {
-        this.logs = [];
-        this.debugMode = debugMode;
-        this.maxLogs = 200;
-        this.startTime = Date.now();
+import { Logger } from '../utils/logger.min.js';
 
+export default class VideoLogger extends Logger {
+    constructor(debugMode = false) {
+        super(debugMode);
+        
         if (debugMode) {
             const toggleBtn = document.getElementById('toggle-diagnostics');
             if (toggleBtn) {
@@ -16,45 +15,19 @@ export default class VideoLogger {
     }
 
     log(level, message, data = null) {
-        const logEntry = {
-            time: new Date().toISOString().substr(11, 8),
-            elapsed: Math.round((Date.now() - this.startTime) / 10) / 100,
-            level,
-            message,
-            data
-        };
-
-        this.logs.push(logEntry);
-
-        // Maksimum log sayısını aşınca en eskisini sil
-        if (this.logs.length > this.maxLogs) {
-            this.logs.shift();
-        }
-
-        // Konsola yazdır
+        // Call parent log method
+        const logEntry = super.log(level, message, data);
+        
+        // Update UI if debug mode is on
         if (this.debugMode) {
-            const dataStr = data ? (typeof data === 'object' ? JSON.stringify(data) : data) : '';
-            console[level.toLowerCase()](`[${logEntry.time}] [${level}] ${message}`, dataStr);
             this.updateDiagnosticsPanel();
         }
 
         return logEntry;
     }
 
-    info(message, data = null) {
-        return this.log('INFO', message, data);
-    }
-
-    warn(message, data = null) {
-        return this.log('WARN', message, data);
-    }
-
-    error(message, data = null) {
-        return this.log('ERROR', message, data);
-    }
-
     clear() {
-        this.logs = [];
+        super.clear();
         this.updateDiagnosticsPanel();
     }
 
@@ -87,17 +60,5 @@ export default class VideoLogger {
 
         // Otomatik scroll
         logEl.scrollTop = logEl.scrollHeight;
-    }
-
-    getLogs() {
-        return this.logs;
-    }
-
-    getFormattedLogs() {
-        return this.logs.map(entry => {
-            const dataStr = entry.data ? (typeof entry.data === 'object' ?
-                JSON.stringify(entry.data, null, 2) : entry.data) : '';
-            return `[${entry.elapsed}s] [${entry.level}] ${entry.message}${dataStr ? ' ' + dataStr : ''}`;
-        }).join('\n');
     }
 }
