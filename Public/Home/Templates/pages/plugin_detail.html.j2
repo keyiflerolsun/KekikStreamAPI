@@ -17,23 +17,29 @@
 
 <div class="detail-container">
     <div class="detail-header">
-        <div class="card-header">
-            {% if plugin.favicon %}
-                <img src="{{ plugin.favicon }}" alt="{{ plugin.name }}" class="plugin-favicon">
-            {% else %}
-                <i class="fas fa-film plugin-icon"></i>
-            {% endif %}
-
-            <h1 class="detail-title">{{ plugin.name }}</h1>
+        <div class="header-top">
+            <div class="header-content">
+                <div class="plugin-header-title">
+                    {% if plugin.favicon %}
+                        <img src="{{ plugin.favicon }}" alt="{{ plugin.name }}" class="plugin-favicon-lg">
+                    {% else %}
+                        <i class="fas fa-film plugin-icon-lg"></i>
+                    {% endif %}
+                    <h1 class="detail-title">{{ plugin.name }}</h1>
+                </div>
+                <div class="detail-subtitle">
+                    <span class="badge">Dil: {{ plugin.language }}</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <a href="{{ plugin.main_url }}" target="_blank" class="button button-secondary" title="{{ plugin.main_url }}">
+                    <i class="fas fa-external-link-alt"></i> {{ plugin.main_url }}
+                </a>
+            </div>
         </div>
-
-        <div class="detail-meta">
-            <span class="detail-meta-item">Dil: {{ plugin.language }}</span>
-            <a href="{{ plugin.main_url }}" target="_blank" class="detail-meta-item">
-                <i class="fas fa-external-link-alt"></i> {{ plugin.main_url }}
-            </a>
+        <div class="header-description">
+            <p>{{ plugin.description }}</p>
         </div>
-        <p>{{ plugin.description }}</p>
     </div>
 
     <div class="search-container">

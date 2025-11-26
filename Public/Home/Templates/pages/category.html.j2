@@ -19,9 +19,18 @@
 {% block icerik %}
 
 <div class="detail-container">
-    <div class="detail-header">
-        <h1 class="detail-title">{{ baslik }}</h1>
-        <p>Sayfa : {{ sayfa }}</p>
+    <div class="detail-header card-header-style">
+        <div class="header-top">
+            <div class="header-content">
+                <h1 class="detail-title">{{ baslik }}</h1>
+                <p class="detail-subtitle">Sayfa : {{ sayfa }}</p>
+            </div>
+            <div class="header-actions">
+                <a href="/eklenti/{{ eklenti_adi }}" class="button button-secondary">
+                    <i class="fas fa-arrow-left"></i> Eklentiye Dön
+                </a>
+            </div>
+        </div>
     </div>
 
     <div class="grid">

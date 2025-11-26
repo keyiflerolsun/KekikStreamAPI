@@ -19,8 +19,13 @@
 {% block icerik %}
 
 <div class="detail-container">
-    <div class="video-links">
-        <div id="video-links-ui"></div>
+    <div class="player-header">
+        <h1 class="player-title"><i class="fas fa-play-circle"></i> {{ title }}</h1>
+    </div>
+
+    <div class="source-selection">
+        <h3><i class="fas fa-server"></i> Kaynaklar</h3>
+        <div id="video-links-ui" class="source-list"></div>
     </div>
 
     <div id="video-player-container">
@@ -34,26 +39,30 @@
         </div>
     </div>
 
-    <div class="control-buttons">
-        {% if icerik_url %}
-        <a href="/icerik/{{ eklenti_adi }}?url={{ icerik_url }}" class="button button-secondary">
-            <i class="fas fa-arrow-left"></i> İçerik Sayfasına Dön
-        </a>
-        {% endif %}
-        <a href="/eklenti/{{ eklenti_adi }}" class="button button-secondary">
-            <i class="fas fa-th"></i> Eklenti Sayfası
-        </a>
-        <button id="toggle-diagnostics" class="button button-secondary">
-            <i class="fas fa-bug"></i> Tanılama
-        </button>
+    <div class="player-controls-section">
+        <div class="control-buttons">
+            {% if icerik_url %}
+            <a href="/icerik/{{ eklenti_adi }}?url={{ icerik_url }}" class="button button-secondary">
+                <i class="fas fa-arrow-left"></i> İçerik
+            </a>
+            {% endif %}
+            <a href="/eklenti/{{ eklenti_adi }}" class="button button-secondary">
+                <i class="fas fa-th"></i> Eklenti
+            </a>
+            <button id="toggle-diagnostics" class="button button-secondary">
+                <i class="fas fa-bug"></i> Tanılama
+            </button>
+        </div>
     </div>
 
     <div id="diagnostics-panel">
-        <h3>Tanılama Bilgileri</h3>
-        <div class="diagnostics-toolbar">
-            <button id="clear-logs">Logları Temizle</button>
-            <button id="copy-logs">Kopyala</button>
-            <button id="download-logs">İndir</button>
+        <div class="diagnostics-header">
+            <h3>Tanılama Bilgileri</h3>
+            <div class="diagnostics-toolbar">
+                <button id="clear-logs" class="button button-diagnostic">Temizle</button>
+                <button id="copy-logs" class="button button-diagnostic">Kopyala</button>
+                <button id="download-logs" class="button button-diagnostic">İndir</button>
+            </div>
         </div>
         <pre id="diagnostics-log"></pre>
     </div>
