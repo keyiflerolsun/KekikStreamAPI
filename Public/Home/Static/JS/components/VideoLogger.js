@@ -89,7 +89,7 @@ export default class VideoLogger extends Logger {
                 <div class="log-entry-header">
                     <span class="log-entry-time">[${entry.elapsed}s]</span>
                     <span class="${levelClass}">[${entry.level}]</span>
-                    <span class="log-entry-message">${entry.message}${entry.count > 1 ? ` (x${entry.count})` : ''}</span>
+                    <span class="log-entry-message">${entry.message} ${entry.count > 1 ? `(x${entry.count})` : ''}</span>
                 </div>
                 ${dataHtml}
             </div>`;

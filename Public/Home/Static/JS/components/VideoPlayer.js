@@ -12,6 +12,8 @@ export default class VideoPlayer {
         this.loadingTimeout = null;
         this.isLoadingVideo = false;
         this.videoData = [];
+        this.retryCount = 0;
+        this.maxRetries = 5;
 
         // DOM Elementleri
         this.videoPlayer = document.getElementById('video-player');
@@ -367,6 +369,7 @@ export default class VideoPlayer {
 
     loadHLSVideo(proxyUrl, originalUrl, referer, headers) {
         this.logger.info('HLS video formatı tespit edildi');
+        this.retryCount = 0; // Reset retry count for new video
 
         // HLS video için
         if (Hls.isSupported()) {
@@ -455,15 +458,25 @@ export default class VideoPlayer {
                     this.logger.error('HLS hatası', data);
 
                     if (data.fatal) {
-                        this.logger.error('Kritik HLS hatası, oynatıcı yeniden başlatılıyor', data);
+                        this.retryCount++;
+                        this.logger.warn(`HLS hatası (Deneme: ${this.retryCount}/${this.maxRetries})`, data);
+
+                        if (this.retryCount > this.maxRetries) {
+                            this.logger.error('Maksimum yeniden deneme sayısına ulaşıldı, işlem durduruluyor.');
+                            this.cleanup();
+                            this.onVideoError();
+                            return;
+                        }
 
                         switch (data.type) {
                             case Hls.ErrorTypes.NETWORK_ERROR:
                                 // Ağ hatası, yeniden deneyebiliriz
+                                this.logger.info('Ağ hatası, yeniden deneniyor...');
                                 hls.startLoad();
                                 break;
                             case Hls.ErrorTypes.MEDIA_ERROR:
                                 // Medya hatası, recover dene
+                                this.logger.info('Medya hatası, kurtarılmaya çalışılıyor...');
                                 hls.recoverMediaError();
                                 break;
                             default:
@@ -478,6 +491,7 @@ export default class VideoPlayer {
                 // Manifest yüklendiğinde oynatmaya başla
                 hls.on(Hls.Events.MANIFEST_PARSED, () => {
                     this.logger.info('HLS manifest başarıyla analiz edildi');
+                    this.retryCount = 0; // Başarılı bağlantıda sayacı sıfırla
                 });
 
                 hls.on(Hls.Events.LEVEL_LOADED, (event, data) => {
