@@ -14,7 +14,7 @@ async def add_security_headers(request: Request, call_next):
 
     # --- Modern Tarayıcı / İzolasyon Politikaları ---
     response.headers["Cross-Origin-Opener-Policy"]   = "same-origin"
-    response.headers["Cross-Origin-Embedder-Policy"] = "credentialless"
+    # response.headers["Cross-Origin-Embedder-Policy"] = "credentialless"
     response.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
 
     # --- HTTPS Zorlaması (HSTS) ---
