@@ -61,7 +61,7 @@ async def istekten_once_sonra(request: Request, call_next):
             return Response(status_code=204)
         raise
 
-    for skip_path in ("/favicon.ico", "/static", "/webfonts", "/manifest.json", "com.chrome.devtools.json"):
+    for skip_path in ("/favicon.ico", "/static", "/webfonts", "/manifest.json", "/proxy/", "com.chrome.devtools.json"):
         if skip_path in request.url.path:
             return response
 
