@@ -378,6 +378,7 @@ small {
   min-height: 40px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -1207,18 +1208,34 @@ small {
 .control-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: var(--spacing-md);
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+}
+
+.control-buttons .button {
+  flex: 1;
+  min-width: 140px;
+  justify-content: center;
 }
 
 @media (max-width: 768px) {
   #video-links-ui .button {
     flex-basis: calc(50% - 12px);
   }
+  
+  .control-buttons .button {
+    min-width: 120px;
+  }
 }
 
 @media (max-width: 480px) {
   #video-links-ui .button {
     flex-basis: 100%;
+  }
+  
+  .control-buttons .button {
+    flex-basis: 100%;
+    min-width: unset;
   }
 }

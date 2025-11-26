@@ -32,12 +32,17 @@
         </div>
     </div>
 
-    <div class="control-buttons" style="display: flex; flex-wrap: wrap; gap: 10px;">
-        <a href="/eklenti/{{ eklenti_adi }}" class="button button-secondary" style="flex: 1; min-width: 180px; margin-bottom: 0.5rem; text-align: center; justify-content: center;">
-            <i class="fas fa-arrow-left"></i> Eklenti Sayfasına Dön
+    <div class="control-buttons">
+        {% if icerik_url %}
+        <a href="/icerik/{{ eklenti_adi }}?url={{ icerik_url }}" class="button button-secondary">
+            <i class="fas fa-arrow-left"></i> İçerik Sayfasına Dön
         </a>
-        <button id="toggle-diagnostics" class="button button-secondary" style="flex: 1; min-width: 180px; margin-bottom: 0.5rem; text-align: center; justify-content: center;">
-            <i class="fas fa-bug"></i> Tanılama Bilgileri
+        {% endif %}
+        <a href="/eklenti/{{ eklenti_adi }}" class="button button-secondary">
+            <i class="fas fa-th"></i> Eklenti Sayfası
+        </a>
+        <button id="toggle-diagnostics" class="button button-secondary">
+            <i class="fas fa-bug"></i> Tanılama
         </button>
     </div>
 

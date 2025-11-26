@@ -35,7 +35,7 @@ async def icerik(request: Request, eklenti_adi: str, url: str):
     except Exception as hata:
         context = {
             "request"     : request,
-            "title"       : f"Hata - {eklenti_adi} - {content.title}",
+            "title"       : f"Hata - {eklenti_adi}",
             "description" : "Bir hata oluştu",
             "hata"        : hata
         }

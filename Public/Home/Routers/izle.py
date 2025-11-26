@@ -6,6 +6,7 @@ from .        import home_router, home_template
 
 from Public.API.v1.Libs import plugin_manager, extractor_manager
 from json               import dumps
+from urllib.parse       import quote_plus
 
 @home_router.get("/izle/{eklenti_adi}", response_class=HTMLResponse)
 async def izle(request: Request, eklenti_adi: str, url: str, baslik: str):
@@ -49,9 +50,10 @@ async def izle(request: Request, eklenti_adi: str, url: str, baslik: str):
 
         context = {
             "request"     : request,
-            "title"       : f"{baslik} - {eklenti_adi}",
+            "title"       : baslik,
             "description" : f"{baslik} izleme sayfası",
             "eklenti_adi" : f"{eklenti_adi}",
+            "icerik_url"  : request.headers.get("referer").split("?url=")[1],
             "links"       : links
         }
 
