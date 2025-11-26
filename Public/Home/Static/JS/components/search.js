@@ -55,7 +55,7 @@ export class GlobalSearch {
             return;
         }
         
-        // Abort previous search
+        // Abort previous search if any
         this.fetchHelper.abort();
         
         this.currentSearch = query;
@@ -79,8 +79,8 @@ export class GlobalSearch {
         this.plugins.forEach(plugin => this.addLoadingCard(plugin.name));
         
         // Progressive search
-        const searchPromises = this.plugins.map(plugin => 
-            this.searchInPlugin(plugin.name, query)
+        const searchPromises = this.plugins.map(plugin =>
+            this.searchInPlugin(plugin.name, query, this.fetchHelper, { abortPrevious: false })
                 .then(results => {
                     completedSearches++;
                     
@@ -112,10 +112,11 @@ export class GlobalSearch {
      * @param {string} query - Search query
      * @returns {Promise<Array>}
      */
-    async searchInPlugin(pluginName, query) {
+    async searchInPlugin(pluginName, query, fetchHelper = null, fetchConfig = {}) {
         try {
             const url = `/api/v1/search?plugin=${encodeURIComponent(pluginName)}&query=${encodeURIComponent(query)}`;
-            const response = await this.fetchHelper.fetch(url);
+            const usedHelper = fetchHelper || this.fetchHelper;
+            const response = await usedHelper.fetch(url, {}, fetchConfig);
             
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);

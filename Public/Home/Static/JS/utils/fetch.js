@@ -59,31 +59,40 @@ export async function fetchWithTimeout(url, options = {}, timeout = 5000) {
  */
 export class AbortableFetch {
     constructor() {
-        this.controller = null;
+        // Keep track of all active controllers so we can support concurrent requests
+        this.controllers = new Set();
     }
     
     /**
      * Execute fetch request
      * @param {string} url - URL to fetch
      * @param {Object} options - Fetch options
+     * @param {Object} config - Additional config, e.g. { abortPrevious: true }
      * @returns {Promise<Response>}
      */
-    async fetch(url, options = {}) {
-        // Abort previous request if exists
-        this.abort();
+    async fetch(url, options = {}, config = {}) {
+        const { abortPrevious = true } = config;
+        // Abort previous requests if requested
+        if (abortPrevious) this.abort();
         
-        // Create new controller
-        this.controller = new AbortController();
+        // Create new controller for this request and track it
+        const controller = new AbortController();
+        this.controllers.add(controller);
         
         try {
-            return await fetch(url, {
+            const response = await fetch(url, {
                 ...options,
-                signal: this.controller.signal
+                signal: controller.signal
             });
+            // Remove controller on successful completion
+            this.controllers.delete(controller);
+            return response;
         } catch (error) {
             if (error.name === 'AbortError') {
                 console.log('Fetch aborted');
             }
+            // Ensure we always remove the controller
+            this.controllers.delete(controller);
             throw error;
         }
     }
@@ -92,9 +101,11 @@ export class AbortableFetch {
      * Abort current request
      */
     abort() {
-        if (this.controller) {
-            this.controller.abort();
-            this.controller = null;
+        if (this.controllers && this.controllers.size > 0) {
+            this.controllers.forEach(ctrl => {
+                try { ctrl.abort(); } catch (e) { /* ignore */ }
+            });
+            this.controllers.clear();
         }
     }
     
@@ -103,7 +114,7 @@ export class AbortableFetch {
      * @returns {boolean}
      */
     isActive() {
-        return this.controller !== null;
+        return this.controllers && this.controllers.size > 0;
     }
 }
 
