@@ -29,12 +29,10 @@
                 </div>
                 <div class="detail-subtitle">
                     <span class="badge">Dil: {{ plugin.language }}</span>
+                    <a href="{{ plugin.main_url }}" target="_blank" class="badge badge-secondary" title="{{ plugin.main_url }}">
+                        {{ plugin.main_url }} <i class="fas fa-external-link-alt"></i>
+                    </a>
                 </div>
-            </div>
-            <div class="header-actions">
-                <a href="{{ plugin.main_url }}" target="_blank" class="button button-secondary" title="{{ plugin.main_url }}">
-                    <i class="fas fa-external-link-alt"></i> {{ plugin.main_url }}
-                </a>
             </div>
         </div>
         <div class="header-description">

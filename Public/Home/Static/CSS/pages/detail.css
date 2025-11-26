@@ -40,6 +40,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
+  flex: 1;
 }
 
 .detail-title {
@@ -53,7 +54,58 @@
 .detail-subtitle {
   font-size: var(--font-size-sm);
   color: var(--text-muted);
-  margin-top: var(--spacing-xs);
+  margin-top: var(--spacing-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.badge-secondary {
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-light);
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: all var(--transition-speed);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+.badge-secondary:hover {
+  background-color: rgba(239, 127, 26, 0.1);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.badge-secondary i {
+  font-size: 0.9em;
+  opacity: 0.7;
+  transition: opacity var(--transition-speed);
+}
+
+.badge-secondary:hover i {
+  opacity: 1;
+}
+
+@media (max-width: 768px) {
+  .badge-secondary {
+    max-width: 200px;
+  }
 }
 
 .plugin-header-title {

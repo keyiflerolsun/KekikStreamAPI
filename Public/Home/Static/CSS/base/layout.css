@@ -42,3 +42,11 @@
 .section-title i {
   font-size: 0.9em;
 }
+
+hr {
+  border: 0;
+  height: 1px;
+  background-image: linear-gradient(to right, transparent, var(--primary-color), transparent);
+  margin: var(--spacing-sm) 0;
+  opacity: 0.3;
+}
