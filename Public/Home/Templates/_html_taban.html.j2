@@ -11,7 +11,7 @@
     {#- URL Sabitleri (request.base_url kullanarak dinamik URL oluştur) -#}
     {%- set base_url_str = request.base_url|string %}
     {#- HTTP'yi HTTPS'ye dönüştür -#}
-    {%- if '127.0.0.1' not in base_url_str %}
+    {%- if '127.0.0.1' not in base_url_str and '10.0.0.' not in base_url_str %}
         {%- set base_url_str = base_url_str.replace('http://', 'https://') %}
     {%- endif %}
     {#- Sondaki eğik çizgiyi kaldır -#}
