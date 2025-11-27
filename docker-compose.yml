@@ -7,7 +7,7 @@ networks:
 services:
   KekikStreamAPI:
     container_name : KekikStreamAPI
-    image          : kekikstream:latest
+    image          : kekikstreamapi:local
     tty            : true
     restart        : always
     build          : .
