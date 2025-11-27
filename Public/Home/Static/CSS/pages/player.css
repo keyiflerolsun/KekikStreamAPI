@@ -64,10 +64,31 @@
   gap: var(--spacing-sm);
 }
 
+/* Default state (Inactive) */
 .source-list .button {
   min-width: auto;
   padding: var(--spacing-sm) var(--spacing-lg);
   font-size: var(--font-size-sm);
+  background-color: var(--card-bg-color);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  box-shadow: none;
+}
+
+.source-list .button:hover {
+  background-color: var(--card-bg-hover);
+  color: var(--text-color);
+  border-color: var(--text-muted);
+  transform: translateY(-2px);
+}
+
+/* Active state */
+.source-list .button.active {
+  background-color: var(--primary-color);
+  color: var(--background-color); /* Dark text on orange background for contrast */
+  border-color: var(--primary-color);
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(239, 127, 26, 0.4); /* Matches button.css hover shadow */
 }
 
 /* Control Buttons */
