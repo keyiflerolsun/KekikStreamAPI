@@ -18,18 +18,17 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
 
     # --- HTTPS Zorlaması (HSTS) ---
-    response.headers["Strict-Transport-Security"] = (
-        "max-age=31536000; includeSubDomains; preload"
-    )
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
 
     # --- Permissions-Policy (Feature-Policy) ---
-    # Desteklenen özelliklere izin ver, desteklenmeyen özellikleri görmezden gel
+    # Permissions-Policy: sadece bilinen ve stabil feature'lar kısıtlanıyor
     response.headers["Permissions-Policy"] = (
-        "camera=(), microphone=(), geolocation=(), payment=()"
+        "camera=(), microphone=(), geolocation=(), payment=(), "
+        "fullscreen=(self)"
     )
 
     # Admin ve özel rotaları gizle
-    if any(request.url.path.startswith(p) for p in ["/admin", "/api"]):
+    if request.url.path.startswith(("/admin", "/api")):
         response.headers["X-Robots-Tag"] = "noindex, nofollow"
 
     # --- Gereksiz Bilgi Sızmalarını Temizle ---
