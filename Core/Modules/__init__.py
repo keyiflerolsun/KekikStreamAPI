@@ -19,9 +19,11 @@ async def lifespan(app: FastAPI):
                 try:
                     istek = await oturum.get(plugin.main_url)
                     if istek.status_code != 200:
+                        await plugin.close()
                         plugin_manager.plugins.pop(name)
                         konsol.log(f"[red]Eklentiye erişilemiyor : {plugin.name} | {plugin.main_url}")
                 except Exception:
+                    await plugin.close()
                     plugin_manager.plugins.pop(name)
                     konsol.log(f"[red]Eklentiye erişilemiyor : {plugin.name} | {plugin.main_url}")
 
