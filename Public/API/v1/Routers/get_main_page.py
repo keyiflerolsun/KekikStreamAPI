@@ -9,7 +9,7 @@ from urllib.parse import quote_plus
 
 @api_v1_router.get("/get_main_page")
 async def get_main_page(request:Request):
-    istek = request.state.req_veri
+    istek = request.state.veri
     plugin_names = plugin_manager.get_plugin_names()
     if not istek:
         return JSONResponse(status_code=410, content={"hata": f"{request.url.path}?plugin={choice(plugin_names)}&page=1&encoded_url=&encoded_category="})

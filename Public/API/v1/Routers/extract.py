@@ -6,7 +6,7 @@ from ..Libs   import extractor_manager
 
 @api_v1_router.get("/extract")
 async def extract(request:Request):
-    istek = request.state.req_veri
+    istek = request.state.veri
     if not istek:
         return JSONResponse(status_code=410, content={"hata": f"{request.url.path}?_encoded_url=&_encoded_referer="})
 
