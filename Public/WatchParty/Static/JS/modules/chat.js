@@ -1,6 +1,6 @@
 // Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-import { escapeHtml } from './utils.js';
+import { escapeHtml } from './utils.min.js';
 
 // ============== State ==============
 const state = {

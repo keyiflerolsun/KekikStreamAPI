@@ -1,7 +1,7 @@
 // Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-import { formatTime, formatDuration, logger } from './utils.js';
-import { showToast, updateSyncInfoText, hideSkeleton } from './ui.js';
+import { formatTime, formatDuration, logger } from './utils.min.js';
+import { showToast, updateSyncInfoText, hideSkeleton } from './ui.min.js';
 
 // ============== Player States ==============
 const PlayerState = {

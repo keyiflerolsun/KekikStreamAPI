@@ -1,29 +1,29 @@
 /* Watch Party - Minimal Modern Styles */
 
 :root {
-    /* Minimal Color Palette */
-    --wp-primary: #6366f1;
-    --wp-primary-hover: #4f46e5;
-    --wp-accent: #22d3ee;
+    /* Color Palette - Home ile uyumlu */
+    --wp-primary: #ef7f1a;
+    --wp-primary-hover: #d16500;
+    --wp-accent: #0087a3;
     --wp-success: #10b981;
     --wp-warning: #f59e0b;
     --wp-error: #ef4444;
 
-    /* Dark Theme */
-    --wp-bg: #0a0a0f;
-    --wp-bg-card: #111118;
-    --wp-bg-input: #18181f;
+    /* Dark Theme - Home ile uyumlu */
+    --wp-bg: #2b2a29;
+    --wp-bg-card: #333333;
+    --wp-bg-input: #252423;
 
     /* Borders */
-    --wp-border: rgba(255, 255, 255, 0.08);
+    --wp-border: #444444;
 
     /* Text */
-    --wp-text: #f1f5f9;
-    --wp-text-muted: #64748b;
+    --wp-text: #f5f5f5;
+    --wp-text-muted: #b0b0b0;
 
     /* Shadows */
-    --wp-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    --wp-glow: 0 0 20px rgba(99, 102, 241, 0.3);
+    --wp-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    --wp-glow: 0 0 20px rgba(239, 127, 26, 0.3);
 
     /* Radius */
     --wp-radius: 12px;
@@ -37,6 +37,10 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+}
+
+html {
+    color-scheme: dark;
 }
 
 body {
@@ -239,7 +243,7 @@ body {
 .controls-toggle.active {
     color: var(--wp-primary);
     border-color: var(--wp-primary);
-    background: rgba(99, 102, 241, 0.1);
+    background: rgba(239, 127, 26, 0.1);
 }
 
 .controls-toggle i {
@@ -300,16 +304,38 @@ body {
 }
 
 .wp-btn-primary {
-    background: var(--wp-primary);
-    color: white;
+    background: rgba(239, 127, 26, 0.2);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: var(--wp-primary);
+    border: 1px solid rgba(239, 127, 26, 0.4);
 }
 
 .wp-btn-primary:hover {
-    background: var(--wp-primary-hover);
+    background: rgba(239, 127, 26, 0.35);
     transform: scale(1.02);
+    box-shadow: var(--wp-glow);
 }
 
 .wp-btn-primary:active {
+    transform: scale(0.98);
+}
+
+.wp-btn-secondary {
+    background: rgba(0, 135, 163, 0.2);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: var(--wp-accent);
+    border: 1px solid rgba(0, 135, 163, 0.4);
+}
+
+.wp-btn-secondary:hover {
+    background: rgba(0, 135, 163, 0.35);
+    transform: scale(1.02);
+    box-shadow: 0 0 15px rgba(0, 135, 163, 0.3);
+}
+
+.wp-btn-secondary:active {
     transform: scale(0.98);
 }
 
@@ -559,8 +585,8 @@ body {
 .wp-chat-message-self {
     align-self: flex-end;
     flex-direction: row-reverse;
-    background: rgba(99, 102, 241, 0.2);
-    border: 1px solid rgba(99, 102, 241, 0.3);
+    background: rgba(239, 127, 26, 0.2);
+    border: 1px solid rgba(239, 127, 26, 0.3);
 }
 
 .wp-chat-message-self .wp-chat-content {
@@ -622,14 +648,18 @@ body {
 }
 
 .wp-btn-send {
-    background: var(--wp-primary);
-    color: white;
+    background: rgba(239, 127, 26, 0.2);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: var(--wp-primary);
+    border: 1px solid rgba(239, 127, 26, 0.4);
     width: 40px;
     padding: 0;
 }
 
 .wp-btn-send:hover {
-    background: var(--wp-primary-hover);
+    background: rgba(239, 127, 26, 0.35);
+    box-shadow: var(--wp-glow);
 }
 
 /* Toast */

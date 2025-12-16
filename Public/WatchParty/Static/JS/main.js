@@ -1,9 +1,9 @@
 // Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 // Module Imports
-import { generateRandomUser } from './modules/utils.js';
-import { initUI, showToast, copyRoomLink, toggleElement, showSkeleton } from './modules/ui.js';
-import { initChat, addChatMessage, addSystemMessage, updateUsersList, loadChatHistory, setCurrentUsername } from './modules/chat.js';
+import { generateRandomUser } from './modules/utils.min.js';
+import { initUI, showToast, copyRoomLink, toggleElement, showSkeleton } from './modules/ui.min.js';
+import { initChat, addChatMessage, addSystemMessage, updateUsersList, loadChatHistory, setCurrentUsername } from './modules/chat.min.js';
 import {
     initPlayer,
     setPlayerCallbacks,
@@ -17,8 +17,8 @@ import {
     isPlaying,
     getLastLoadedUrl,
     updateVideoInfo
-} from './modules/player.js';
-import { connect, send, onMessage, setHeartbeatDataProvider } from './modules/websocket.js';
+} from './modules/player.min.js';
+import { connect, send, onMessage, setHeartbeatDataProvider } from './modules/websocket.min.js';
 
 // ============== State ==============
 const state = {

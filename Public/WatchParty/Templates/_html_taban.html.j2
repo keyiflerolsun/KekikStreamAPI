@@ -63,7 +63,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Mulish:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'" crossorigin="anonymous">
 
     <!-- ? Statik CSS -->
-    <link rel="stylesheet" href="{{ url_for('static_watchparty', path='CSS/style.css') }}" fetchpriority="high">
+    <link rel="stylesheet" href="{{ url_for('static_watchparty', path='CSS/style.min.css') }}" fetchpriority="high">
 
     <!-- ? Ek CSS -->
     {%- block css %}
@@ -85,7 +85,7 @@
     {% endblock %}
 
     <!-- ? Statik JS -->
-    <script type="module" src="{{ url_for('static_watchparty', path='JS/main.js') }}" defer crossorigin="anonymous"></script>
+    <script type="module" src="{{ url_for('static_watchparty', path='JS/main.min.js') }}" defer crossorigin="anonymous"></script>
 
     <!-- ? Ek JS -->
     {%- block js %}

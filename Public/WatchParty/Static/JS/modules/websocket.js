@@ -1,7 +1,7 @@
 // Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-import { sleep } from './utils.js';
-import { showToast, updateSyncStatus, showConnectionModal, hideConnectionModal, updatePing } from './ui.js';
+import { sleep } from './utils.min.js';
+import { showToast, updateSyncStatus, showConnectionModal, hideConnectionModal, updatePing } from './ui.min.js';
 
 // ============== Config ==============
 const config = {
