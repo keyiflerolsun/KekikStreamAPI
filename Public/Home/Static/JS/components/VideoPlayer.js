@@ -363,6 +363,24 @@ export default class VideoPlayer {
             }
         });
 
+        // Watch Party butonunun linkini güncelle
+        const watchPartyButton = document.getElementById('watch-party-button');
+        if (watchPartyButton) {
+            const newRoomId = crypto.randomUUID().slice(0, 8).toUpperCase();
+            const wpParams = new URLSearchParams();
+            wpParams.set('url', selectedVideo.url);
+            wpParams.set('title', selectedVideo.name || document.title);
+            wpParams.set('user_agent', headers['User-Agent'] || navigator.userAgent);
+            wpParams.set('referer', referer);
+            
+            // İlk altyazıyı ekle (varsa)
+            if (selectedVideo.subtitles && selectedVideo.subtitles.length > 0) {
+                wpParams.set('subtitle', selectedVideo.subtitles[0].url);
+            }
+            
+            watchPartyButton.href = `http://party.kekikakademi.org/watch-party/${newRoomId}?${wpParams.toString()}`;
+        }
+
         // Video yükleme tamamlandı (asenkron işlemler devam edebilir ama UI hazır)
         this.isLoadingVideo = false;
     }
