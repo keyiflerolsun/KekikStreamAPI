@@ -1,0 +1,950 @@
+/* Watch Party - Minimal Modern Styles */
+
+:root {
+    /* Minimal Color Palette */
+    --wp-primary: #6366f1;
+    --wp-primary-hover: #4f46e5;
+    --wp-accent: #22d3ee;
+    --wp-success: #10b981;
+    --wp-warning: #f59e0b;
+    --wp-error: #ef4444;
+
+    /* Dark Theme */
+    --wp-bg: #0a0a0f;
+    --wp-bg-card: #111118;
+    --wp-bg-input: #18181f;
+
+    /* Borders */
+    --wp-border: rgba(255, 255, 255, 0.08);
+
+    /* Text */
+    --wp-text: #f1f5f9;
+    --wp-text-muted: #64748b;
+
+    /* Shadows */
+    --wp-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    --wp-glow: 0 0 20px rgba(99, 102, 241, 0.3);
+
+    /* Radius */
+    --wp-radius: 12px;
+    --wp-radius-sm: 8px;
+
+    /* Transitions */
+    --wp-transition: all 0.2s ease;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: var(--wp-bg);
+    min-height: 100vh;
+    color: var(--wp-text);
+    font-family: 'Inter', 'Mulish', -apple-system, BlinkMacSystemFont, sans-serif;
+    line-height: 1.5;
+}
+
+/* Skeleton Loading */
+.skeleton-loading {
+    position: relative;
+    overflow: hidden;
+}
+
+.skeleton-loading::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+    animation: skeleton-shimmer 1.5s infinite;
+}
+
+@keyframes skeleton-shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* Container */
+.watch-party-container {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    inset: 0;
+    height: 100%;
+    height: 100dvh;
+    overflow: hidden;
+    background: var(--wp-bg);
+}
+
+/* Header */
+.wp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    background: var(--wp-bg-card);
+    border-bottom: 1px solid var(--wp-border);
+    flex-shrink: 0;
+}
+
+.wp-header-left,
+.wp-header-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* Ping display (sağ üst) */
+.wp-ping-display {
+    font-size: 0.8125rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid var(--wp-border);
+    background: var(--wp-bg-input);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.wp-ping-display.good { color: var(--wp-success); }
+.wp-ping-display.warn { color: var(--wp-warning); }
+.wp-ping-display.bad { color: var(--wp-error); }
+
+.wp-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--wp-primary);
+}
+
+.wp-logo i {
+    font-size: 1.5rem;
+}
+
+.wp-room-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    background: var(--wp-bg-input);
+    border-radius: var(--wp-radius-sm);
+    border: 1px solid var(--wp-border);
+    font-size: 0.875rem;
+}
+
+.wp-room-label {
+    color: var(--wp-text-muted);
+}
+
+.wp-room-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    color: var(--wp-accent);
+}
+
+.wp-copy-btn {
+    background: transparent;
+    border: none;
+    color: var(--wp-text-muted);
+    cursor: pointer;
+    padding: 0.25rem;
+    transition: var(--wp-transition);
+}
+
+.wp-copy-btn:hover {
+    color: var(--wp-primary);
+}
+
+.wp-online-count,
+.wp-sync-status {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    background: var(--wp-bg-input);
+    border-radius: var(--wp-radius-sm);
+    border: 1px solid var(--wp-border);
+    font-size: 0.8125rem;
+    font-weight: 500;
+}
+
+.wp-online-count {
+    color: var(--wp-success);
+}
+
+.wp-sync-status.connected {
+    color: var(--wp-success);
+}
+
+.wp-sync-status.connected i {
+    animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.wp-sync-status.disconnected {
+    color: var(--wp-error);
+}
+
+/* Main Layout */
+.wp-main {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 1rem;
+    padding: 1rem;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Video Section */
+.wp-video-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Controls Toggle */
+.controls-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: var(--wp-bg-card);
+    border: 1px solid var(--wp-border);
+    border-radius: var(--wp-radius-sm);
+    color: var(--wp-text-muted);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--wp-transition);
+    flex-shrink: 0;
+}
+
+.controls-toggle:hover {
+    color: var(--wp-text);
+    border-color: var(--wp-primary);
+    box-shadow: var(--wp-glow);
+}
+
+.controls-toggle.active {
+    color: var(--wp-primary);
+    border-color: var(--wp-primary);
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.controls-toggle i {
+    transition: transform 0.2s ease;
+}
+
+.controls-toggle.active i {
+    transform: rotate(180deg);
+}
+
+/* Video Input Container */
+.wp-video-input-container {
+    background: var(--wp-bg-card);
+    border-radius: var(--wp-radius);
+    padding: 1rem;
+    border: 1px solid var(--wp-border);
+    flex-shrink: 0;
+}
+
+.wp-input-group {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.wp-input {
+    flex: 1;
+    background: var(--wp-bg-input);
+    border: 1px solid var(--wp-border);
+    border-radius: var(--wp-radius-sm);
+    padding: 0.625rem 0.875rem;
+    color: var(--wp-text);
+    font-size: 0.875rem;
+    transition: var(--wp-transition);
+}
+
+.wp-input:focus {
+    outline: none;
+    border-color: var(--wp-primary);
+    box-shadow: var(--wp-glow);
+}
+
+.wp-input::placeholder {
+    color: var(--wp-text-muted);
+}
+
+.wp-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    padding: 0.625rem 1rem;
+    border: none;
+    border-radius: var(--wp-radius-sm);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--wp-transition);
+}
+
+.wp-btn-primary {
+    background: var(--wp-primary);
+    color: white;
+}
+
+.wp-btn-primary:hover {
+    background: var(--wp-primary-hover);
+    transform: scale(1.02);
+}
+
+.wp-btn-primary:active {
+    transform: scale(0.98);
+}
+
+.wp-advanced-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-top: 0.5rem;
+    padding: 0.375rem;
+    background: transparent;
+    border: none;
+    color: var(--wp-text-muted);
+    font-size: 0.8125rem;
+    cursor: pointer;
+    transition: var(--wp-transition);
+}
+
+.wp-advanced-toggle:hover {
+    color: var(--wp-text);
+}
+
+.wp-advanced-options {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--wp-border);
+}
+
+.wp-input-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+}
+
+@media (min-width: 640px) {
+    .wp-input-row {
+        flex-direction: row;
+    }
+}
+
+.wp-input-field {
+    flex: 1;
+}
+
+.wp-input-field label {
+    display: block;
+    margin-bottom: 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--wp-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.wp-input-field .wp-input {
+    width: 100%;
+    font-size: 0.8125rem;
+    padding: 0.5rem 0.75rem;
+}
+
+/* Player Container */
+.wp-player-container {
+    background: var(--wp-bg-card);
+    border-radius: var(--wp-radius);
+    overflow: hidden;
+    border: 1px solid var(--wp-border);
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.wp-player-wrapper {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    background: #000;
+    flex: 1;
+    min-height: 0;
+}
+
+#video-player {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.wp-player-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(17, 17, 24, 0.95));
+    cursor: pointer;
+}
+
+.wp-player-overlay.hidden {
+    display: none;
+}
+
+.wp-player-message {
+    text-align: center;
+    color: var(--wp-text-muted);
+}
+
+.wp-player-message i {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    color: var(--wp-primary);
+    animation: pulse-scale 2s ease-in-out infinite;
+}
+
+@keyframes pulse-scale {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.8; }
+}
+
+.wp-player-message p {
+    font-size: 1rem;
+    color: var(--wp-text);
+}
+
+.wp-video-info {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--wp-border);
+    flex-shrink: 0;
+}
+
+.wp-video-info h3 {
+    font-size: 0.9375rem;
+    font-weight: 600;
+}
+
+.wp-video-meta {
+    font-size: 0.8125rem;
+    color: var(--wp-text-muted);
+    margin-top: 0.25rem;
+}
+
+.wp-sync-info {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    color: var(--wp-success);
+    font-size: 0.75rem;
+}
+
+/* Chat Section */
+.wp-chat-section {
+    display: flex;
+    flex-direction: column;
+    background: var(--wp-bg-card);
+    border-radius: var(--wp-radius);
+    border: 1px solid var(--wp-border);
+    min-height: 0;
+    overflow: hidden;
+}
+
+.wp-chat-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--wp-border);
+    font-weight: 600;
+    font-size: 0.9375rem;
+    flex-shrink: 0;
+}
+
+.wp-chat-header i {
+    color: var(--wp-primary);
+    margin-right: 0.5rem;
+}
+
+.wp-users-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--wp-border);
+    flex-shrink: 0;
+    max-height: 80px;
+    overflow-y: auto;
+}
+
+.wp-user-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    background: var(--wp-bg-input);
+    border: 1px solid var(--wp-border);
+    border-radius: 20px;
+    font-size: 0.75rem;
+}
+
+.wp-user-badge.host {
+    border-color: var(--wp-primary);
+}
+
+.wp-user-badge.host::after {
+    content: '👑';
+    margin-left: 0.125rem;
+    font-size: 0.625rem;
+}
+
+.wp-chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-height: 0;
+}
+
+.wp-chat-welcome {
+    text-align: center;
+    color: var(--wp-text-muted);
+    padding: 2rem 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+}
+
+.wp-chat-welcome i {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+    background: linear-gradient(135deg, var(--wp-primary), var(--wp-accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.wp-chat-message {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.625rem;
+    background: var(--wp-bg-input);
+    border-radius: var(--wp-radius-sm);
+    animation: fadeIn 0.2s ease;
+    max-width: 85%;
+    align-self: flex-start;
+}
+
+.wp-chat-message-self {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+    background: rgba(99, 102, 241, 0.2);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.wp-chat-message-self .wp-chat-content {
+    text-align: right;
+}
+
+.wp-chat-message-self .wp-chat-username {
+    color: var(--wp-accent);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.wp-chat-avatar {
+    font-size: 1.25rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.wp-chat-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.wp-chat-username {
+    font-weight: 600;
+    font-size: 0.8125rem;
+    color: var(--wp-primary);
+}
+
+.wp-chat-text {
+    font-size: 0.875rem;
+    word-wrap: break-word;
+    margin-top: 0.125rem;
+}
+
+.wp-chat-time {
+    font-size: 0.6875rem;
+    color: var(--wp-text-muted);
+    margin-top: 0.25rem;
+}
+
+.wp-chat-system {
+    text-align: center;
+    padding: 0.375rem;
+    font-size: 0.75rem;
+    color: var(--wp-text-muted);
+    font-style: italic;
+}
+
+.wp-chat-input {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border-top: 1px solid var(--wp-border);
+    flex-shrink: 0;
+}
+
+.wp-btn-send {
+    background: var(--wp-primary);
+    color: white;
+    width: 40px;
+    padding: 0;
+}
+
+.wp-btn-send:hover {
+    background: var(--wp-primary-hover);
+}
+
+/* Toast */
+.wp-toast-container {
+    position: fixed;
+    top: 5rem;
+    right: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    z-index: 1000;
+}
+
+.wp-toast {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: var(--wp-bg-card);
+    border-radius: var(--wp-radius-sm);
+    border: 1px solid var(--wp-border);
+    box-shadow: var(--wp-shadow);
+    animation: slideIn 0.2s ease;
+    max-width: 300px;
+    font-size: 0.875rem;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.wp-toast.success { border-left: 3px solid var(--wp-success); }
+.wp-toast.error { border-left: 3px solid var(--wp-error); }
+.wp-toast.warning { border-left: 3px solid var(--wp-warning); }
+.wp-toast.info { border-left: 3px solid var(--wp-primary); }
+
+/* Modal */
+.wp-modal {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 1000;
+}
+
+.wp-modal-content {
+    text-align: center;
+    padding: 2rem;
+    background: var(--wp-bg-card);
+    border-radius: var(--wp-radius);
+    border: 1px solid var(--wp-border);
+    max-width: 90%;
+}
+
+.wp-modal-content i {
+    font-size: 2.5rem;
+    color: var(--wp-error);
+    margin-bottom: 0.75rem;
+}
+
+.wp-modal-content h3 {
+    font-size: 1.25rem;
+    margin-bottom: 0.375rem;
+}
+
+.wp-modal-content p {
+    color: var(--wp-text-muted);
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+}
+
+.wp-spinner {
+    width: 32px;
+    height: 32px;
+    border: 2px solid var(--wp-border);
+    border-top-color: var(--wp-primary);
+    border-radius: 50%;
+    margin: 0 auto;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Scrollbar */
+.wp-chat-messages::-webkit-scrollbar,
+.wp-users-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.wp-chat-messages::-webkit-scrollbar-track,
+.wp-users-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.wp-chat-messages::-webkit-scrollbar-thumb,
+.wp-users-list::-webkit-scrollbar-thumb {
+    background: var(--wp-border);
+    border-radius: 2px;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .watch-party-container {
+        height: 100vh;
+        height: 100dvh;
+    }
+
+    .wp-header {
+        padding: 0.25rem 0.5rem;
+        min-height: 44px;
+    }
+
+    .wp-logo {
+        font-size: 1rem;
+    }
+
+    .wp-logo i {
+        font-size: 1.25rem;
+    }
+
+    .wp-logo span {
+        display: none;
+    }
+
+    .wp-room-info,
+    .wp-online-count,
+    .wp-sync-status {
+        padding: 0.125rem 0.375rem;
+        font-size: 0.7rem;
+    }
+    
+    .wp-room-label {
+        display: none;
+    }
+
+    .wp-main {
+        display: flex;
+        flex-direction: column;
+        padding: 0;
+        gap: 0;
+    }
+
+    .wp-video-section {
+        flex-shrink: 0;
+        gap: 0;
+    }
+
+    .controls-toggle {
+        border-radius: 0;
+        border-left: 0;
+        border-right: 0;
+        padding: 0.25rem; /* Compact toggle */
+    }
+
+    .wp-player-container {
+        border-radius: 0;
+        border-left: 0;
+        border-right: 0;
+        flex: none;
+    }
+
+    .wp-player-wrapper {
+        aspect-ratio: 16 / 9;
+        /* Video shouldn't be too tall on mobile to leave space for chat */
+        max-height: 35dvh; 
+        /* Minimum usable height, but small enough to fit with keyboard */
+        min-height: 150px; 
+    }
+
+    .wp-video-input-container {
+        display: none;
+        border-radius: 0;
+        border-left: 0;
+        border-right: 0;
+        padding: 0.5rem;
+    }
+
+    .wp-input-group {
+        flex-wrap: wrap;
+    }
+
+    .wp-input-group .wp-input {
+        flex: 1 1 100%;
+        font-size: 0.8125rem;
+        padding: 0.5rem 0.625rem;
+    }
+
+    .wp-input-group .wp-btn {
+        flex: 1;
+        padding: 0.5rem 0.625rem;
+        font-size: 0.75rem;
+        gap: 0.25rem;
+    }
+
+    .wp-input-group .wp-btn i {
+        font-size: 0.75rem;
+    }
+
+    .wp-input-group .wp-btn span,
+    .wp-input-group .wp-btn-secondary:not(:hover)::after {
+        content: none;
+    }
+
+    .wp-video-info {
+        display: none;
+    }
+
+    .wp-chat-section {
+        flex: 1;
+        border-radius: 0;
+        border: 0;
+        border-top: 1px solid var(--wp-border);
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .wp-chat-header {
+        padding: 0.375rem 0.5rem;
+        min-height: 36px;
+    }
+
+    .wp-users-list {
+        padding: 0.25rem 0.5rem;
+        max-height: 48px;
+        min-height: 32px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        flex-wrap: nowrap;
+    }
+
+    .wp-chat-messages {
+        padding: 0.5rem;
+        flex: 1;
+        min-height: 0; /* Important for flex child scroll */
+        overflow-y: auto;
+    }
+
+    .wp-chat-input {
+        padding: 0.5rem;
+        flex-shrink: 0;
+        /* Ensure input area doesn't get covered or shrunk too much */
+        background: var(--wp-bg-card); 
+        position: sticky;
+        bottom: 0;
+        z-index: 10;
+    }
+}
+
+@media (max-width: 480px) {
+    .wp-header {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .wp-header-left {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .wp-header-right {
+        gap: 0.375rem;
+    }
+
+    .wp-room-info {
+        flex: none;
+    }
+
+    .wp-room-id {
+        font-size: 0.6875rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 80px;
+    }
+
+    .wp-sync-status span {
+        display: none;
+    }
+
+    .wp-toast-container {
+        left: 0.5rem;
+        right: 0.5rem;
+        top: 4rem;
+    }
+
+    .wp-toast {
+        max-width: none;
+    }
+}
+
+/* Mobile Video Playing Mode - Hide UI for better chat experience */
+@media (max-width: 1024px) {
+    body.video-playing .wp-header {
+        display: none !important;
+    }
+
+    body.video-playing .controls-toggle {
+        display: none !important;
+    }
+
+    body.video-playing .wp-video-info {
+        display: none !important;
+    }
+
+    body.video-playing .wp-player-wrapper {
+        max-height: 30dvh;
+    }
+
+    body.video-playing .wp-chat-section {
+        flex: 1;
+    }
+}

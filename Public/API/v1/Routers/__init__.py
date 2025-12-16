@@ -1,8 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from fastapi  import APIRouter
-from Core     import Request
-from Settings import CACHE_TIME
+from fastapi import APIRouter
+from Core    import Request
 
 api_v1_router         = APIRouter(prefix="/api/v1")
 api_v1_global_message = {
@@ -15,11 +14,13 @@ async def get_api_v1_router(request: Request):
 
 
 # ! ----------------------------------------» Routers
-from .health           import *
-from .get_plugin_names import *
-from .get_plugin       import *
-from .get_main_page    import *
-from .search           import *
-from .load_item        import *
-from .load_links       import *
-from .extract          import *
+from . import (
+    health,
+    get_plugin_names,
+    get_plugin,
+    get_main_page,
+    search,
+    load_item,
+    load_links,
+    extract
+)

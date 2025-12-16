@@ -20,6 +20,7 @@ RUN apt-get update -y && \
         # ffmpeg \
         # opus-tools \
         locales \
+        curl \
         tzdata && \
     sed -i 's/^# *tr_TR.UTF-8 UTF-8/tr_TR.UTF-8 UTF-8/' /etc/locale.gen && \
     locale-gen tr_TR.UTF-8 && \
@@ -42,6 +43,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 RUN python3 -m pip install --upgrade pip && \
     python3 -m pip install --no-cache-dir -U setuptools wheel && \
     python3 -m pip install --no-cache-dir -Ur requirements.txt
+
+# * Sağlık Kontrolü
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -fsS http://127.0.0.1:3310/api/v1/health || exit 1
 
 # * Uygulamanın Başlatılması
 CMD ["python3", "basla.py"]

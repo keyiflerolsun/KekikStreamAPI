@@ -381,7 +381,7 @@ export default class VideoPlayer {
                 wpParams.set('subtitle', selectedVideo.subtitles[0].url);
             }
             
-            watchPartyButton.href = `http://party.kekikakademi.org/watch-party/${newRoomId}?${wpParams.toString()}`;
+            watchPartyButton.href = `${window.location.origin}/watch-party/${newRoomId}?${wpParams.toString()}`;
         }
 
         // Video yükleme tamamlandı (asenkron işlemler devam edebilir ama UI hazır)

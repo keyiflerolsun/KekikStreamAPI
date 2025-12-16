@@ -1,0 +1,174 @@
+{% extends "_html_taban.html.j2" %}
+
+{% block icerik %}
+<div class="watch-party-container">
+    <!-- Header -->
+    <header class="wp-header">
+        <div class="wp-header-left">
+            <div class="wp-logo">
+                <i class="fa-solid fa-film"></i>
+                <span>Watch Party</span>
+            </div>
+            <div class="wp-room-info">
+                <span class="wp-room-label">Oda:</span>
+                <span class="wp-room-id" id="room-id">{{ room_id }}</span>
+                <button class="wp-copy-btn" onclick="copyRoomLink()" title="Linki Kopyala">
+                    <i class="fa-solid fa-copy"></i>
+                </button>
+            </div>
+        </div>
+        <div class="wp-header-right">
+            <div class="wp-online-count wp-stat-badge">
+                <i class="fa-solid fa-users"></i>
+                <span id="online-count">0</span>
+            </div>
+            <div class="wp-sync-status wp-stat-badge" id="sync-status">
+                <i class="fa-solid fa-link"></i>
+                <span>Bağlanıyor...</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="wp-main">
+        <!-- Video Section -->
+        <section class="wp-video-section">
+            <!-- Controls Toggle -->
+            <div class="controls-toggle" onclick="toggleControls(this)">
+                <i class="fa-solid fa-chevron-down"></i> <span>Kontroller / URL</span>
+            </div>
+
+            <!-- Video URL Input -->
+            <div class="wp-video-input-container" id="video-input-container" style="display: none;">
+                <div class="wp-input-group">
+                    <input type="text" id="video-url-input" class="wp-input" 
+                           placeholder="YouTube, M3U8 veya video URL'si girin..."
+                           onkeypress="if(event.key==='Enter'){changeVideo();event.preventDefault();}">
+                    <button class="wp-btn wp-btn-primary" onclick="changeVideo()">
+                        <i class="fa-solid fa-play"></i>
+                        Oynat
+                    </button>
+                    <button class="wp-btn wp-btn-secondary" id="export-room-btn" onclick="exportRoom()" title="Oda linkini oluştur" style="display: none;">
+                        <i class="fa-solid fa-share-nodes"></i>
+                        Export
+                    </button>
+                </div>
+                
+                <!-- Advanced Options Toggle -->
+                <button class="wp-advanced-toggle" onclick="toggleAdvancedOptions()">
+                    <i class="fa-solid fa-gear"></i>
+                    Gelişmiş Seçenekler
+                </button>
+                
+                <div class="wp-advanced-options" id="advanced-options" style="display: none;">
+                    <div class="wp-input-row">
+                        <div class="wp-input-field">
+                            <label>User-Agent</label>
+                            <input type="text" id="custom-user-agent" class="wp-input" 
+                                   placeholder="Özel User-Agent (opsiyonel)">
+                        </div>
+                        <div class="wp-input-field">
+                            <label>Referer</label>
+                            <input type="text" id="custom-referer" class="wp-input" 
+                                   placeholder="Özel Referer (opsiyonel)">
+                        </div>
+                    </div>
+                    <div class="wp-input-row" style="margin-top: 0.5rem;">
+                        <div class="wp-input-field" style="flex: 1;">
+                            <label>Altyazı URL (SRT/VTT)</label>
+                            <input type="text" id="subtitle-url" class="wp-input" 
+                                   placeholder="Altyazı dosyası URL'si (opsiyonel)">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Video Player -->
+            <div class="wp-player-container" id="player-container">
+                <div class="wp-player-wrapper">
+                    <video id="video-player" controls playsinline>
+                        Tarayıcınız video desteklemiyor.
+                    </video>
+                    <div class="wp-player-overlay" id="player-overlay">
+                        <div class="wp-player-message">
+                            <i class="fa-solid fa-film"></i>
+                            <p>Video izlemek için yukarıdan bir URL girin</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="wp-video-info" id="video-info" style="display: none;">
+                    <h3 id="video-title">Video Başlığı</h3>
+                    <div class="wp-video-meta">
+                        <span id="video-duration"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Player Controls (Removed) -->
+        </section>
+
+        <!-- Chat Section -->
+        <aside class="wp-chat-section">
+            <div class="wp-chat-header">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <i class="fa-solid fa-comments"></i>
+                    <span>Sohbet</span>
+                </div>
+                
+                <div class="wp-sync-info" style="font-size: 0.75rem;">
+                    <i class="fa-solid fa-rotate"></i>
+                    <span id="sync-info-text">Senkronize</span>
+                </div>
+            </div>
+
+            <!-- Users List -->
+            <div class="wp-users-list" id="users-list">
+                <!-- Users will be dynamically added -->
+            </div>
+
+            <!-- Chat Messages -->
+            <div class="wp-chat-messages" id="chat-messages">
+                <div class="wp-chat-welcome">
+                    <i class="fa-solid fa-hand-wave"></i>
+                    <p>Hoş geldiniz! Sohbete katılın.</p>
+                </div>
+            </div>
+
+            <!-- Chat Input -->
+            <form class="wp-chat-input" onsubmit="sendMessage(event)">
+                <input type="text" id="chat-input" class="wp-input" 
+                       placeholder="Mesaj yaz..." maxlength="500"
+                       onkeydown="if(event.key==='Enter'){sendMessage(event);}">
+                <button type="submit" class="wp-btn wp-btn-send">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </form>
+        </aside>
+    </main>
+</div>
+
+<!-- Toast Container -->
+<div class="wp-toast-container" id="toast-container"></div>
+
+<!-- Connection Lost Modal -->
+<div class="wp-modal" id="connection-modal" style="display: none;">
+    <div class="wp-modal-content">
+        <i class="fa-solid fa-wifi-slash"></i>
+        <h3>Bağlantı Koptu</h3>
+        <p>Sunucu ile bağlantı kesildi. Yeniden bağlanılıyor...</p>
+        <div class="wp-spinner"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script>
+        // Room configuration (global for ES6 modules)
+        window.ROOM_ID = "{{ room_id }}";
+        window.PROXY_ENABLED = {{ proxy_enabled | tojson }};
+        {% if autoload %}
+        window.AUTOLOAD = {{ autoload | tojson }};
+        {% endif %}
+    </script>
+{% endblock %}

@@ -140,14 +140,13 @@ def minify_assets():
         konsol.log("[bold yellow]ℹ Minify edilecek dosya yok[/]\n")
 
 
-def bundle_css():
-    """Bundle style.min.css imports into a single style.bundle.min.css"""
-    css_root   = Path("Public/Home/Static/CSS")
-    entry_file = css_root / "style.min.css"
+def bundle_css_file(css_root: Path, entry_filename: str, output_filename: str):
+    """Bundle a CSS file with its imports into a single file"""
+    entry_file = css_root / entry_filename
 
     if not entry_file.exists():
-        konsol.log("[yellow]Warning: style.min.css not found, skipping bundle step[/]")
-        return
+        konsol.log(f"[yellow]Warning: {entry_filename} not found, skipping bundle step[/]")
+        return False
 
     try:
         with open(entry_file, "r", encoding="utf-8") as f:
@@ -161,7 +160,6 @@ def bundle_css():
         for imp in imports:
             # Skip remote imports
             if imp.startswith("http://") or imp.startswith("https://"):
-                # Keep as @import in the final file (rare for local bundle)
                 bundle_parts.append(f"@import url('{imp}');")
                 continue
 
@@ -185,13 +183,25 @@ def bundle_css():
         # Minify the final bundle
         bundled_min = css_minify(bundled)
 
-        bundle_file = css_root / "style.bundle.min.css"
+        bundle_file = css_root / output_filename
         with open(bundle_file, "w", encoding="utf-8") as f:
             f.write(bundled_min)
 
-        konsol.log(f"[green]✓ CSS bundle written:[/] {bundle_file} ")
+        konsol.log(f"[green]✓ CSS bundle written:[/] {bundle_file}")
+        return True
     except Exception as e:
         konsol.log(f"[red]✗ CSS bundle hatası[/]: {e}")
+        return False
+
+
+def bundle_css():
+    """Bundle all CSS entry files"""
+    # Home bundle
+    bundle_css_file(
+        css_root        = Path("Public/Home/Static/CSS"),
+        entry_filename  = "style.min.css",
+        output_filename = "style.bundle.min.css"
+    )
 
 if __name__ == "__main__":
     minify_assets()

@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from .    import api_v1_router
 from Core import JSONResponse
+from .    import api_v1_router
 
 @api_v1_router.get("/health")
 async def health_check():

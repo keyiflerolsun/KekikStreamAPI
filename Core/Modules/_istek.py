@@ -11,14 +11,15 @@ import asyncio
 async def istekten_once_sonra(request: Request, call_next):
     baslangic_zamani = time()
 
-    if request.method in ("GET", "HEAD"):
-        request.state.req_veri = dict(request.query_params) if request.query_params else None
-    else:
+    request.state.veri = dict(request.query_params)
+    if not request.state.veri:
         try:
-            request.state.req_veri = await request.json()
+            request.state.veri = await request.json()
         except Exception:
-            form_data = await request.form()
-            request.state.req_veri = dict(form_data.items())
+            try:
+                request.state.veri = dict(await request.form())
+            except Exception:
+                request.state.veri = {}
 
     try:
         ua_header = request.headers.get("User-Agent")
@@ -27,8 +28,10 @@ async def istekten_once_sonra(request: Request, call_next):
     except Exception:
         cihaz = request.headers.get("User-Agent")
 
-    log_ip  = request.headers.get("X-Forwarded-For") or request.client.host
-    ip_w_cf = (
+    fw_for    = request.headers.get("X-Forwarded-For")
+    log_ip    = fw_for or request.client.host
+    client_ip = fw_for.split(",")[0].strip() if fw_for else request.client.host
+    ip_w_cf   = (
         f"{request.headers.get('Cf-Connecting-Ip')} [yellow]| CF: ({log_ip})[/]"
             if request.headers.get("Cf-Connecting-Ip")
                else log_ip
@@ -38,30 +41,42 @@ async def istekten_once_sonra(request: Request, call_next):
         "id"     : request.headers.get("X-Request-ID") or "",
         "method" : request.method,
         "url"    : str(request.url).rstrip("?").split("?")[0],
-        "veri"   : request.state.req_veri,
+        "veri"   : request.state.veri,
         "kod"    : None,
         "sure"   : None,
-        "ip"     : log_ip,
+        "ip"     : client_ip,
         "cihaz"  : cihaz,
-        "host"   : request.url.hostname,
+        "host"   : request.url.hostname
     }
 
+    # Dosya işlemleri için daha uzun timeout
+    uzun_timeout_paths = ("/upload", "/download", "/export", "/import", "/backup")
+    timeout_suresi     = 120 if any(p in request.url.path for p in uzun_timeout_paths) else 30
+
     try:
-        response = await asyncio.wait_for(call_next(request), timeout=10)
-        if response:
-            log_veri["kod"] = response.status_code
-        else:
-            log_veri["kod"] = 502
-            response        = JSONResponse(status_code=log_veri["kod"], content={"ups": "Yanit Gelmedi.."})
+        response = await asyncio.wait_for(call_next(request), timeout=timeout_suresi)
+        log_veri["kod"] = response.status_code if response else 502
+        if not response:
+            response = JSONResponse(status_code=502, content={"ups": "Yanıt Gelmedi.."})
     except asyncio.TimeoutError:
         log_veri["kod"] = 504
-        response        = JSONResponse(status_code=log_veri["kod"], content={"ups": "Zaman Aşımı.."})
+        response        = JSONResponse(status_code=504, content={"ups": "Zaman Aşımı.."})
+        konsol.log(f"[red]⏱️ Timeout:[/] {request.url.path} - {timeout_suresi}sn aşıldı")
+    except asyncio.CancelledError:
+        log_veri["kod"] = 499  # Client Closed Request
+        konsol.log(f"[yellow]🚫 İstemci bağlantıyı kapattı:[/] {request.url.path}")
+        raise
     except RuntimeError as exc:
         if "No response returned" in str(exc):
+            konsol.log(f"[yellow]⚠️ Response yok:[/] {request.url.path}")
             return Response(status_code=204)
         raise
+    except Exception as exc:
+        log_veri["kod"] = 500
+        response        = JSONResponse(status_code=500, content={"ups": "Sunucu Hatası.."})
+        konsol.log(f"[red]❌ Beklenmeyen hata:[/] {request.url.path} - {exc}")
 
-    for skip_path in ("/favicon.ico", "/static", "/webfonts", "/manifest.json", "/proxy/", "com.chrome.devtools.json"):
+    for skip_path in ("/favicon.ico", "/static", "/webfonts", "/manifest.json", "com.chrome.devtools.json"):
         if skip_path in request.url.path:
             return response
 
@@ -76,6 +91,8 @@ async def log_salla(log_veri: dict, request: Request):
             if request.headers.get("X-Forwarded-Proto")
                 else log_veri['url']
     )
+    if log_url == "http://127.0.0.1:3310/api/v1/health":
+        return
 
     LABEL_WIDTH  = 5
     durum_label  = f"[green]{'durum':<{LABEL_WIDTH}}:[/]"
@@ -106,7 +123,7 @@ async def log_salla(log_veri: dict, request: Request):
         ip_line = f"  {ip_label} [bold red]{log_veri['ip']}[/]"
     log_lines.append(ip_line)
 
-    ip_detay = await ip_log(log_veri["ip"].split()[0].replace(",", ""))
+    ip_detay  = await ip_log(log_veri["ip"])
     if ("hata" not in ip_detay) and ip_detay.get("ulke"):
         il   = ip_detay["il"].replace(" Province", "")
         ilce = ip_detay["ilce"]
