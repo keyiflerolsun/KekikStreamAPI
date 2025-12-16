@@ -1,8 +1,8 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from .        import api_v1_router, api_v1_global_message
-from Core     import Request, JSONResponse
-from ..Libs   import extractor_manager
+from .      import api_v1_router, api_v1_global_message
+from Core   import Request, JSONResponse
+from ..Libs import extractor_manager
 
 @api_v1_router.get("/extract")
 async def extract(request:Request):
