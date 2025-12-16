@@ -11,8 +11,8 @@ async def ana_sayfa(request: Request, csrf_protect: CsrfProtect = Depends()):
     for name in plugin_manager.get_plugin_names():
         plugin = plugin_manager.select_plugin(name)
 
-        # if plugin.name in ["Shorten", "JetFilmizle"]:
-        #     continue
+        if plugin.name in ("SineWix"):
+            continue
 
         plugins.append({
             "name"        : plugin.name,
