@@ -17,3 +17,4 @@ fastapi-csrf-protect
 csscompressor
 rjsmin
 KekikStream
+yt-dlp
