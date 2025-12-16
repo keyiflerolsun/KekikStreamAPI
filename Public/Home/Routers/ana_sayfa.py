@@ -3,12 +3,10 @@
 from Core import Request, HTMLResponse, CsrfProtect, Depends
 from .    import home_router, home_template
 from Public.API.v1.Libs import plugin_manager
-from cloudscraper       import CloudScraper
+from curl_cffi import AsyncSession
 
 @home_router.get("/", response_class=HTMLResponse)
 async def ana_sayfa(request: Request, csrf_protect: CsrfProtect = Depends()):
-
-    # oturum = CloudScraper()
 
     plugins = []
     for name in plugin_manager.get_plugin_names():
@@ -17,10 +15,11 @@ async def ana_sayfa(request: Request, csrf_protect: CsrfProtect = Depends()):
         # if plugin.name in ["Shorten", "JetFilmizle"]:
         #     continue
 
-        # istek = oturum.get(plugin.main_url)
-        # if istek.status_code != 200:
-        #     konsol.log(f"[red][!] {plugin.name:<20} » {istek.status_code}")
-        #     continue
+        # ! Eğer eklenti ana sayfası erişilemiyorsa atla
+        async with AsyncSession() as oturum:
+            istek = await oturum.get(plugin.main_url)
+            if istek.status_code != 200:
+                continue
 
         plugins.append({
             "name"        : plugin.name,
