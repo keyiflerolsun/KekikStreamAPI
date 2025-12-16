@@ -369,7 +369,10 @@ export default class VideoPlayer {
             const newRoomId = crypto.randomUUID().slice(0, 8).toUpperCase();
             const wpParams = new URLSearchParams();
             wpParams.set('url', selectedVideo.url);
-            wpParams.set('title', selectedVideo.name || document.title);
+            // Sayfa başlığını al (player-title elementinden)
+            const playerTitleEl = document.querySelector('.player-title');
+            const pageTitle = playerTitleEl ? playerTitleEl.textContent.trim() : document.title;
+            wpParams.set('title', `${pageTitle} - ${selectedVideo.name}`);
             wpParams.set('user_agent', headers['User-Agent'] || navigator.userAgent);
             wpParams.set('referer', referer);
             
