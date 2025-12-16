@@ -15,3 +15,4 @@ SECRET_KEY = "cokgizliandunpaylasmabuyasakaldir"
 PRODUCTION = True
 
 PROXY_ENABLED = AYAR["APP"].get("PROXY_ENABLED", True)
+AVAILABILITY_CHECK = AYAR["APP"].get("AVAILABILITY_CHECK", False)
