@@ -3,8 +3,6 @@
 from Core import Request, HTMLResponse, CsrfProtect, Depends
 from .    import home_router, home_template
 from Public.API.v1.Libs import plugin_manager
-from curl_cffi import AsyncSession
-from Settings import AVAILABILITY_CHECK
 
 @home_router.get("/", response_class=HTMLResponse)
 async def ana_sayfa(request: Request, csrf_protect: CsrfProtect = Depends()):
@@ -15,13 +13,6 @@ async def ana_sayfa(request: Request, csrf_protect: CsrfProtect = Depends()):
 
         # if plugin.name in ["Shorten", "JetFilmizle"]:
         #     continue
-
-        # ! Eğer eklenti ana sayfası erişilemiyorsa atla
-        if AVAILABILITY_CHECK:
-            async with AsyncSession() as oturum:
-                istek = await oturum.get(plugin.main_url)
-                if istek.status_code != 200:
-                    continue
 
         plugins.append({
             "name"        : plugin.name,
