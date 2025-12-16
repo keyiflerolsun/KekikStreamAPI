@@ -1,0 +1,42 @@
+# Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
+
+name: CapRover Yükleyici
+
+on: [push, pull_request]
+
+jobs:
+  CapRoverYukleyici:
+    name   : KekikStream Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Depo Kontrolü
+        uses: actions/checkout@v6.0.1
+        with:
+          fetch-depth: 2
+
+      - name: Güncelleme Kontrol Et
+        id  : guncelleme_var_mi
+        run : |
+          if git diff --name-only HEAD^ | grep -qE '\.(py|txt|j2|html|css|js|json|yaml|yml)$'; then 
+            echo "degisiklik=true"
+          else 
+            echo "degisiklik=false"
+          fi >> $GITHUB_OUTPUT
+
+      - name: TarBall Oluştur
+        if  : steps.guncelleme_var_mi.outputs.degisiklik == 'true'
+        uses: a7ul/tar-action@v1.2.0
+        with:
+          command: c
+          cwd    : "./"
+          files  : ./
+          outPath: deploy.tar
+
+      - name: CapRover'a Deploy Et
+        if  : steps.guncelleme_var_mi.outputs.degisiklik == 'true'
+        uses: caprover/deploy-from-github@v1.1.2
+        with:
+          server: ${{ secrets.CAPROVER_SERVER }}
+          app   : ${{ secrets.KEKIKSTREAM_APP_NAME }}
+          token : ${{ secrets.KEKIKSTREAM_APP_TOKEN }}
