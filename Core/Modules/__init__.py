@@ -13,12 +13,12 @@ async def lifespan(app: FastAPI):
 
     # ! Eğer eklenti ana sayfası erişilemiyorsa atla
     if AVAILABILITY_CHECK:
-        async with AsyncSession() as oturum:
+        async with AsyncSession(impersonate="chrome", timeout=3) as oturum:
             for name in plugin_manager.get_plugin_names():
                 plugin = plugin_manager.select_plugin(name)
                 istek  = await oturum.get(plugin.main_url)
                 if istek.status_code != 200:
                     plugin_manager.plugins.pop(name)
-                    konsol.log(f"Eklenti atlandı (erişilemiyor): {plugin.name} | {plugin.main_url}")
+                    konsol.log(f"[red]Eklentiye erişilemiyor : {plugin.name} | {plugin.main_url}")
 
     yield
