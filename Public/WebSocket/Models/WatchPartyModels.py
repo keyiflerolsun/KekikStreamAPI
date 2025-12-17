@@ -38,4 +38,5 @@ class Room:
     host_id         : str | None = None  # İlk katılan kullanıcı (host)
     buffering_users : set[str]   = field(default_factory=set)
     last_auto_resume_time: float = 0.0  # Son auto-resume zamanı - gecikmeli pause önleme
-    last_play_time  : float      = 0.0  # Son play zamanı - gecikmeli pause önleme
+    last_play_time: float        = 0.0  # Son play zamanı - gecikmeli pause önleme
+    last_buffer_end_time: float  = 0.0  # Son buffer_end zamanı - gecikmeli pause önleme

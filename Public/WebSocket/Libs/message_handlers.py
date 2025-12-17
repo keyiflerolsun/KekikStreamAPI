@@ -92,6 +92,11 @@ class MessageHandler:
         if time_since_play < 0.1:  # 100ms debounce
             return
 
+        # Buffer_end sonrası pause'u yoksay (200ms pencere)
+        time_since_buffer_end = datetime.now().timestamp() - room.last_buffer_end_time
+        if time_since_buffer_end < 0.2:  # 200ms debounce
+            return
+
         # Auto-resume sonrası pause'u yoksay (300ms pencere)
         time_since_auto_resume = datetime.now().timestamp() - room.last_auto_resume_time
         if time_since_auto_resume < 0.3:  # 300ms debounce
@@ -248,11 +253,14 @@ class MessageHandler:
 
     async def handle_buffer_end(self):
         """BUFFER_END mesajını işle"""
-        await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, False)
-        
         room = await watch_party_manager.get_room(self.room_id)
         if not room:
             return
+
+        # Buffer_end zamanını kaydet
+        room.last_buffer_end_time = datetime.now().timestamp()
+
+        await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, False)
 
         # Eğer kimse bufferda değilse VE video durmuşsa, otomatik başlat
         if not room.buffering_users and not room.is_playing:

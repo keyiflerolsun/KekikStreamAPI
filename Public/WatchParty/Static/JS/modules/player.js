@@ -23,8 +23,8 @@ const state = {
     lastLoadedUrl: null,
     playerState: PlayerState.IDLE,
     syncInterval: null,
-    isSyncing: false,  // Senkronizasyon sırasında event yayınını engelle
-    lastSeekTime: 0    // Son seek zamanı - yanlış pause önleme (frontend-only)
+    isSyncing: false,   // Senkronizasyon sırasında event yayınını engelle
+    lastSeekTime: 0     // Son seek zamanı - frontend seek debounce
 };
 
 // ============== Callbacks ==============
