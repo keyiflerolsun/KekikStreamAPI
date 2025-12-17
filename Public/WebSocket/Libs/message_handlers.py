@@ -7,12 +7,13 @@ from datetime           import datetime
 import json
 
 # ============== Timing Constants (seconds) ==============
-DEBOUNCE_PLAY_TO_PAUSE        = 0.1    # Play sonrası pause ignore window
-DEBOUNCE_BUFFER_TO_PAUSE      = 0.2    # Buffer_end sonrası pause ignore window
-DEBOUNCE_AUTO_RESUME_TO_PAUSE = 0.3    # Auto-resume sonrası pause ignore window
-DEBOUNCE_PAUSE_TO_AUTO_RESUME = 0.5    # Pause sonrası auto-resume ignore window
-DEBOUNCE_SEEK_TO_BUFFER       = 0.5    # Seek sonrası buffer ignore window
-MIN_BUFFER_DURATION           = 2.0    # Minimum buffer süresi (kısa buffer'ları ignore)
+DEBOUNCE_PLAY_TO_PAUSE         = 0.1    # Play sonrası pause ignore window
+DEBOUNCE_BUFFER_TO_PAUSE       = 0.2    # Buffer_end sonrası pause ignore window
+DEBOUNCE_AUTO_RESUME_TO_PAUSE  = 0.3    # Auto-resume sonrası pause ignore window
+DEBOUNCE_PAUSE_TO_AUTO_RESUME  = 1.0    # Pause sonrası auto-resume ignore window (network latency dahil)
+DEBOUNCE_SEEK_TO_BUFFER        = 1.0    # Seek sonrası buffer ignore window (network latency dahil)
+DEBOUNCE_BUFFER_START_TO_PAUSE = 1.0    # Buffer_start sonrası pause ignore window (network latency dahil)
+MIN_BUFFER_DURATION            = 2.0    # Minimum buffer süresi (kısa buffer'ları ignore)
 
 class MessageHandler:
     """WebSocket mesaj işleyici sınıfı"""
@@ -105,6 +106,10 @@ class MessageHandler:
             return
         
         if now - room.last_auto_resume_time < DEBOUNCE_AUTO_RESUME_TO_PAUSE:
+            return
+        
+        # Buffering kaynaklı pause'u ignore et (network latency dahil: 1s window)
+        if now - room.last_buffer_start_time < DEBOUNCE_BUFFER_START_TO_PAUSE:
             return
 
         # Pause zamanını kaydet (auto-resume önleme için)

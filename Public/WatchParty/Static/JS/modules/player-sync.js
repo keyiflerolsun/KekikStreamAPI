@@ -4,7 +4,7 @@ import { PlayerState, state, waitForSeek, safePlay, showInteractionPrompt } from
 import { formatTime, logger } from './utils.min.js';
 import { showToast, updateSyncInfoText } from './ui.min.js';
 
-// ============== Apply Initial State ==============
+// ============== İlk Durumu Uygula ==============
 export const applyState = async (serverState) => {
     const { videoPlayer } = state;
     if (!videoPlayer) return;
@@ -42,7 +42,7 @@ export const applyState = async (serverState) => {
     state.isSyncing = false;
 };
 
-// ============== Handle Sync (from other users) ==============
+// ============== Senkronizasyonu İşle (diğer kullanıcılardan) ==============
 export const handleSync = async (msg) => {
     const { videoPlayer } = state;
     if (!videoPlayer) return;
@@ -99,7 +99,7 @@ export const handleSync = async (msg) => {
     updateSyncInfoText(msg.triggered_by, msg.is_playing ? 'oynatıyor' : 'durdurdu');
 };
 
-// ============== Handle Seek (from other users) ==============
+// ============== Seek İşle (diğer kullanıcılardan) ==============
 export const handleSeek = async (msg) => {
     const { videoPlayer } = state;
     if (!videoPlayer) return;
@@ -134,7 +134,7 @@ export const handleSeek = async (msg) => {
     updateSyncInfoText(msg.triggered_by, `${formatTime(msg.current_time)} konumuna atladı`);
 };
 
-// ============== Handle Sync Correction (from server heartbeat) ==============
+// ============== Senkronizasyon Düzeltmesi İşle (sunucu heartbeat) ==============
 export const handleSyncCorrection = async (msg) => {
     const { videoPlayer } = state;
     if (!videoPlayer) return;

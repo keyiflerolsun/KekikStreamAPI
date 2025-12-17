@@ -3,7 +3,7 @@
 import { formatDuration, logger } from './utils.min.js';
 import { showToast, showLoadingOverlay, hideLoadingOverlay } from './ui.min.js';
 
-// ============== Player States ==============
+// ============== Oynatıcı Durumları ==============
 export const PlayerState = {
     IDLE: 'idle',
     LOADING: 'loading',
@@ -12,7 +12,7 @@ export const PlayerState = {
     PLAYING: 'playing'
 };
 
-// ============== State ==============
+// ============== Durum ==============
 export const state = {
     videoPlayer: null,
     playerOverlay: null,
@@ -24,11 +24,11 @@ export const state = {
     playerState: PlayerState.IDLE,
     syncInterval: null,
     isSyncing: false,       // Senkronizasyon sırasında event yayınını engelle
-    lastSeekTime: 0,        // Son seek zamanı - frontend seek debounce
-    lastBufferEndTime: 0    // Son buffer_end zamanı - frontend buffer debounce (event blocking)
+    lastSeekTime: 0,        // Son seek zamanı - ön yüz seek debounce
+    lastBufferEndTime: 0    // Son buffer_end zamanı - ön yüz buffer debounce (event engelleme)
 };
 
-// ============== Callbacks ==============
+// ============== Geri Çağırma Fonksiyonları ==============
 const callbacks = {
     onPlay: null,
     onPause: null,
@@ -38,7 +38,7 @@ const callbacks = {
     onSyncRequest: null
 };
 
-// ============== Initialization ==============
+// ============== Başlatma ==============
 export const initPlayer = () => {
     state.videoPlayer = document.getElementById('video-player');
     state.playerOverlay = document.getElementById('player-overlay');
@@ -51,7 +51,7 @@ export const setPlayerCallbacks = (cbs) => {
     Object.assign(callbacks, cbs);
 };
 
-// ============== Video Event Listeners ==============
+// ============== Video Event Dinleyicileri ==============
 export const setupVideoEventListeners = () => {
     const { videoPlayer } = state;
     if (!videoPlayer) return;
@@ -120,7 +120,7 @@ export const setupVideoEventListeners = () => {
     }, { once: false });
 };
 
-// ============== Helpers ==============
+// ============== Yardımcı Fonksiyonlar ==============
 export const waitForSeek = async (timeout = 5000) => {
     const { videoPlayer } = state;
     if (!videoPlayer) return;
@@ -140,7 +140,7 @@ export const waitForSeek = async (timeout = 5000) => {
             if (!resolved) {
                 resolved = true;
                 videoPlayer.removeEventListener('seeked', onSeeked);
-                logger.video('Seek timeout - continuing anyway');
+                logger.video('Seek zaman aşımı - devam ediliyor');
                 resolve(false);
             }
         }, timeout);
@@ -149,12 +149,12 @@ export const waitForSeek = async (timeout = 5000) => {
 
 export const safePlay = async (timeout = 3000) => {
     const { videoPlayer } = state;
-    if (!videoPlayer) return { success: false, error: 'No video player' };
+    if (!videoPlayer) return { success: false, error: 'Video oynatıcı yok' };
 
     try {
         const playPromise = videoPlayer.play();
         const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Play timeout')), timeout)
+            setTimeout(() => reject(new Error('Play zaman aşımı')), timeout)
         );
         
         await Promise.race([playPromise, timeoutPromise]);
@@ -164,7 +164,7 @@ export const safePlay = async (timeout = 3000) => {
     }
 };
 
-// ============== Proxy URL Builder ==============
+// ============== Proxy URL Oluşturucu ==============
 const buildProxyUrl = (url, headers = {}, endpoint = 'video') => {
     const params = new URLSearchParams();
     params.append('url', url);
@@ -178,7 +178,7 @@ const buildProxyUrl = (url, headers = {}, endpoint = 'video') => {
     return `/proxy/${endpoint}?${params.toString()}`;
 };
 
-// ============== Format Detection ==============
+// ============== Format Algılama ==============
 const detectFormat = (url, format) => {
     const lowerUrl = url.toLowerCase();
     if (lowerUrl.includes('.m3u8') || lowerUrl.includes('/hls/') || format === 'hls') return 'hls';
@@ -187,7 +187,7 @@ const detectFormat = (url, format) => {
     return format || 'native';
 };
 
-// ============== HLS Loading ==============
+// ============== HLS Yükleme ==============
 const loadHls = (url, headers = {}, useProxy = false) => {
     return new Promise((resolve) => {
         const { videoPlayer } = state;
@@ -278,7 +278,7 @@ const loadHls = (url, headers = {}, useProxy = false) => {
     });
 };
 
-// ============== Native Video Loading ==============
+// ============== Native Video Yükleme ==============
 const loadNative = (url, headers = {}, useProxy = false) => {
     return new Promise((resolve) => {
         const { videoPlayer } = state;
@@ -318,7 +318,7 @@ const loadNative = (url, headers = {}, useProxy = false) => {
     });
 };
 
-// ============== Load Video ==============
+// ============== Video Yükle ==============
 export const loadVideo = async (url, format = 'hls', headers = {}, title = '', subtitleUrl = '') => {
     const { videoPlayer, playerOverlay, videoInfo, videoTitle: titleEl } = state;
     if (!videoPlayer || !playerOverlay) return false;
@@ -407,7 +407,7 @@ export const loadVideo = async (url, format = 'hls', headers = {}, title = '', s
     return success;
 };
 
-// ============== Show Interaction Prompt ==============
+// ============== Etkileşim İstemi Göster ==============
 export const showInteractionPrompt = () => {
     const { playerOverlay, videoPlayer } = state;
     if (!playerOverlay || !videoPlayer) return;
@@ -466,12 +466,12 @@ const stopSyncInterval = () => {
     }
 };
 
-// ============== Getters ==============
+// ============== Alıcılar ==============
 export const getCurrentTime = () => state.videoPlayer?.currentTime || 0;
 export const isPlaying = () => state.playerState === PlayerState.PLAYING;
 export const getLastLoadedUrl = () => state.lastLoadedUrl;
 
-// ============== Setters ==============
+// ============== Ayarlayıcılar ==============
 export const updateVideoInfo = (title, duration) => {
     if (state.videoTitle && title) state.videoTitle.textContent = title;
     if (state.videoDuration && duration) state.videoDuration.textContent = formatDuration(duration);

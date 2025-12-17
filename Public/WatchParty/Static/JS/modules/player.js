@@ -1,6 +1,6 @@
 // Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-// Re-export everything from player-core
+// player-core'dan her şeyi yeniden dışa aktar
 export {
     PlayerState,
     state,
@@ -17,7 +17,7 @@ export {
     updateVideoInfo
 } from './player-core.min.js';
 
-// Re-export everything from player-sync
+// player-sync'ten her şeyi yeniden dışa aktar
 export {
     applyState,
     handleSync,
