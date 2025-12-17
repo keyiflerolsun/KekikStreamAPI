@@ -8,13 +8,84 @@ import json, asyncio
 class WatchPartyManager:
     """Watch Party oda ve kullanıcı yönetimi"""
 
+    # Action öncelik sıralaması (yüksekten düşüğe)
+    ACTION_PRIORITY = {
+        'seek'   : 3, # En yüksek öncelik
+        'pause'  : 2, # Orta öncelik
+        'play'   : 1  # En düşük öncelik
+    }
+
     def __init__(self):
         self.rooms: dict[str, Room] = {}
         self._lock = asyncio.Lock()
 
+        # Action debounce sistemi
+        self._pending_actions: dict[str, dict] = {}  # room_id -> pending action info
+        self._action_timers: dict[str, asyncio.Task] = {}  # room_id -> timer task
+
     async def get_room(self, room_id: str) -> Room | None:
         """Odayı getir"""
         return self.rooms.get(room_id)
+
+    async def schedule_action(self, room_id: str, action_type: str, action_data: dict, username: str):
+        """Action'ı planla - eşzamanlı aksiyonları önlemek için debounce"""
+        async with self._lock:
+            current_action = self._pending_actions.get(room_id)
+
+            # Eğer bekleyen aksiyon varsa, önceliğe göre karşılaştır
+            if current_action:
+                current_priority = self.ACTION_PRIORITY.get(current_action['type'], 0)
+                new_priority     = self.ACTION_PRIORITY.get(action_type, 0)
+
+                # Yeni aksiyon daha yüksek öncelikli veya aynı öncelikteyse, üzerine yaz
+                if new_priority >= current_priority:
+                    self._pending_actions[room_id] = {
+                        "type"      : action_type,
+                        "data"      : action_data,
+                        "username"  : username,
+                        "timestamp" : datetime.now().timestamp()
+                    }
+            else:
+                # İlk aksiyon
+                self._pending_actions[room_id] = {
+                    "type"      : action_type,
+                    "data"      : action_data,
+                    "username"  : username,
+                    "timestamp" : datetime.now().timestamp()
+                }
+
+            # Varsa önceki timer'ı iptal et
+            if room_id in self._action_timers:
+                self._action_timers[room_id].cancel()
+
+            # 150ms debounce timer başlat
+            self._action_timers[room_id] = asyncio.create_task(
+                self._execute_pending_action(room_id)
+            )
+
+    async def _execute_pending_action(self, room_id: str):
+        """Bekleyen aksiyonu 150ms sonra çalıştır"""
+        await asyncio.sleep(0.15)  # 150ms debounce
+
+        async with self._lock:
+            if room_id not in self._pending_actions:
+                return
+
+            action_info = self._pending_actions.pop(room_id)
+            self._action_timers.pop(room_id, None)
+
+        # Action'ı çalıştır
+        action_type = action_info["type"]
+        action_data = action_info["data"]
+        username    = action_info["username"]
+
+        # Action tipine göre ilgili handler'ı çağır
+        # Bu kısım message_handlers.py'den çağrılacak
+        return {
+            "action_type" : action_type,
+            "action_data" : action_data,
+            "username"    : username
+        }
 
     async def join_room(self, room_id: str, websocket: WebSocket, username: str, avatar: str) -> User | None:
         """Odaya katıl"""

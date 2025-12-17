@@ -36,4 +36,6 @@ class Room:
     headers         : dict[str, str] = field(default_factory=dict)  # User-Agent, Referer vb.
     updated_at      : float = field(default_factory=lambda: datetime.now().timestamp())
     host_id         : str | None = None  # İlk katılan kullanıcı (host)
-    buffering_users : set[str] = field(default_factory=set)
+    buffering_users : set[str]   = field(default_factory=set)
+    last_auto_resume_time: float = 0.0  # Son auto-resume zamanı - gecikmeli pause önleme
+    last_play_time  : float      = 0.0  # Son play zamanı - gecikmeli pause önleme

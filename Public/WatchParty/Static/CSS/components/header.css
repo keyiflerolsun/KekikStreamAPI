@@ -38,6 +38,14 @@
     font-size: 1.25rem;
     font-weight: 700;
     color: var(--wp-primary);
+    text-decoration: none;
+    transition: var(--wp-transition);
+    cursor: pointer;
+}
+
+.wp-logo:hover {
+    color: var(--wp-accent);
+    transform: scale(1.05);
 }
 
 .wp-logo i {

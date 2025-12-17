@@ -3,6 +3,7 @@
 from fastapi            import WebSocket
 from .WatchPartyManager import watch_party_manager
 from .ytdlp_service     import ytdlp_extract_video_info
+from datetime           import datetime
 import json
 
 class MessageHandler:
@@ -49,10 +50,20 @@ class MessageHandler:
         """PLAY mesajını işle"""
         current_time = message.get("time", 0.0)
         
-        # Manuel play yapıldığında buffer listesini temizle
+        # State validation: Sadece durmuşsa play
         room = await watch_party_manager.get_room(self.room_id)
-        if room:
-            room.buffering_users.clear()
+        if not room:
+            return
+        
+        # Zaten oynuyorsa ignore et
+        if room.is_playing:
+            return
+        
+        # Manuel play yapıldığında buffer listesini temizle
+        room.buffering_users.clear()
+        
+        # Play zamanını kaydet
+        room.last_play_time = datetime.now().timestamp()
         
         await watch_party_manager.update_playback_state(self.room_id, True, current_time)
 
@@ -66,6 +77,26 @@ class MessageHandler:
     async def handle_pause(self, message: dict):
         """PAUSE mesajını işle"""
         current_time = message.get("time", 0.0)
+
+        # State validation: Sadece oynuyorsa pause
+        room = await watch_party_manager.get_room(self.room_id)
+        if not room:
+            return
+
+        # Zaten durmuşsa ignore et
+        if not room.is_playing:
+            return
+
+        # Play sonrası pause'u yoksay (100ms pencere)
+        time_since_play = datetime.now().timestamp() - room.last_play_time
+        if time_since_play < 0.1:  # 100ms debounce
+            return
+
+        # Auto-resume sonrası pause'u yoksay (300ms pencere)
+        time_since_auto_resume = datetime.now().timestamp() - room.last_auto_resume_time
+        if time_since_auto_resume < 0.3:  # 300ms debounce
+            return
+
         await watch_party_manager.update_playback_state(self.room_id, False, current_time)
 
         await watch_party_manager.broadcast_to_room(self.room_id, {
@@ -197,7 +228,6 @@ class MessageHandler:
         was_playing = room.is_playing
         if was_playing:
             # Current time'ı güncelle (video oynarken geçen süreyi ekle)
-            from datetime import datetime
             elapsed = datetime.now().timestamp() - room.updated_at
             current_time = room.current_time + elapsed
             
@@ -223,10 +253,14 @@ class MessageHandler:
         room = await watch_party_manager.get_room(self.room_id)
         if not room:
             return
-        
-        # Eğer kimse bufferlamıyorsa ve video durmuşsa otomatik başlat
+
+        # Eğer kimse bufferda değilse VE video durmuşsa, otomatik başlat
         if not room.buffering_users and not room.is_playing:
+            # Auto-resume zamanını kaydet
+            room.last_auto_resume_time = datetime.now().timestamp()
+
             await watch_party_manager.update_playback_state(self.room_id, True, room.current_time)
+
             await watch_party_manager.broadcast_to_room(self.room_id, {
                 "type"         : "sync",
                 "is_playing"   : True,

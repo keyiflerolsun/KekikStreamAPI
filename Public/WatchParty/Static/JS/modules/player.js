@@ -23,10 +23,8 @@ const state = {
     lastLoadedUrl: null,
     playerState: PlayerState.IDLE,
     syncInterval: null,
-    isSyncing: false,     // Senkronizasyon sırasında event yayınını engelle
-    lastSeekTime: 0,      // Son seek zamanı - yanlış pause önleme
-    lastPlayTime: 0,      // Son play zamanı - gecikmeli pause önleme
-    lastBufferEndTime: 0  // Son buffer bitiş zamanı - auto-resume sırasında pause önleme
+    isSyncing: false,  // Senkronizasyon sırasında event yayınını engelle
+    lastSeekTime: 0    // Son seek zamanı - yanlış pause önleme (frontend-only)
 };
 
 // ============== Callbacks ==============
@@ -70,7 +68,6 @@ export const setupVideoEventListeners = () => {
         if (shouldIgnoreEvent()) return;
         if (state.playerState !== PlayerState.READY) return;
 
-        state.lastPlayTime = Date.now(); // Play zamanını kaydet
         state.playerState = PlayerState.PLAYING;
         callbacks.onPlay?.(videoPlayer.currentTime);
     });
@@ -83,17 +80,9 @@ export const setupVideoEventListeners = () => {
         if (state.playerState !== PlayerState.PLAYING) return;
         if (videoPlayer.ended) return;
         
-        // Seek sonrası pause'u yoksay (500ms içinde)
+        // Seek sonrası pause'u yoksay (500ms içinde) - frontend debounce
         const timeSinceSeek = Date.now() - state.lastSeekTime;
         if (timeSinceSeek < 500) return;
-        
-        // Play sonrası pause'u yoksay (100ms içinde) - gecikmeli event
-        const timeSincePlay = Date.now() - state.lastPlayTime;
-        if (timeSincePlay < 100) return;
-        
-        // Buffer bitiş sonrası pause'u yoksay (300ms içinde) - auto-resume penceresi
-        const timeSinceBufferEnd = Date.now() - state.lastBufferEndTime;
-        if (timeSinceBufferEnd < 300) return;
 
         state.playerState = PlayerState.READY;
         callbacks.onPause?.(videoPlayer.currentTime);
@@ -119,7 +108,6 @@ export const setupVideoEventListeners = () => {
         // Oynatıyorsak VEYA hazırsak (duraklamadan sonra tampon) buffer_end gönder
         if (state.playerState !== PlayerState.PLAYING && state.playerState !== PlayerState.READY) return;
         
-        state.lastBufferEndTime = Date.now(); // Buffer bitiş zamanını kaydet
         callbacks.onBufferEnd?.();
     });
 
@@ -129,7 +117,6 @@ export const setupVideoEventListeners = () => {
         if (state.isSyncing) return;
         // Sadece READY durumundayken buffer_end gönder (paused buffering)
         if (state.playerState === PlayerState.READY) {
-            state.lastBufferEndTime = Date.now(); // Buffer bitiş zamanını kaydet
             callbacks.onBufferEnd?.();
         }
     }, { once: false });
