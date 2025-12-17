@@ -6,6 +6,14 @@ from .ytdlp_service     import ytdlp_extract_video_info
 from datetime           import datetime
 import json
 
+# ============== Timing Constants (seconds) ==============
+DEBOUNCE_PLAY_TO_PAUSE        = 0.1    # Play sonrası pause ignore window
+DEBOUNCE_BUFFER_TO_PAUSE      = 0.2    # Buffer_end sonrası pause ignore window
+DEBOUNCE_AUTO_RESUME_TO_PAUSE = 0.3    # Auto-resume sonrası pause ignore window
+DEBOUNCE_PAUSE_TO_AUTO_RESUME = 0.5    # Pause sonrası auto-resume ignore window
+DEBOUNCE_SEEK_TO_BUFFER       = 0.5    # Seek sonrası buffer ignore window
+MIN_BUFFER_DURATION           = 2.0    # Minimum buffer süresi (kısa buffer'ları ignore)
+
 class MessageHandler:
     """WebSocket mesaj işleyici sınıfı"""
 
@@ -87,23 +95,20 @@ class MessageHandler:
         if not room.is_playing:
             return
 
-        # Play sonrası pause'u yoksay (100ms pencere)
-        time_since_play = datetime.now().timestamp() - room.last_play_time
-        if time_since_play < 0.1:  # 100ms debounce
+        # Debounce kontrolü - tek timestamp ile
+        now = datetime.now().timestamp()
+        
+        if now - room.last_play_time < DEBOUNCE_PLAY_TO_PAUSE:
             return
-
-        # Buffer_end sonrası pause'u yoksay (200ms pencere)
-        time_since_buffer_end = datetime.now().timestamp() - room.last_buffer_end_time
-        if time_since_buffer_end < 0.2:  # 200ms debounce
+        
+        if now - room.last_buffer_end_time < DEBOUNCE_BUFFER_TO_PAUSE:
             return
-
-        # Auto-resume sonrası pause'u yoksay (300ms pencere)
-        time_since_auto_resume = datetime.now().timestamp() - room.last_auto_resume_time
-        if time_since_auto_resume < 0.3:  # 300ms debounce
+        
+        if now - room.last_auto_resume_time < DEBOUNCE_AUTO_RESUME_TO_PAUSE:
             return
 
         # Pause zamanını kaydet (auto-resume önleme için)
-        room.last_pause_time = datetime.now().timestamp()
+        room.last_pause_time = now
 
         await watch_party_manager.update_playback_state(self.room_id, False, current_time)
 
@@ -242,38 +247,32 @@ class MessageHandler:
         if not room:
             return
 
-        current_timestamp = datetime.now().timestamp()
+        now = datetime.now().timestamp()
 
-        # 1. İlk buffer kontrolü: Oda ilk açıldığında veya video ilk yüklendiğinde
-        # her zaman bir "initialization buffer" olur - bunu ignore et
+        # 1. İlk buffer kontrolü: Initialization buffer - ignore
         if room.last_buffer_start_time == 0.0:
-            room.last_buffer_start_time = current_timestamp
+            room.last_buffer_start_time = now
             await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, True)
             return
 
-        # 2. Seek sonrası buffer kontrolü: Seek'ten sonra <500ms içindeki buffer'ları ignore et
-        # Seek zaten sync yapıyor, post-seek buffer gereksiz oda durdurması yaratır
-        time_since_seek = current_timestamp - room.last_seek_time
-        if time_since_seek < 0.5:
+        # 2. Seek sonrası buffer - ignore (post-seek buffer gereksiz pause yaratır)
+        if now - room.last_seek_time < DEBOUNCE_SEEK_TO_BUFFER:
             await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, True)
             return
 
-        # 3. Minimum buffering threshold: Son buffer_start'tan beri <2 saniye geçmişse ignore et
-        # Kısa buffering'ler (ağ jitter, kısa yükleme) için gereksiz pause önlenir
-        time_since_last_buffer = current_timestamp - room.last_buffer_start_time
-        if time_since_last_buffer < 2.0:
-            # Sadece listeye ekle, odayı durdurma
+        # 3. Minimum buffer threshold - kısa buffer'ları ignore et
+        if now - room.last_buffer_start_time < MIN_BUFFER_DURATION:
             await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, True)
             return
 
         # Buffer_start zamanını kaydet
-        room.last_buffer_start_time = current_timestamp
+        room.last_buffer_start_time = now
 
         # Eğer video oynatılıyorsa önce durdur
         was_playing = room.is_playing
         if was_playing:
             # Current time'ı güncelle (video oynarken geçen süreyi ekle)
-            elapsed = current_timestamp - room.updated_at
+            elapsed = now - room.updated_at
             current_time = room.current_time + elapsed
 
             await watch_party_manager.update_playback_state(self.room_id, False, current_time)
@@ -297,23 +296,22 @@ class MessageHandler:
         if not room:
             return
 
+        now = datetime.now().timestamp()
+        
         # Buffer_end zamanını kaydet
-        room.last_buffer_end_time = datetime.now().timestamp()
+        room.last_buffer_end_time = now
 
         await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, False)
 
-        # Eğer kimse bufferda değilse VE video durmuşsa, otomatik başlat
-        # ÖNEMLI: Manuel pause sonrası auto-resume yapma (500ms pencere)
-        current_timestamp = datetime.now().timestamp()
-        time_since_pause = current_timestamp - room.last_pause_time
-        
-        if time_since_pause < 0.5:
-            # Yeni pause yapılmış, auto-resume yapma
+        # Auto-resume kontrolü
+        # ÖNEMLI: Manuel pause sonrası auto-resume yapma
+        # NOT: Seek kontrolü YOK - seek video durdurmaz, sadece pozisyon değiştirir
+        if now - room.last_pause_time < DEBOUNCE_PAUSE_TO_AUTO_RESUME:
             return
         
         if not room.buffering_users and not room.is_playing:
             # Auto-resume zamanını kaydet
-            room.last_auto_resume_time = current_timestamp
+            room.last_auto_resume_time = now
 
             await watch_party_manager.update_playback_state(self.room_id, True, room.current_time)
 
