@@ -142,3 +142,32 @@ export const hideSkeleton = (containerId) => {
     if (!container) return;
     container.classList.remove('skeleton-loading');
 };
+
+export const showLoadingOverlay = (containerId = null) => {
+    const overlay = document.getElementById('player-overlay');
+    if (!overlay) return;
+    
+    // Optionally show skeleton on container
+    if (containerId) {
+        showSkeleton(containerId);
+    }
+    
+    overlay.classList.remove('hidden');
+    overlay.innerHTML = `
+        <div class="wp-player-message">
+            <i class="fa-solid fa-spinner" style="font-size: 3rem; color: var(--wp-primary); margin-bottom: 1rem; display: inline-block; transform-origin: center; animation: spin 1s linear infinite;"></i>
+            <p>Video yükleniyor...</p>
+        </div>
+    `;
+};
+
+export const hideLoadingOverlay = (containerId = null) => {
+    const overlay = document.getElementById('player-overlay');
+    if (!overlay) return;
+    overlay.classList.add('hidden');
+    
+    // Optionally hide skeleton on container
+    if (containerId) {
+        hideSkeleton(containerId);
+    }
+};

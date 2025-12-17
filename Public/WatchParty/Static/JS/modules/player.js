@@ -1,7 +1,7 @@
 // Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 import { formatTime, formatDuration, logger } from './utils.min.js';
-import { showToast, updateSyncInfoText, hideSkeleton } from './ui.min.js';
+import { showToast, updateSyncInfoText, hideSkeleton, showLoadingOverlay, hideLoadingOverlay } from './ui.min.js';
 
 // ============== Player States ==============
 const PlayerState = {
@@ -315,6 +315,9 @@ export const loadVideo = async (url, format = 'hls', headers = {}, title = '', s
 
     state.playerState = PlayerState.LOADING;
     
+    // Show loading overlay with skeleton
+    showLoadingOverlay('player-container');
+    
     // Hide export button until video loads successfully
     const exportBtn = document.getElementById('export-room-btn');
     if (exportBtn) exportBtn.style.display = 'none';
@@ -325,8 +328,6 @@ export const loadVideo = async (url, format = 'hls', headers = {}, title = '', s
         state.hls = null;
     }
     videoPlayer.querySelectorAll('track').forEach(t => t.remove());
-    playerOverlay.classList.add('hidden');
-    hideSkeleton('player-container');
 
     // Content-Type Pre-check (via Proxy HEAD)
     let detectedFormat = format;
@@ -382,10 +383,20 @@ export const loadVideo = async (url, format = 'hls', headers = {}, title = '', s
     state.lastLoadedUrl = url;
     state.playerState = success ? PlayerState.READY : PlayerState.IDLE;
     
-    // Show export button if video loaded successfully
+    // Hide loading overlay and show export button if video loaded successfully
     if (success) {
+        hideLoadingOverlay('player-container');
         const exportBtn = document.getElementById('export-room-btn');
         if (exportBtn) exportBtn.style.display = '';
+    } else {
+        // If failed, restore the original overlay message
+        playerOverlay.classList.remove('hidden');
+        playerOverlay.innerHTML = `
+            <div class="wp-player-message">
+                <i class="fa-solid fa-film"></i>
+                <p>Video izlemek için yukarıdan bir URL girin</p>
+            </div>
+        `;
     }
     
     return success;

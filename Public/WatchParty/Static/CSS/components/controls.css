@@ -226,4 +226,8 @@
     body.video-playing .controls-toggle {
         display: none !important;
     }
+
+    body.video-playing .wp-video-input-container {
+        display: none !important;
+    }
 }

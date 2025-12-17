@@ -2,7 +2,7 @@
 
 // Module Imports
 import { generateRandomUser } from './modules/utils.min.js';
-import { initUI, showToast, copyRoomLink, toggleElement, showSkeleton } from './modules/ui.min.js';
+import { initUI, showToast, copyRoomLink, toggleElement, showLoadingOverlay } from './modules/ui.min.js';
 import { initChat, addChatMessage, addSystemMessage, updateUsersList, loadChatHistory, setCurrentUsername } from './modules/chat.min.js';
 import {
     initPlayer,
@@ -105,8 +105,6 @@ const handleChatMessage = (msg) => {
 };
 
 const handleVideoChanged = async (msg) => {
-    showSkeleton('player-container');
-    
     // Headerları normalize et
     const headers = msg.headers || {};
     const userAgent = msg.user_agent || headers['User-Agent'] || headers['user-agent'] || '';
@@ -130,6 +128,14 @@ const handleVideoChanged = async (msg) => {
     updateVideoInfo(msg.title, msg.duration);
     showToast(`${msg.changed_by || 'Birisi'} yeni video yükledi`, 'info');
     addSystemMessage(`🎥 Yeni video: ${msg.title || 'Video'}`);
+    
+    // Close input container after video loads successfully
+    const inputContainer = document.getElementById('video-input-container');
+    if (inputContainer && inputContainer.style.display !== 'none') {
+        inputContainer.style.display = 'none';
+        const toggleBtn = document.querySelector('.controls-toggle');
+        if (toggleBtn) toggleBtn.classList.remove('active');
+    }
 };
 
 // ============== Player Callbacks ==============
@@ -170,7 +176,7 @@ const setupGlobalActions = () => {
             return;
         }
 
-        showSkeleton('player-container');
+        showLoadingOverlay('player-container');
         send('video_change', { url, user_agent: userAgent, referer, subtitle_url: subtitleUrl });
     };
 
@@ -264,16 +270,16 @@ const init = async () => {
         // Autoload video if parameters exist
         if (window.AUTOLOAD?.url) {
             const { url, title, user_agent, referer, subtitle } = window.AUTOLOAD;
-            
+
             // Show input container
-            // const inputContainer = document.getElementById('video-input-container');
-            // if (inputContainer) {
-            //     inputContainer.style.display = '';
-            //     // Toggle button'u aktif yap
-            //     const toggleBtn = document.querySelector('.controls-toggle');
-            //     if (toggleBtn) toggleBtn.classList.add('active');
-            // }
-            
+            const inputContainer = document.getElementById('video-input-container');
+            if (inputContainer) {
+                inputContainer.style.display = '';
+                // Toggle button'u aktif yap
+                const toggleBtn = document.querySelector('.controls-toggle');
+                if (toggleBtn) toggleBtn.classList.add('active');
+            }
+
             // Fill form inputs
             const urlInput = document.getElementById('video-url-input');
             const uaInput = document.getElementById('custom-user-agent');
@@ -293,7 +299,7 @@ const init = async () => {
 
             // Trigger video change after small delay (wait for room state)
             setTimeout(() => {
-                showSkeleton('player-container');
+                showLoadingOverlay('player-container');
                 send('video_change', { 
                     url, 
                     title: title || '', 
