@@ -116,6 +116,9 @@ class MessageHandler:
         current_time = message.get("time", 0.0)
         room = await watch_party_manager.get_room(self.room_id)
         if room:
+            # Seek zamanını kaydet (post-seek buffer ignore için)
+            room.last_seek_time = datetime.now().timestamp()
+
             await watch_party_manager.update_playback_state(self.room_id, room.is_playing, current_time)
 
             await watch_party_manager.broadcast_to_room(self.room_id, {
@@ -231,7 +234,21 @@ class MessageHandler:
 
         current_timestamp = datetime.now().timestamp()
 
-        # Minimum buffering threshold: Son buffer_start'tan beri <2 saniye geçmişse ignore et
+        # 1. İlk buffer kontrolü: Oda ilk açıldığında veya video ilk yüklendiğinde
+        # her zaman bir "initialization buffer" olur - bunu ignore et
+        if room.last_buffer_start_time == 0.0:
+            room.last_buffer_start_time = current_timestamp
+            await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, True)
+            return
+
+        # 2. Seek sonrası buffer kontrolü: Seek'ten sonra <500ms içindeki buffer'ları ignore et
+        # Seek zaten sync yapıyor, post-seek buffer gereksiz oda durdurması yaratır
+        time_since_seek = current_timestamp - room.last_seek_time
+        if time_since_seek < 0.5:
+            await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, True)
+            return
+
+        # 3. Minimum buffering threshold: Son buffer_start'tan beri <2 saniye geçmişse ignore et
         # Kısa buffering'ler (ağ jitter, kısa yükleme) için gereksiz pause önlenir
         time_since_last_buffer = current_timestamp - room.last_buffer_start_time
         if time_since_last_buffer < 2.0:
