@@ -217,10 +217,10 @@ const setupGlobalActions = () => {
 
         // Generate new random room ID
         const newRoomId = crypto.randomUUID().slice(0, 8).toUpperCase();
-        const title = document.getElementById('video-title')?.value.trim() || '';
-        const userAgent = document.getElementById('custom-user-agent')?.value.trim() || '';
-        const referer = document.getElementById('custom-referer')?.value.trim() || '';
-        const subtitle = document.getElementById('subtitle-url')?.value.trim() || '';
+        const title = document.getElementById('video-title')?.textContent?.trim() || '';
+        const userAgent = document.getElementById('custom-user-agent')?.value?.trim() || '';
+        const referer = document.getElementById('custom-referer')?.value?.trim() || '';
+        const subtitle = document.getElementById('subtitle-url')?.value?.trim() || '';
 
         // Build shareable URL with new room ID
         const params = new URLSearchParams();
