@@ -537,8 +537,8 @@ export const handleSync = async (msg) => {
     
     const timeDiff = Math.abs(videoPlayer.currentTime - msg.current_time);
     
-    // Adjust time if needed (match backend dead zone)
-    if (timeDiff > 1.0) {
+    // Adjust time if needed (match backend dead zone of 0.5s)
+    if (timeDiff > 0.5) {
         logger.sync(`Adjustment: ${timeDiff.toFixed(2)}s`);
         videoPlayer.currentTime = msg.current_time;
         
@@ -585,8 +585,8 @@ export const handleSeek = async (msg) => {
 
     const timeDiff = Math.abs(videoPlayer.currentTime - msg.current_time);
 
-    // Only seek if difference is significant (prevents echo loops and stuck states)
-    if (timeDiff > 1.0) {
+    // Only seek if difference is significant (match backend dead zone)
+    if (timeDiff > 0.5) {
         state.isSyncing = true;
         videoPlayer.currentTime = msg.current_time;
         

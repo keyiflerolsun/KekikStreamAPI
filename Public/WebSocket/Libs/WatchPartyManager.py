@@ -197,13 +197,13 @@ class WatchPartyManager:
             # Drift Analizi ve Düzeltme
             correction = None
 
-            # Dead zone: Minimal drift ignore et (< 1.0 saniye)
-            # Network jitter ve küçük sapmalar için düzeltme yapma
-            if abs(drift) < 1.0:
+            # Dead zone: Minimal drift ignore et (< 0.5 saniye)
+            # Network jitter ve çok küçük sapmalar için düzeltme yapma
+            if abs(drift) < 0.5:
                 return  # Hiçbir correction gönderme
 
             # Büyük drift (> 3 saniye): Buffer simülasyonu
-            # Daha yüksek threshold ile sadece ciddi desenkronizasyonlarda tetikle
+            # Sadece ciddi desenkronizasyonlarda tetikle
             if abs(drift) > 3.0:
                 correction = {
                     "type"        : "sync_correction",
@@ -212,9 +212,8 @@ class WatchPartyManager:
                     "drift"       : drift
                 }
 
-            # Orta drift (> 1.5 saniye): Yumuşak hız ayarı
+            # Orta drift (1.5-3.0 saniye): Orta seviye hız ayarı
             # Gerideyse hızlan (1.05x), ilerideyse yavaşla (0.95x)
-            # Daha smooth düzeltme için aggresif rate değişikliği yerine yumuşak ayar
             elif drift < -1.5:
                 correction = {
                     "type"   : "sync_correction",
@@ -229,14 +228,25 @@ class WatchPartyManager:
                     "rate"   : 0.95,
                     "drift"  : drift
                 }
-            # Küçük drift (1.0-1.5 saniye): Normal hız
-            else:
+
+            # Küçük drift (0.5-1.5 saniye): Hafif hız ayarı
+            # Gerideyse hafif hızlan (1.02x), ilerideyse hafif yavaşla (0.98x)
+            # Daha smooth ve fark edilmeyen düzeltme
+            elif drift < -0.5:
                 correction = {
                     "type"   : "sync_correction",
                     "action" : "rate",
-                    "rate"   : 1.0,
+                    "rate"   : 1.02,
                     "drift"  : drift
                 }
+            elif drift > 0.5:
+                correction = {
+                    "type"   : "sync_correction",
+                    "action" : "rate",
+                    "rate"   : 0.98,
+                    "drift"  : drift
+                }
+
 
             if correction and user_id in room.users:
                 try:
