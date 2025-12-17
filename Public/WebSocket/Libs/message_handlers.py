@@ -186,6 +186,7 @@ class MessageHandler:
         changed = await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, True)
         if changed:
             room_state = watch_party_manager.get_room_state(self.room_id)
+            await watch_party_manager.update_playback_state(self.room_id, False, room_state["current_time"])
             await watch_party_manager.broadcast_to_room(self.room_id, {
                 "type"         : "sync",
                 "is_playing"   : False,
