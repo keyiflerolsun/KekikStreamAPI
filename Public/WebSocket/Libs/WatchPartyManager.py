@@ -3,8 +3,10 @@
 from fastapi  import WebSocket
 from datetime import datetime
 from ..Models import User, Room, ChatMessage
-from .message_handlers import DEBOUNCE_WINDOW
 import json, asyncio
+
+# ============== Timing Constants (seconds) ==============
+DEBOUNCE_WINDOW = 1.0       # Genel debounce penceresi (tüm race condition'lar için)
 
 class WatchPartyManager:
     """Watch Party oda ve kullanıcı yönetimi"""
