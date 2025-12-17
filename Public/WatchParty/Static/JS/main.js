@@ -217,6 +217,7 @@ const setupGlobalActions = () => {
 
         // Generate new random room ID
         const newRoomId = crypto.randomUUID().slice(0, 8).toUpperCase();
+        const title = document.getElementById('video-title')?.value.trim() || '';
         const userAgent = document.getElementById('custom-user-agent')?.value.trim() || '';
         const referer = document.getElementById('custom-referer')?.value.trim() || '';
         const subtitle = document.getElementById('subtitle-url')?.value.trim() || '';
@@ -224,6 +225,7 @@ const setupGlobalActions = () => {
         // Build shareable URL with new room ID
         const params = new URLSearchParams();
         params.append('url', url);
+        if (title) params.append('title', title);
         if (userAgent) params.append('user_agent', userAgent);
         if (referer) params.append('referer', referer);
         if (subtitle) params.append('subtitle', subtitle);
