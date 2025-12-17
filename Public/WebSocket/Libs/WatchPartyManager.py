@@ -197,8 +197,14 @@ class WatchPartyManager:
             # Drift Analizi ve Düzeltme
             correction = None
 
-            # Büyük drift (> 2 saniye): Buffer simülasyonu
-            if abs(drift) > 2.0:
+            # Dead zone: Minimal drift ignore et (< 1.0 saniye)
+            # Network jitter ve küçük sapmalar için düzeltme yapma
+            if abs(drift) < 1.0:
+                return  # Hiçbir correction gönderme
+
+            # Büyük drift (> 3 saniye): Buffer simülasyonu
+            # Daha yüksek threshold ile sadece ciddi desenkronizasyonlarda tetikle
+            if abs(drift) > 3.0:
                 correction = {
                     "type"        : "sync_correction",
                     "action"      : "buffer",
@@ -206,23 +212,24 @@ class WatchPartyManager:
                     "drift"       : drift
                 }
 
-            # Küçük drift (> 0.5 saniye): Hız ayarı
-            # Gerideyse hızlan (1.1x), ilerideyse yavaşla (0.9x)
-            elif drift < -0.5:
+            # Orta drift (> 1.5 saniye): Yumuşak hız ayarı
+            # Gerideyse hızlan (1.05x), ilerideyse yavaşla (0.95x)
+            # Daha smooth düzeltme için aggresif rate değişikliği yerine yumuşak ayar
+            elif drift < -1.5:
                 correction = {
                     "type"   : "sync_correction",
                     "action" : "rate",
-                    "rate"   : 1.1,
+                    "rate"   : 1.05,
                     "drift"  : drift
                 }
-            elif drift > 0.5:
+            elif drift > 1.5:
                 correction = {
                     "type"   : "sync_correction",
                     "action" : "rate",
-                    "rate"   : 0.9,
+                    "rate"   : 0.95,
                     "drift"  : drift
                 }
-            # Drift yoksa (< 0.5 saniye): Normal hız
+            # Küçük drift (1.0-1.5 saniye): Normal hız
             else:
                 correction = {
                     "type"   : "sync_correction",

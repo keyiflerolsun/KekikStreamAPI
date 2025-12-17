@@ -537,8 +537,8 @@ export const handleSync = async (msg) => {
     
     const timeDiff = Math.abs(videoPlayer.currentTime - msg.current_time);
     
-    // Adjust time if needed
-    if (timeDiff > 0.5) {
+    // Adjust time if needed (match backend dead zone)
+    if (timeDiff > 1.0) {
         logger.sync(`Adjustment: ${timeDiff.toFixed(2)}s`);
         videoPlayer.currentTime = msg.current_time;
         
@@ -586,7 +586,7 @@ export const handleSeek = async (msg) => {
     const timeDiff = Math.abs(videoPlayer.currentTime - msg.current_time);
 
     // Only seek if difference is significant (prevents echo loops and stuck states)
-    if (timeDiff > 0.5) {
+    if (timeDiff > 1.0) {
         state.isSyncing = true;
         videoPlayer.currentTime = msg.current_time;
         
@@ -623,7 +623,8 @@ export const handleSyncCorrection = async (msg) => {
     
     if (msg.action === 'rate') {
         const rate = msg.rate || 1.0;
-        if (Math.abs(videoPlayer.playbackRate - rate) > 0.01) {
+        // Increased threshold to reduce frequent playback rate changes
+        if (Math.abs(videoPlayer.playbackRate - rate) > 0.02) {
             logger.sync(`Rate: ${rate}x (drift: ${msg.drift.toFixed(2)}s)`);
             videoPlayer.playbackRate = rate;
         }

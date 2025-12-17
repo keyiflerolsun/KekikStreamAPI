@@ -228,19 +228,32 @@ class MessageHandler:
         room = await watch_party_manager.get_room(self.room_id)
         if not room:
             return
-        
+
+        current_timestamp = datetime.now().timestamp()
+
+        # Minimum buffering threshold: Son buffer_start'tan beri <2 saniye geçmişse ignore et
+        # Kısa buffering'ler (ağ jitter, kısa yükleme) için gereksiz pause önlenir
+        time_since_last_buffer = current_timestamp - room.last_buffer_start_time
+        if time_since_last_buffer < 2.0:
+            # Sadece listeye ekle, odayı durdurma
+            await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, True)
+            return
+
+        # Buffer_start zamanını kaydet
+        room.last_buffer_start_time = current_timestamp
+
         # Eğer video oynatılıyorsa önce durdur
         was_playing = room.is_playing
         if was_playing:
             # Current time'ı güncelle (video oynarken geçen süreyi ekle)
-            elapsed = datetime.now().timestamp() - room.updated_at
+            elapsed = current_timestamp - room.updated_at
             current_time = room.current_time + elapsed
-            
+
             await watch_party_manager.update_playback_state(self.room_id, False, current_time)
-            
+
             # Buffering listesine ekle
             await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, True)
-            
+
             await watch_party_manager.broadcast_to_room(self.room_id, {
                 "type"         : "sync",
                 "is_playing"   : False,
