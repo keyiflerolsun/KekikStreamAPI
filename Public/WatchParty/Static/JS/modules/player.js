@@ -537,9 +537,13 @@ export const handleSync = async (msg) => {
     
     const timeDiff = Math.abs(videoPlayer.currentTime - msg.current_time);
     
-    // Adjust time if needed (match backend dead zone of 0.5s)
-    if (timeDiff > 0.5) {
-        logger.sync(`Adjustment: ${timeDiff.toFixed(2)}s`);
+    // Adjust time if needed
+    // force_seek: pause durumunda kesin sync (threshold bypass)
+    // normal: 0.5s threshold
+    const shouldSeek = msg.force_seek || timeDiff > 0.5;
+    
+    if (shouldSeek) {
+        logger.sync(`${msg.force_seek ? 'Force sync' : 'Adjustment'}: ${timeDiff.toFixed(2)}s`);
         videoPlayer.currentTime = msg.current_time;
         
         // Wait for seek to complete (with longer timeout)

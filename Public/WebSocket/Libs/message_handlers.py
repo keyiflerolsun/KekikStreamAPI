@@ -108,6 +108,7 @@ class MessageHandler:
             "type"         : "sync",
             "is_playing"   : False,
             "current_time" : current_time,
+            "force_seek"   : True,  # Pause durumunda kesin sync için
             "triggered_by" : self.user.username
         }, exclude_user_id=self.user.user_id)
 
