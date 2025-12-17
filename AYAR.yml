@@ -5,4 +5,4 @@ APP   :
   HOST    : 0.0.0.0
   PORT    : 3310
   PROXY_ENABLED : true      # ! Watch Party proxy özelliği (bant genişliği için false yapılabilir)
-  AVAILABILITY_CHECK : false # ! Eklenti kullanılabilirlik kontrolü
+  AVAILABILITY_CHECK : true # ! Eklenti kullanılabilirlik kontrolü
