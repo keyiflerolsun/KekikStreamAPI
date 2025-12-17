@@ -125,25 +125,36 @@ class MessageHandler:
         current_time = message.get("time", 0.0)
         room = await watch_party_manager.get_room(self.room_id)
         if room:
+            now = datetime.now().timestamp()
+            
             # Seek zamanını kaydet (post-seek buffer ignore için)
-            room.last_seek_time = datetime.now().timestamp()
+            room.last_seek_time = now
 
             # Seek öncesi playback state'i sakla
             was_playing = room.is_playing
 
+            # Seek deduplicate: Aynı pozisyona çok yakın zamanda seek varsa, sadece state güncelle
+            time_diff_from_last = abs(room.current_time - current_time)
+            time_since_last_seek = now - room.last_seek_time
+            
             # Seek sadece pozisyonu değiştirir, playback state'i korur
             await watch_party_manager.update_playback_state(self.room_id, room.is_playing, current_time)
 
-            # Seek broadcast (sadece pozisyon)
-            await watch_party_manager.broadcast_to_room(self.room_id, {
-                "type"         : "seek",
-                "current_time" : current_time,
-                "triggered_by" : self.user.username
-            }, exclude_user_id=self.user.user_id)
+            # Eğer başka kullanıcı aynı yere az önce seek yaptıysa, broadcast'i skip et
+            should_broadcast = time_diff_from_last > 0.5 or time_since_last_seek > 0.2
+            
+            if should_broadcast:
+                # Seek broadcast (sadece pozisyon)
+                await watch_party_manager.broadcast_to_room(self.room_id, {
+                    "type"         : "seek",
+                    "current_time" : current_time,
+                    "triggered_by" : self.user.username
+                }, exclude_user_id=self.user.user_id)
 
             # Eğer oda playing durumundaysa, playback state'i sync et
             # (buffering sırasında seek yapılırsa, pause state kalıcı olmasın)
-            if was_playing:
+            # Sadece broadcast edildiğinde sync gönder
+            if was_playing and should_broadcast:
                 await watch_party_manager.broadcast_to_room(self.room_id, {
                     "type"         : "sync",
                     "is_playing"   : True,
@@ -324,6 +335,11 @@ class MessageHandler:
             return
         
         if not room.buffering_users and not room.is_playing:
+            # Son buffering çok eskiyse, bu manuel pause (auto-resume yapma)
+            time_since_buffer_start = now - room.last_buffer_start_time
+            if time_since_buffer_start > 5.0:
+                return  # Manuel pause, buffering değil
+            
             # Auto-resume zamanını kaydet
             room.last_auto_resume_time = now
 
