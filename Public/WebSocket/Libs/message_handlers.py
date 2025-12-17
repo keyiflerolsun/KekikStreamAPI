@@ -183,30 +183,50 @@ class MessageHandler:
 
     async def handle_buffer_start(self):
         """BUFFER_START mesajını işle"""
-        changed = await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, True)
-        if changed:
-            room_state = watch_party_manager.get_room_state(self.room_id)
-            await watch_party_manager.update_playback_state(self.room_id, False, room_state["current_time"])
+        room = await watch_party_manager.get_room(self.room_id)
+        if not room:
+            return
+        
+        # Eğer video oynatılıyorsa önce durdur
+        was_playing = room.is_playing
+        if was_playing:
+            # Current time'ı güncelle (video oynarken geçen süreyi ekle)
+            from datetime import datetime
+            elapsed = datetime.now().timestamp() - room.updated_at
+            current_time = room.current_time + elapsed
+            
+            await watch_party_manager.update_playback_state(self.room_id, False, current_time)
+            
+            # Buffering listesine ekle
+            await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, True)
+            
             await watch_party_manager.broadcast_to_room(self.room_id, {
                 "type"         : "sync",
                 "is_playing"   : False,
-                "current_time" : room_state["current_time"],
+                "current_time" : current_time,
                 "triggered_by" : f"{self.user.username} (Buffering...)"
             })
+        else:
+            # Sadece listeye ekle
+            await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, True)
 
     async def handle_buffer_end(self):
         """BUFFER_END mesajını işle"""
-        changed = await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, False)
-        if changed:
-            room = await watch_party_manager.get_room(self.room_id)
-            if room and not room.buffering_users and not room.is_playing:
-                await watch_party_manager.update_playback_state(self.room_id, True, room.current_time)
-                await watch_party_manager.broadcast_to_room(self.room_id, {
-                    "type"         : "sync",
-                    "is_playing"   : True,
-                    "current_time" : room.current_time,
-                    "triggered_by" : "System (Buffering Complete)"
-                })
+        await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, False)
+        
+        room = await watch_party_manager.get_room(self.room_id)
+        if not room:
+            return
+        
+        # Eğer kimse bufferlamıyorsa ve video durmuşsa otomatik başlat
+        if not room.buffering_users and not room.is_playing:
+            await watch_party_manager.update_playback_state(self.room_id, True, room.current_time)
+            await watch_party_manager.broadcast_to_room(self.room_id, {
+                "type"         : "sync",
+                "is_playing"   : True,
+                "current_time" : room.current_time,
+                "triggered_by" : "System (Buffering Complete)"
+            })
 
     async def handle_get_state(self):
         """GET_STATE mesajını işle"""

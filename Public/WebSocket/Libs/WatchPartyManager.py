@@ -93,30 +93,19 @@ class WatchPartyManager:
         return True
 
     async def set_buffering_status(self, room_id: str, user_id: str, is_buffering: bool) -> bool:
-        """Kullanıcının buffering durumunu güncelle"""
+        """Kullanıcının buffering durumunu güncelle - sadece liste yönetimi"""
         room = self.rooms.get(room_id)
         if not room:
             return False
 
         if is_buffering:
-            room.buffering_users.add(user_id)
-            # Eğer oynatılıyorsa duraklat
-            if room.is_playing:
-                # Odayı duraklat ama current_time'ı güncelle
-                elapsed = datetime.now().timestamp() - room.updated_at
-                room.current_time += elapsed
-                room.is_playing = False
-                room.updated_at = datetime.now().timestamp()
-                return True # Durum değişti, broadcast lazım
+            if user_id not in room.buffering_users:
+                room.buffering_users.add(user_id)
+                return True
         else:
             if user_id in room.buffering_users:
                 room.buffering_users.remove(user_id)
-                # Eğer kimse bufferlamıyorsa ve önceden buffer yüzünden durduysa devam et?
-                # Otomatik başlatma mantığı (herkes hazırsa)
-                if not room.buffering_users:
-                    room.is_playing = True
-                    room.updated_at = datetime.now().timestamp()
-                    return True # Durum değişti
+                return True
 
         return False
 
