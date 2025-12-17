@@ -43,7 +43,7 @@ def prepare_request_headers(request: Request, url: str, referer: str | None, use
     headers = {
         "Accept"          : "*/*",
         "Accept-Encoding" : "identity",
-        "Connection"      : "keep-alive",
+        "Connection"      : "keep-alive"
     }
     
     # User-Agent ayarı
