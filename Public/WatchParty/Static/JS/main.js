@@ -153,11 +153,10 @@ const setupPlayerCallbacks = () => {
 // ============== Heartbeat ==============
 const setupHeartbeat = () => {
     setHeartbeatDataProvider(() => {
-        const payload = {};
-        if (isPlaying()) {
-            payload.current_time = getCurrentTime();
-        }
-        return payload;
+        // Her zaman current_time gönder (video durmuşsa da sync için gerekli)
+        return {
+            current_time: getCurrentTime()
+        };
     });
 };
 

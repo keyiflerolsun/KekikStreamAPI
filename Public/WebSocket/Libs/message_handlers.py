@@ -219,12 +219,18 @@ class MessageHandler:
 
     async def handle_ping(self, message: dict):
         """PING mesajını işle"""
-        await self.websocket.send_text(json.dumps({"type": "pong"}))
+        # Client'tan gelen _ping_id'yi geri döndür (RTT hesabı için)
+        ping_id = message.get("_ping_id")
+        pong_response = {"type": "pong"}
+        if ping_id is not None:
+            pong_response["_ping_id"] = ping_id
+        
+        await self.websocket.send_text(json.dumps(pong_response))
 
+        # Her zaman current_time gönderilir (video durmuşsa bile)
         if self.user:
-            client_time = message.get("current_time")
-            if client_time is not None:
-                await watch_party_manager.handle_heartbeat(self.room_id, self.user.user_id, float(client_time))
+            client_time = message.get("current_time", 0.0)
+            await watch_party_manager.handle_heartbeat(self.room_id, self.user.user_id, float(client_time))
 
     async def handle_buffer_start(self):
         """BUFFER_START mesajını işle"""
