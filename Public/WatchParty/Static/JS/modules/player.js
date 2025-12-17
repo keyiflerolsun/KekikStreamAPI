@@ -97,6 +97,10 @@ export const setupVideoEventListeners = () => {
 
     videoPlayer.addEventListener('playing', () => {
         if (state.playerState === PlayerState.WAITING_INTERACTION) return;
+        // Senkronizasyon işlemleri sırasında buffer_end göndermeyin
+        if (state.isSyncing) return;
+        // Gerçekten oynuyorsa buffer_end'i gönderin
+        if (state.playerState !== PlayerState.PLAYING) return;
         callbacks.onBufferEnd?.();
     });
 };

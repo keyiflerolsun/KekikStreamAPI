@@ -48,6 +48,12 @@ class MessageHandler:
     async def handle_play(self, message: dict):
         """PLAY mesajını işle"""
         current_time = message.get("time", 0.0)
+        
+        # Manuel play yapıldığında buffer listesini temizle
+        room = await watch_party_manager.get_room(self.room_id)
+        if room:
+            room.buffering_users.clear()
+        
         await watch_party_manager.update_playback_state(self.room_id, True, current_time)
 
         await watch_party_manager.broadcast_to_room(self.room_id, {

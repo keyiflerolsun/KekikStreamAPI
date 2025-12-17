@@ -86,10 +86,6 @@ class WatchPartyManager:
         room.current_time = current_time
         room.updated_at   = datetime.now().timestamp()
 
-        # Eğer manuel oynatma yapıldıysa buffer listesini temizle
-        if is_playing:
-            room.buffering_users.clear()
-
         return True
 
     async def set_buffering_status(self, room_id: str, user_id: str, is_buffering: bool) -> bool:
