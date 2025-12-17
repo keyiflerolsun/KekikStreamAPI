@@ -3,6 +3,7 @@
 from fastapi  import WebSocket
 from datetime import datetime
 from ..Models import User, Room, ChatMessage
+from .message_handlers import DEBOUNCE_WINDOW
 import json, asyncio
 
 class WatchPartyManager:
@@ -193,6 +194,11 @@ class WatchPartyManager:
             # Sadece oynatılıyorsa drift düzeltmesi yap
             if not room.is_playing:
                 return
+
+            # Seek sonrası drift hesaplama yapma (kullanıcılar henüz sync olmadı)
+            time_since_seek = datetime.now().timestamp() - room.last_seek_time
+            if time_since_seek < DEBOUNCE_WINDOW:
+                return  # Seek sonrası 1s içinde drift ignore
 
             # Drift Analizi ve Düzeltme
             correction = None
