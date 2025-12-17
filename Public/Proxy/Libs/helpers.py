@@ -2,8 +2,8 @@
 
 from CLI          import konsol
 from fastapi      import Request
-from urllib.parse import unquote
-import httpx, traceback
+from urllib.parse import unquote, urljoin, urlencode, quote
+import httpx, traceback, re
 
 DEFAULT_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5)"
 DEFAULT_REFERER    = "https://twitter.com/"
@@ -86,6 +86,59 @@ def detect_hls_from_url(url: str) -> bool:
     """URL yapısından HLS olup olmadığını tahmin eder"""
     indicators = (".m3u8", "/m.php", "/l.php", "/ld.php", "master.txt", "embed/sheila")
     return any(x in url for x in indicators)
+
+def rewrite_hls_manifest(content: bytes, base_url: str, referer: str = None) -> bytes:
+    """
+    HLS manifest içindeki göreceli URL'leri proxy URL'lerine dönüştürür.
+    
+    Args:
+        content: HLS manifest içeriği (bytes)
+        base_url: Orijinal manifest URL'i (göreceli URL'lerin çözümleneceği base)
+        referer: Referer header değeri
+    
+    Returns:
+        Yeniden yazılmış manifest içeriği (bytes)
+    """
+    try:
+        text = content.decode('utf-8')
+    except UnicodeDecodeError:
+        return content  # Binary içerik, değiştirme
+    
+    # HLS manifest değilse değiştirme
+    if not text.strip().startswith('#EXTM3U'):
+        return content
+    
+    lines = text.split('\n')
+    new_lines = []
+    
+    for line in lines:
+        stripped = line.strip()
+        
+        # URI="..." içeren satırları işle (audio/subtitle tracks)
+        if 'URI="' in line:
+            def replace_uri(match):
+                uri = match.group(1)
+                absolute_url = urljoin(base_url, uri)
+                proxy_url = f'/proxy/video?url={quote(absolute_url, safe="")}'
+                if referer:
+                    proxy_url += f'&referer={quote(referer, safe="")}'
+                return f'URI="{proxy_url}"'
+            
+            line = re.sub(r'URI="([^"]+)"', replace_uri, line)
+            new_lines.append(line)
+        
+        # Segment URL satırları (# ile başlamayan ve boş olmayan)
+        elif stripped and not stripped.startswith('#'):
+            absolute_url = urljoin(base_url, stripped)
+            proxy_url = f'/proxy/video?url={quote(absolute_url, safe="")}'
+            if referer:
+                proxy_url += f'&referer={quote(referer, safe="")}'
+            new_lines.append(proxy_url)
+        
+        else:
+            new_lines.append(line)
+    
+    return '\n'.join(new_lines).encode('utf-8')
 
 async def stream_wrapper(response: httpx.Response):
     """Response içeriğini yield eder ve HLS kontrolü yapar"""

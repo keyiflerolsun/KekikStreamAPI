@@ -13,7 +13,7 @@ async def subtitle_proxy(request: Request, url: str, referer: str = None, user_a
         decoded_url     = unquote(url)
         request_headers = prepare_request_headers(request, decoded_url, referer, user_agent)
         
-        async with httpx.AsyncClient(follow_redirects=True, timeout=30.0) as client:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=30.0, verify=False) as client:
             response = await client.get(decoded_url, headers=request_headers)
             
             if response.status_code >= 400:

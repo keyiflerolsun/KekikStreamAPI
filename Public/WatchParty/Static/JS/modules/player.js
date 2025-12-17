@@ -155,42 +155,18 @@ const loadHls = (url, headers = {}, useProxy = false) => {
             maxLoadingDelay: 4,
             minAutoBitrate: 0,
             xhrSetup: (!useProxy && !isProxyEnabled) ? undefined : (xhr, requestUrl) => {
-                // Eğer zaten proxy URL'i ise veya video endpoint'i ise dokunma
+                // Eğer zaten proxy URL'i ise dokunma
                 if (requestUrl.includes('/proxy/video')) {
                     return;
                 }
 
-                // URL Çözümleme ve Proxy Yönlendirme
+                // Tüm istekleri proxy üzerinden yönlendir
+                // Backend HLS manifest URL'lerini otomatik olarak yeniden yazıyor
                 try {
-                    let targetUrl = requestUrl;
-                    const originalVideoUrl = new URL(url);
-
-                    // 1. Göreceli URL Kontrolü
-                    if (!requestUrl.startsWith('http')) {
-                        if (requestUrl.startsWith('/')) {
-                            targetUrl = originalVideoUrl.origin + requestUrl;
-                        } else {
-                            const baseUrl = url.substring(0, url.lastIndexOf('/') + 1);
-                            targetUrl = baseUrl + requestUrl;
-                        }
-                    }
-                    // 2. Absolute URL ama hostname aynı (sunucuya hatalı yönlenmiş)
-                    else if (requestUrl.includes(window.location.hostname)) {
-                        const urlObj = new URL(requestUrl);
-                        // Eğer dosya adı orijinal URL path'inde varsa veya .ts/.key gibi uzantılarsa
-                         const baseUrl = url.substring(0, url.lastIndexOf('/') + 1);
-                         const filename = urlObj.pathname.split('/').pop();
-                         targetUrl = baseUrl + filename + urlObj.search;
-                    }
-
-                    // Proxy URL oluştur - Headers closure'dan geliyor
-                    // logger.video(`HLS Segment: ${targetUrl}`);
-                    const proxyUrl = buildProxyUrl(targetUrl, headers, 'video');
+                    const proxyUrl = buildProxyUrl(requestUrl, headers, 'video');
                     xhr.open('GET', proxyUrl, true);
-                    
                 } catch (e) {
                     console.error('HLS Proxy Error:', e);
-                    // Hata durumunda proxy ile sarmala ve devam et
                     xhr.open('GET', buildProxyUrl(requestUrl, headers, 'video'), true);
                 }
             }

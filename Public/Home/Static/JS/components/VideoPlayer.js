@@ -409,62 +409,19 @@ export default class VideoPlayer {
                     xhrSetup: (xhr, url) => {
                         try {
                             // URL'nin zaten bir proxy URL'i olup olmadığını kontrol et
-                            if (url.includes('/proxy/video') && url.includes(window.location.hostname)) {
-                                // Zaten proxy URL'i olduğu için değiştirme
+                            if (url.includes('/proxy/video')) {
+                                // Zaten proxy URL'i, direkt kullan
                                 xhr.open('GET', url, true);
                                 return;
                             }
 
-                            // URL protokol kontrolü
-                            if (url.startsWith('http')) {
-                                this.logger.info('Segment URL yakalandı', url);
-
-                                // URL işleme için daha güvenilir yöntem
-                                let newUrl = url;
-                                const originalVideoUrl = new URL(originalUrl);
-
-                                // Göreceli URL'leri işle
-                                if (!url.includes('://')) {
-                                    // URL'nin başında / varsa, origin kullan, yoksa tam path kullan
-                                    if (url.startsWith('/')) {
-                                        newUrl = originalVideoUrl.origin + url;
-                                    } else {
-                                        const baseUrl = originalUrl.substring(0, originalUrl.lastIndexOf('/') + 1);
-                                        newUrl = baseUrl + url;
-                                    }
-                                }
-                                // Sunucuya yönlendirilen istekleri işle - ancak zaten proxy URL'leri hariç tut
-                                else if (url.includes(window.location.hostname) && !url.includes('/proxy/video')) {
-                                    // URL'yi ayrıştır
-                                    const urlObj = new URL(url);
-                                    const pathParts = urlObj.pathname.split('/');
-                                    const filename = pathParts[pathParts.length - 1];
-
-                                    // urlset dizini için özel işleme
-                                    if (originalUrl.includes('.urlset/')) {
-                                        const urlsetIndex = originalUrl.indexOf('.urlset/');
-                                        if (urlsetIndex !== -1) {
-                                            const urlsetBase = originalUrl.substring(0, urlsetIndex + 8);
-                                            newUrl = urlsetBase + filename + urlObj.search;
-                                        }
-                                    } else {
-                                        // Orijinal URL'den base path çıkar
-                                        const basePath = originalVideoUrl.pathname.substring(0, originalVideoUrl.pathname.lastIndexOf('/') + 1);
-                                        newUrl = originalVideoUrl.origin + basePath + filename + urlObj.search;
-                                    }
-                                }
-
-                                if (newUrl !== url) {
-                                    this.logger.info('Segment URL düzeltildi', { original: url, new: newUrl });
-                                }
-
-                                // Proxy URL'i oluştur
-                                const newProxyUrl = `/proxy/video?url=${encodeURIComponent(newUrl)}&referer=${encodeURIComponent(referer)}&headers=${encodeURIComponent(JSON.stringify(headers))}`;
-                                xhr.open('GET', newProxyUrl, true);
-                            }
+                            // Tüm diğer URL'leri proxy üzerinden yönlendir
+                            this.logger.info('Segment URL proxy\'ye yönlendiriliyor', url);
+                            const newProxyUrl = `/proxy/video?url=${encodeURIComponent(url)}&referer=${encodeURIComponent(referer)}&headers=${encodeURIComponent(JSON.stringify(headers))}`;
+                            xhr.open('GET', newProxyUrl, true);
                         } catch (error) {
                             this.logger.error('xhrSetup hatası', error.message);
-                            // Hata durumunda orijinal URL'yi kullan
+                            // Hata durumunda orijinal URL'yi proxy ile kullan
                             const fallbackUrl = `/proxy/video?url=${encodeURIComponent(url)}&referer=${encodeURIComponent(referer)}&headers=${encodeURIComponent(JSON.stringify(headers))}`;
                             xhr.open('GET', fallbackUrl, true);
                         }

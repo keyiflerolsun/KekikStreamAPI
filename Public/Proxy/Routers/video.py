@@ -5,7 +5,7 @@ from fastapi              import Request, Response
 from starlette.background import BackgroundTask
 from fastapi.responses    import StreamingResponse
 from .                    import proxy_router
-from ..Libs.helpers       import prepare_request_headers, prepare_response_headers, detect_hls_from_url, stream_wrapper
+from ..Libs.helpers       import prepare_request_headers, prepare_response_headers, detect_hls_from_url, stream_wrapper, rewrite_hls_manifest
 from urllib.parse         import unquote
 import httpx
 
@@ -16,13 +16,18 @@ async def video_proxy(request: Request, url: str, referer: str = None, user_agen
     decoded_url     = unquote(url)
     request_headers = prepare_request_headers(request, decoded_url, referer, user_agent)
 
-    # Client oluştur
+    # Client oluştur (SSL doğrulaması devre dışı - bazı sunucular self-signed sertifika kullanıyor)
     client = httpx.AsyncClient(
         follow_redirects = True,
         timeout          = httpx.Timeout(connect=10.0, read=60.0, write=10.0, pool=10.0),
+        verify           = False,
     )
     
     try:
+        # HLS Tahmini (URL'den)
+        is_hls = detect_hls_from_url(decoded_url)
+        detected_content_type = "application/vnd.apple.mpegurl" if is_hls else None
+        
         # GET isteğini başlat
         req = client.build_request("GET", decoded_url, headers=request_headers)
         response = await client.send(req, stream=True)
@@ -33,9 +38,6 @@ async def video_proxy(request: Request, url: str, referer: str = None, user_agen
             return Response(status_code=response.status_code, content=f"Upstream Error: {response.status_code}")
 
         # Response headerlarını hazırla
-        # HLS Tahmini (URL'den)
-        detected_content_type = "application/vnd.apple.mpegurl" if detect_hls_from_url(decoded_url) else None
-        
         final_headers = prepare_response_headers(dict(response.headers), decoded_url, detected_content_type)
         
         # HEAD isteği ise stream yapma, kapat ve dön
@@ -49,7 +51,27 @@ async def video_proxy(request: Request, url: str, referer: str = None, user_agen
                 media_type  = final_headers.get("Content-Type")
             )
 
-        # GET isteği - StreamingResponse döndür
+        # HLS manifest ise içeriği yeniden yaz
+        if is_hls:
+            # Tüm içeriği oku
+            content = await response.aread()
+            await response.aclose()
+            await client.aclose()
+            
+            # Manifest URL'lerini yeniden yaz
+            rewritten_content = rewrite_hls_manifest(content, decoded_url, referer)
+            
+            # Content-Length güncelle
+            final_headers["Content-Length"] = str(len(rewritten_content))
+            
+            return Response(
+                content     = rewritten_content,
+                status_code = response.status_code,
+                headers     = final_headers,
+                media_type  = final_headers.get("Content-Type")
+            )
+
+        # Normal video - StreamingResponse döndür
         return StreamingResponse(
             stream_wrapper(response),
             status_code = response.status_code,
