@@ -152,8 +152,10 @@ const setupPlayerCallbacks = () => {
 
 // ============== Heartbeat ==============
 const setupHeartbeat = () => {
+    // Setup heartbeat with video time
     setHeartbeatDataProvider(() => {
-        // Her zaman current_time gönder (video durmuşsa da sync için gerekli)
+        // Her zaman current_time gönder (paused durumda bile)
+        // Backend drift hesaplamak için buna ihtiyaç duyuyor
         return {
             current_time: getCurrentTime()
         };

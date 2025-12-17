@@ -39,6 +39,7 @@ class Room:
     buffering_users : set[str]   = field(default_factory=set)
     last_auto_resume_time  : float = 0.0  # Son auto-resume zamanı - gecikmeli pause önleme
     last_play_time         : float = 0.0  # Son play zamanı - gecikmeli pause önleme
+    last_pause_time        : float = 0.0  # Son manuel pause zamanı - pause sonrası auto-resume önleme
     last_buffer_end_time   : float = 0.0  # Son buffer_end zamanı - gecikmeli pause önleme
     last_buffer_start_time : float = 0.0  # Son buffer_start zamanı - kısa buffer ignore
     last_seek_time         : float = 0.0  # Son seek zamanı - seek sonrası buffer ignore

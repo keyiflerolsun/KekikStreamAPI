@@ -102,6 +102,9 @@ class MessageHandler:
         if time_since_auto_resume < 0.3:  # 300ms debounce
             return
 
+        # Pause zamanını kaydet (auto-resume önleme için)
+        room.last_pause_time = datetime.now().timestamp()
+
         await watch_party_manager.update_playback_state(self.room_id, False, current_time)
 
         await watch_party_manager.broadcast_to_room(self.room_id, {
@@ -300,9 +303,17 @@ class MessageHandler:
         await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, False)
 
         # Eğer kimse bufferda değilse VE video durmuşsa, otomatik başlat
+        # ÖNEMLI: Manuel pause sonrası auto-resume yapma (500ms pencere)
+        current_timestamp = datetime.now().timestamp()
+        time_since_pause = current_timestamp - room.last_pause_time
+        
+        if time_since_pause < 0.5:
+            # Yeni pause yapılmış, auto-resume yapma
+            return
+        
         if not room.buffering_users and not room.is_playing:
             # Auto-resume zamanını kaydet
-            room.last_auto_resume_time = datetime.now().timestamp()
+            room.last_auto_resume_time = current_timestamp
 
             await watch_party_manager.update_playback_state(self.room_id, True, room.current_time)
 

@@ -510,6 +510,11 @@ export const applyState = async (serverState) => {
             state.isSyncing = false;
             showInteractionPrompt();
             return;
+        } else {
+            // Diğer play hataları
+            logger.error('Initial play failed:', result.error?.message || 'Unknown error');
+            showToast('Video başlatılamadı', 'error');
+            state.playerState = PlayerState.READY;
         }
     } else {
         videoPlayer.pause();
@@ -560,6 +565,11 @@ export const handleSync = async (msg) => {
                 state.isSyncing = false;
                 showInteractionPrompt();
                 return;
+            } else {
+                // Diğer play hataları - log ve kullanıcıya bildir
+                logger.error('Play failed:', result.error?.message || 'Unknown error');
+                showToast('Video başlatılamadı', 'error');
+                state.playerState = PlayerState.READY;
             }
         } else {
             // Already playing, ensure state is consistent
