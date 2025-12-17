@@ -23,8 +23,9 @@ const state = {
     lastLoadedUrl: null,
     playerState: PlayerState.IDLE,
     syncInterval: null,
-    isSyncing: false,   // Senkronizasyon sırasında event yayınını engelle
-    lastSeekTime: 0     // Son seek zamanı - frontend seek debounce
+    isSyncing: false,       // Senkronizasyon sırasında event yayınını engelle
+    lastSeekTime: 0,        // Son seek zamanı - frontend seek debounce
+    lastBufferEndTime: 0    // Son buffer_end zamanı - frontend buffer debounce (event blocking)
 };
 
 // ============== Callbacks ==============
@@ -83,6 +84,10 @@ export const setupVideoEventListeners = () => {
         // Seek sonrası pause'u yoksay (500ms içinde) - frontend debounce
         const timeSinceSeek = Date.now() - state.lastSeekTime;
         if (timeSinceSeek < 500) return;
+        
+        // Buffer_end sonrası pause'u yoksay (200ms içinde) - frontend event blocking
+        const timeSinceBufferEnd = Date.now() - state.lastBufferEndTime;
+        if (timeSinceBufferEnd < 200) return;
 
         state.playerState = PlayerState.READY;
         callbacks.onPause?.(videoPlayer.currentTime);
@@ -108,6 +113,7 @@ export const setupVideoEventListeners = () => {
         // Oynatıyorsak VEYA hazırsak (duraklamadan sonra tampon) buffer_end gönder
         if (state.playerState !== PlayerState.PLAYING && state.playerState !== PlayerState.READY) return;
         
+        state.lastBufferEndTime = Date.now(); // Buffer_end zamanını kaydet
         callbacks.onBufferEnd?.();
     });
 
@@ -117,6 +123,7 @@ export const setupVideoEventListeners = () => {
         if (state.isSyncing) return;
         // Sadece READY durumundayken buffer_end gönder (paused buffering)
         if (state.playerState === PlayerState.READY) {
+            state.lastBufferEndTime = Date.now(); // Buffer_end zamanını kaydet
             callbacks.onBufferEnd?.();
         }
     }, { once: false });
