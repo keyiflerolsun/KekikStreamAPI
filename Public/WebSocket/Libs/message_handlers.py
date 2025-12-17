@@ -1,14 +1,10 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from fastapi            import WebSocket
-from .WatchPartyManager import watch_party_manager
+from .WatchPartyManager import watch_party_manager, DEBOUNCE_WINDOW, MIN_BUFFER_DURATION
 from .ytdlp_service     import ytdlp_extract_video_info
-from datetime           import datetime
-import json
+import json, time
 
-# ============== Timing Constants (seconds) ==============
-DEBOUNCE_WINDOW = 1.0       # Genel debounce penceresi (tüm race condition'lar için)
-MIN_BUFFER_DURATION = 2.0   # Minimum buffer süresi (kısa buffer'ları ignore)
 
 class MessageHandler:
     """WebSocket mesaj işleyici sınıfı"""
@@ -23,7 +19,7 @@ class MessageHandler:
         await self.websocket.send_text(json.dumps({
             "type"    : "error",
             "message" : message
-        }))
+        }, ensure_ascii=False))
 
     async def send_json(self, data: dict):
         """JSON mesajı gönder"""
@@ -39,7 +35,7 @@ class MessageHandler:
         self.user = await watch_party_manager.join_room(self.room_id, self.websocket, username, avatar)
 
         if self.user:
-            room_state = watch_party_manager.get_room_state(self.room_id)
+            room_state = await watch_party_manager.get_room_state(self.room_id)
             await self.send_json({"type": "room_state", **room_state})
 
             await watch_party_manager.broadcast_to_room(self.room_id, {
@@ -47,7 +43,7 @@ class MessageHandler:
                 "username" : username,
                 "avatar"   : avatar,
                 "user_id"  : self.user.user_id,
-                "users"    : watch_party_manager.get_room_users(self.room_id)
+                "users"    : await watch_party_manager.get_room_users(self.room_id)
             }, exclude_user_id=self.user.user_id)
 
     async def handle_play(self, message: dict):
@@ -63,11 +59,11 @@ class MessageHandler:
         if room.is_playing:
             return
         
-        # Manuel play yapıldığında buffer listesini temizle
-        room.buffering_users.clear()
+        # Manuel play yapıldığında buffer listesini temizle (atomic)
+        await watch_party_manager.clear_buffering_users(self.room_id)
         
-        # Play zamanını kaydet
-        room.last_play_time = datetime.now().timestamp()
+        # Play zamanını kaydet (atomic)
+        await watch_party_manager.mark_play_time(self.room_id, time.perf_counter())
         
         await watch_party_manager.update_playback_state(self.room_id, True, current_time)
 
@@ -82,33 +78,15 @@ class MessageHandler:
         """PAUSE mesajını işle"""
         current_time = message.get("time", 0.0)
 
-        # State validation: Sadece oynuyorsa pause
-        room = await watch_party_manager.get_room(self.room_id)
-        if not room:
+        # Atomic decision: Pause kabul edilmeli mi?
+        now = time.perf_counter()
+        decision = await watch_party_manager.should_accept_pause(self.room_id, now)
+        
+        if not decision["accept"]:
             return
 
-        # Zaten durmuşsa ignore et
-        if not room.is_playing:
-            return
-
-        # Debounce kontrolü - tek timestamp ile
-        now = datetime.now().timestamp()
-        
-        if now - room.last_play_time < DEBOUNCE_WINDOW:
-            return
-        
-        if now - room.last_buffer_end_time < DEBOUNCE_WINDOW:
-            return
-        
-        if now - room.last_auto_resume_time < DEBOUNCE_WINDOW:
-            return
-        
-        # Buffering kaynaklı pause'u ignore et (network latency dahil)
-        if now - room.last_buffer_start_time < DEBOUNCE_WINDOW:
-            return
-
-        # Pause zamanını kaydet (auto-resume önleme için)
-        room.last_pause_time = now
+        # Pause zamanını kaydet (auto-resume önleme için) - atomic
+        await watch_party_manager.mark_pause_time(self.room_id, now)
 
         await watch_party_manager.update_playback_state(self.room_id, False, current_time)
 
@@ -123,44 +101,48 @@ class MessageHandler:
     async def handle_seek(self, message: dict):
         """SEEK mesajını işle"""
         current_time = message.get("time", 0.0)
-        room = await watch_party_manager.get_room(self.room_id)
-        if room:
-            now = datetime.now().timestamp()
-            
-            # Seek zamanını kaydet (post-seek buffer ignore için)
-            room.last_seek_time = now
+        
+        # Playback snapshot'i atomic olarak al
+        snapshot = await watch_party_manager.get_playback_snapshot(self.room_id)
+        if not snapshot:
+            return
+        
+        now = time.perf_counter()
+        
+        # Seek deduplicate: Önceki seek zamanını atomic olarak kaydet ve al
+        prev_seek_time = await watch_party_manager.mark_seek_time(self.room_id, now)
 
-            # Seek öncesi playback state'i sakla
-            was_playing = room.is_playing
+        # Seek öncesi playback state'i sakla
+        was_playing = snapshot["is_playing"]
 
-            # Seek deduplicate: Aynı pozisyona çok yakın zamanda seek varsa, sadece state güncelle
-            time_diff_from_last = abs(room.current_time - current_time)
-            time_since_last_seek = now - room.last_seek_time
-            
-            # Seek sadece pozisyonu değiştirir, playback state'i korur
-            await watch_party_manager.update_playback_state(self.room_id, room.is_playing, current_time)
+        # Seek deduplicate: Aynı pozisyona çok yakın zamanda seek varsa, sadece state güncelle
+        time_diff_from_last = abs(snapshot["current_time"] - current_time)
+        time_since_last_seek = now - prev_seek_time  # FIX: prev_seek_time kullan
+        
+        # Seek sadece pozisyonu değiştirir, playback state'i korur
+        await watch_party_manager.update_playback_state(self.room_id, snapshot["is_playing"], current_time)
 
-            # Eğer başka kullanıcı aynı yere az önce seek yaptıysa, broadcast'i skip et
-            should_broadcast = time_diff_from_last > 0.5 or time_since_last_seek > 0.2
-            
-            if should_broadcast:
-                # Seek broadcast (sadece pozisyon)
-                await watch_party_manager.broadcast_to_room(self.room_id, {
-                    "type"         : "seek",
-                    "current_time" : current_time,
-                    "triggered_by" : self.user.username
-                }, exclude_user_id=self.user.user_id)
+        # Eğer başka kullanıcı aynı yere az önce seek yaptıysa, broadcast'i skip et
+        should_broadcast = time_diff_from_last > 0.5 or time_since_last_seek > 0.2
+        
+        if should_broadcast:
+            # Seek broadcast (sadece pozisyon)
+            await watch_party_manager.broadcast_to_room(self.room_id, {
+                "type"         : "seek",
+                "current_time" : current_time,
+                "triggered_by" : self.user.username
+            }, exclude_user_id=self.user.user_id)
 
-            # Eğer oda playing durumundaysa, playback state'i sync et
-            # (buffering sırasında seek yapılırsa, pause state kalıcı olmasın)
-            # Sadece broadcast edildiğinde sync gönder
-            if was_playing and should_broadcast:
-                await watch_party_manager.broadcast_to_room(self.room_id, {
-                    "type"         : "sync",
-                    "is_playing"   : True,
-                    "current_time" : current_time,
-                    "triggered_by" : f"{self.user.username} (Seek)"
-                }, exclude_user_id=self.user.user_id)
+        # Eğer oda playing durumundaysa, playback state'i sync et
+        # (buffering sırasında seek yapılırsa, pause state kalıcı olmasın)
+        # Sadece broadcast edildiğinde sync gönder
+        if was_playing and should_broadcast:
+            await watch_party_manager.broadcast_to_room(self.room_id, {
+                "type"         : "sync",
+                "is_playing"   : True,
+                "current_time" : current_time,
+                "triggered_by" : f"{self.user.username} (Seek)"
+            }, exclude_user_id=self.user.user_id)
 
     async def handle_chat(self, message: dict):
         """CHAT mesajını işle"""
@@ -268,37 +250,37 @@ class MessageHandler:
 
     async def handle_buffer_start(self):
         """BUFFER_START mesajını işle"""
-        room = await watch_party_manager.get_room(self.room_id)
-        if not room:
+        now = time.perf_counter()
+
+        # Atomic decision: Buffer start kabul edilmeli mi?
+        decision = await watch_party_manager.should_accept_buffer_start(self.room_id, now, DEBOUNCE_WINDOW)
+        
+        if not decision["accept"]:
             return
 
-        now = datetime.now().timestamp()
-
-        # 1. İlk buffer kontrolü: Initialization buffer - ignore
-        if room.last_buffer_start_time == 0.0:
-            room.last_buffer_start_time = now
-            await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, True)
+        # 1. İlk buffer - sadece timestamp set et, ignore
+        if decision["is_first"]:
+            await watch_party_manager.mark_buffer_start_time(self.room_id, now)
             return
 
         # 2. Seek sonrası buffer - ignore (post-seek buffer gereksiz pause yaratır)
-        if now - room.last_seek_time < DEBOUNCE_WINDOW:
+        if decision["is_post_seek"]:
             await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, True)
             return
 
-        # 3. Minimum buffer threshold - kısa buffer'ları ignore et
-        if now - room.last_buffer_start_time < MIN_BUFFER_DURATION:
-            await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, True)
-            return
-
-        # Buffer_start zamanını kaydet
-        room.last_buffer_start_time = now
+        # 3. Buffer_start zamanını kaydet (atomic)
+        await watch_party_manager.mark_buffer_start_time(self.room_id, now)
 
         # Eğer video oynatılıyorsa önce durdur
-        was_playing = room.is_playing
-        if was_playing:
+        if decision["should_pause"]:
+            # Playback snapshot ile elapsed hesapla (atomic)
+            snapshot = await watch_party_manager.get_playback_snapshot(self.room_id)
+            if not snapshot:
+                return
+
             # Current time'ı güncelle (video oynarken geçen süreyi ekle)
-            elapsed = now - room.updated_at
-            current_time = room.current_time + elapsed
+            elapsed = now - snapshot["updated_at"]
+            current_time = snapshot["current_time"] + elapsed
 
             await watch_party_manager.update_playback_state(self.room_id, False, current_time)
 
@@ -317,44 +299,28 @@ class MessageHandler:
 
     async def handle_buffer_end(self):
         """BUFFER_END mesajını işle"""
-        room = await watch_party_manager.get_room(self.room_id)
-        if not room:
-            return
-
-        now = datetime.now().timestamp()
+        now = time.perf_counter()
         
-        # Buffer_end zamanını kaydet
-        room.last_buffer_end_time = now
-
-        await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, False)
-
-        # Auto-resume kontrolü
-        # ÖNEMLI: Manuel pause sonrası auto-resume yapma
-        # NOT: Seek kontrolü YOK - seek video durdurmaz, sadece pozisyon değiştirir
-        if now - room.last_pause_time < DEBOUNCE_WINDOW:
+        # Atomic buffer_end + auto-resume check
+        result = await watch_party_manager.buffer_end_and_check_resume(
+            self.room_id, self.user.user_id, now, MIN_BUFFER_DURATION, DEBOUNCE_WINDOW
+        )
+        
+        if not result:
             return
         
-        if not room.buffering_users and not room.is_playing:
-            # Son buffering çok eskiyse, bu manuel pause (auto-resume yapma)
-            time_since_buffer_start = now - room.last_buffer_start_time
-            if time_since_buffer_start > 5.0:
-                return  # Manuel pause, buffering değil
-            
-            # Auto-resume zamanını kaydet
-            room.last_auto_resume_time = now
-
-            await watch_party_manager.update_playback_state(self.room_id, True, room.current_time)
-
+        # Auto-resume gerekiyorsa broadcast
+        if result["should_resume"]:
             await watch_party_manager.broadcast_to_room(self.room_id, {
                 "type"         : "sync",
                 "is_playing"   : True,
-                "current_time" : room.current_time,
+                "current_time" : result["current_time"],
                 "triggered_by" : "System (Buffering Complete)"
             })
 
     async def handle_get_state(self):
         """GET_STATE mesajını işle"""
-        room_state = watch_party_manager.get_room_state(self.room_id)
+        room_state = await watch_party_manager.get_room_state(self.room_id)
         if room_state:
             await self.send_json({"type": "room_state", **room_state})
 
@@ -372,5 +338,5 @@ class MessageHandler:
             "type"     : "user_left",
             "username" : username,
             "user_id"  : user_id,
-            "users"    : watch_party_manager.get_room_users(self.room_id)
+            "users"    : await watch_party_manager.get_room_users(self.room_id)
         })

@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from fastapi     import WebSocket
 from datetime    import datetime
-import uuid
+import uuid, time
 
 @dataclass
 class User:
@@ -34,7 +34,7 @@ class Room:
     users           : dict[str, User] = field(default_factory=dict)
     chat_messages   : list[ChatMessage] = field(default_factory=list)
     headers         : dict[str, str] = field(default_factory=dict)  # User-Agent, Referer vb.
-    updated_at      : float = field(default_factory=lambda: datetime.now().timestamp())
+    updated_at      : float = field(default_factory=lambda: time.perf_counter())
     host_id         : str | None = None  # İlk katılan kullanıcı (host)
     buffering_users : set[str]   = field(default_factory=set)
     last_auto_resume_time  : float = 0.0  # Son auto-resume zamanı - gecikmeli pause önleme
