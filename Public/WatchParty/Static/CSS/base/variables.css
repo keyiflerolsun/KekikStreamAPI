@@ -1,0 +1,32 @@
+:root {
+    /* Color Palette - Home ile uyumlu */
+    --wp-primary: #ef7f1a;
+    --wp-primary-hover: #d16500;
+    --wp-accent: #0087a3;
+    --wp-success: #10b981;
+    --wp-warning: #f59e0b;
+    --wp-error: #ef4444;
+
+    /* Dark Theme - Home ile uyumlu */
+    --wp-bg: #2b2a29;
+    --wp-bg-card: #333333;
+    --wp-bg-input: #252423;
+
+    /* Borders */
+    --wp-border: #444444;
+
+    /* Text */
+    --wp-text: #f5f5f5;
+    --wp-text-muted: #b0b0b0;
+
+    /* Shadows */
+    --wp-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    --wp-glow: 0 0 20px rgba(239, 127, 26, 0.3);
+
+    /* Radius */
+    --wp-radius: 12px;
+    --wp-radius-sm: 8px;
+
+    /* Transitions */
+    --wp-transition: all 0.2s ease;
+}

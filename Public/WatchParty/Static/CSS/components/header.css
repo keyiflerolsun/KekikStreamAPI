@@ -1,0 +1,176 @@
+/* Header */
+.wp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    background: var(--wp-bg-card);
+    border-bottom: 1px solid var(--wp-border);
+    flex-shrink: 0;
+}
+
+.wp-header-left,
+.wp-header-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* Ping display (sağ üst) */
+.wp-ping-display {
+    font-size: 0.8125rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid var(--wp-border);
+    background: var(--wp-bg-input);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.wp-ping-display.good { color: var(--wp-success); }
+.wp-ping-display.warn { color: var(--wp-warning); }
+.wp-ping-display.bad { color: var(--wp-error); }
+
+.wp-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--wp-primary);
+}
+
+.wp-logo i {
+    font-size: 1.5rem;
+}
+
+.wp-room-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    background: var(--wp-bg-input);
+    border-radius: var(--wp-radius-sm);
+    border: 1px solid var(--wp-border);
+    font-size: 0.875rem;
+}
+
+.wp-room-label {
+    color: var(--wp-text-muted);
+}
+
+.wp-room-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    color: var(--wp-accent);
+}
+
+.wp-copy-btn {
+    background: transparent;
+    border: none;
+    color: var(--wp-text-muted);
+    cursor: pointer;
+    padding: 0.25rem;
+    transition: var(--wp-transition);
+}
+
+.wp-copy-btn:hover {
+    color: var(--wp-primary);
+}
+
+.wp-stat-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    background: var(--wp-bg-input);
+    border-radius: var(--wp-radius-sm);
+    border: 1px solid var(--wp-border);
+    font-size: 0.8125rem;
+    font-weight: 500;
+}
+
+.wp-online-count {
+    color: var(--wp-success);
+}
+
+.wp-sync-status.connected {
+    color: var(--wp-success);
+}
+
+.wp-sync-status.connected i {
+    animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.wp-sync-status.disconnected {
+    color: var(--wp-error);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .wp-header {
+        padding: 0.25rem 0.5rem;
+        min-height: 44px;
+    }
+
+    .wp-logo {
+        font-size: 1rem;
+    }
+
+    .wp-logo i {
+        font-size: 1.25rem;
+    }
+
+    .wp-logo span {
+        display: none;
+    }
+
+    .wp-room-info,
+    .wp-stat-badge {
+        padding: 0.125rem 0.375rem;
+        font-size: 0.7rem;
+    }
+    
+    .wp-room-label {
+        display: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .wp-header {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .wp-header-left {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .wp-header-right {
+        gap: 0.375rem;
+    }
+
+    .wp-room-info {
+        flex: none;
+    }
+
+    .wp-room-id {
+        font-size: 0.6875rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 80px;
+    }
+
+    .wp-sync-status span {
+        display: none;
+    }
+}
+
+/* Mobile Video Playing Mode - Hide Header */
+@media (max-width: 1024px) {
+    body.video-playing .wp-header {
+        display: none !important;
+    }
+}

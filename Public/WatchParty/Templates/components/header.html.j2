@@ -1,0 +1,26 @@
+    <!-- Header -->
+    <header class="wp-header">
+        <div class="wp-header-left">
+            <div class="wp-logo">
+                <i class="fa-solid fa-film"></i>
+                <span>Watch Party</span>
+            </div>
+            <div class="wp-room-info">
+                <span class="wp-room-label">Oda:</span>
+                <span class="wp-room-id" id="room-id">{{ room_id }}</span>
+                <button class="wp-copy-btn" onclick="copyRoomLink()" title="Linki Kopyala">
+                    <i class="fa-solid fa-copy"></i>
+                </button>
+            </div>
+        </div>
+        <div class="wp-header-right">
+            <div class="wp-online-count wp-stat-badge">
+                <i class="fa-solid fa-users"></i>
+                <span id="online-count">0</span>
+            </div>
+            <div class="wp-sync-status wp-stat-badge" id="sync-status">
+                <i class="fa-solid fa-link"></i>
+                <span>Bağlanıyor...</span>
+            </div>
+        </div>
+    </header>

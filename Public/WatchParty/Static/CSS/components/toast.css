@@ -1,0 +1,42 @@
+/* Toast */
+.wp-toast-container {
+    position: fixed;
+    top: 5rem;
+    right: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    z-index: 1000;
+}
+
+.wp-toast {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: var(--wp-bg-card);
+    border-radius: var(--wp-radius-sm);
+    border: 1px solid var(--wp-border);
+    box-shadow: var(--wp-shadow);
+    animation: slideIn 0.2s ease;
+    max-width: 300px;
+    font-size: 0.875rem;
+}
+
+.wp-toast.success { border-left: 3px solid var(--wp-success); }
+.wp-toast.error { border-left: 3px solid var(--wp-error); }
+.wp-toast.warning { border-left: 3px solid var(--wp-warning); }
+.wp-toast.info { border-left: 3px solid var(--wp-primary); }
+
+/* Responsive */
+@media (max-width: 480px) {
+    .wp-toast-container {
+        left: 0.5rem;
+        right: 0.5rem;
+        top: 4rem;
+    }
+
+    .wp-toast {
+        max-width: none;
+    }
+}

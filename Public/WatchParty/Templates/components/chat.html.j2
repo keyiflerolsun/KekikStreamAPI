@@ -1,0 +1,37 @@
+        <!-- Chat Section -->
+        <aside class="wp-chat-section">
+            <div class="wp-chat-header">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <i class="fa-solid fa-comments"></i>
+                    <span>Sohbet</span>
+                </div>
+                
+                <div class="wp-sync-info" style="font-size: 0.75rem;">
+                    <i class="fa-solid fa-rotate"></i>
+                    <span id="sync-info-text">Senkronize</span>
+                </div>
+            </div>
+
+            <!-- Users List -->
+            <div class="wp-users-list" id="users-list">
+                <!-- Users will be dynamically added -->
+            </div>
+
+            <!-- Chat Messages -->
+            <div class="wp-chat-messages" id="chat-messages">
+                <div class="wp-chat-welcome">
+                    <i class="fa-solid fa-hand-wave"></i>
+                    <p>Hoş geldiniz! Sohbete katılın.</p>
+                </div>
+            </div>
+
+            <!-- Chat Input -->
+            <form class="wp-chat-input" onsubmit="sendMessage(event)">
+                <input type="text" id="chat-input" class="wp-input" 
+                       placeholder="Mesaj yaz..." maxlength="500"
+                       onkeydown="if(event.key==='Enter'){sendMessage(event);}">
+                <button type="submit" class="wp-btn wp-btn-send">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </form>
+        </aside>

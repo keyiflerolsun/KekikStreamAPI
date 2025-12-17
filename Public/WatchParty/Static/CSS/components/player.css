@@ -1,0 +1,114 @@
+/* Player Container */
+.wp-player-container {
+    background: var(--wp-bg-card);
+    border-radius: var(--wp-radius);
+    overflow: hidden;
+    border: 1px solid var(--wp-border);
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.wp-player-wrapper {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    background: #000;
+    flex: 1;
+    min-height: 0;
+}
+
+#video-player {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.wp-player-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(17, 17, 24, 0.95));
+    cursor: pointer;
+}
+
+.wp-player-overlay.hidden {
+    display: none;
+}
+
+.wp-player-message {
+    text-align: center;
+    color: var(--wp-text-muted);
+}
+
+.wp-player-message i {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    color: var(--wp-primary);
+    animation: pulse-scale 2s ease-in-out infinite;
+}
+
+.wp-player-message p {
+    font-size: 1rem;
+    color: var(--wp-text);
+}
+
+.wp-video-info {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--wp-border);
+    flex-shrink: 0;
+}
+
+.wp-video-info h3 {
+    font-size: 0.9375rem;
+    font-weight: 600;
+}
+
+.wp-video-meta {
+    font-size: 0.8125rem;
+    color: var(--wp-text-muted);
+    margin-top: 0.25rem;
+}
+
+.wp-sync-info {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    color: var(--wp-success);
+    font-size: 0.75rem;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .wp-player-container {
+        border-radius: 0;
+        border-left: 0;
+        border-right: 0;
+        flex: none;
+    }
+
+    .wp-player-wrapper {
+        aspect-ratio: 16 / 9;
+        /* Video shouldn't be too tall on mobile to leave space for chat */
+        max-height: 35dvh; 
+        /* Minimum usable height, but small enough to fit with keyboard */
+        min-height: 150px; 
+    }
+
+    .wp-video-info {
+        display: none;
+    }
+}
+
+/* Mobile Video Playing Mode - Hide Info, adjust wrapper */
+@media (max-width: 1024px) {
+    body.video-playing .wp-video-info {
+        display: none !important;
+    }
+
+    body.video-playing .wp-player-wrapper {
+        max-height: 30dvh;
+    }
+}

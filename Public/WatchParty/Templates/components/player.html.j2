@@ -1,0 +1,73 @@
+        <!-- Video Section -->
+        <section class="wp-video-section">
+            <!-- Controls Toggle -->
+            <div class="controls-toggle" onclick="toggleControls(this)">
+                <i class="fa-solid fa-chevron-down"></i> <span>Kontroller / URL</span>
+            </div>
+
+            <!-- Video URL Input -->
+            <div class="wp-video-input-container" id="video-input-container" style="display: none;">
+                <div class="wp-input-group">
+                    <input type="text" id="video-url-input" class="wp-input" 
+                           placeholder="YouTube, M3U8 veya video URL'si girin..."
+                           onkeypress="if(event.key==='Enter'){changeVideo();event.preventDefault();}">
+                    <button class="wp-btn wp-btn-primary" onclick="changeVideo()">
+                        <i class="fa-solid fa-play"></i>
+                        Oynat
+                    </button>
+                    <button class="wp-btn wp-btn-secondary" id="export-room-btn" onclick="exportRoom()" title="Oda linkini oluştur" style="display: none;">
+                        <i class="fa-solid fa-share-nodes"></i>
+                        Export
+                    </button>
+                </div>
+                
+                <!-- Advanced Options Toggle -->
+                <button class="wp-advanced-toggle" onclick="toggleAdvancedOptions()">
+                    <i class="fa-solid fa-gear"></i>
+                    Gelişmiş Seçenekler
+                </button>
+                
+                <div class="wp-advanced-options" id="advanced-options" style="display: none;">
+                    <div class="wp-input-row">
+                        <div class="wp-input-field">
+                            <label>User-Agent</label>
+                            <input type="text" id="custom-user-agent" class="wp-input" 
+                                   placeholder="Özel User-Agent (opsiyonel)">
+                        </div>
+                        <div class="wp-input-field">
+                            <label>Referer</label>
+                            <input type="text" id="custom-referer" class="wp-input" 
+                                   placeholder="Özel Referer (opsiyonel)">
+                        </div>
+                    </div>
+                    <div class="wp-input-row" style="margin-top: 0.5rem;">
+                        <div class="wp-input-field" style="flex: 1;">
+                            <label>Altyazı URL (SRT/VTT)</label>
+                            <input type="text" id="subtitle-url" class="wp-input" 
+                                   placeholder="Altyazı dosyası URL'si (opsiyonel)">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Video Player -->
+            <div class="wp-player-container" id="player-container">
+                <div class="wp-player-wrapper">
+                    <video id="video-player" controls playsinline>
+                        Tarayıcınız video desteklemiyor.
+                    </video>
+                    <div class="wp-player-overlay" id="player-overlay">
+                        <div class="wp-player-message">
+                            <i class="fa-solid fa-film"></i>
+                            <p>Video izlemek için yukarıdan bir URL girin</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="wp-video-info" id="video-info" style="display: none;">
+                    <h3 id="video-title">Video Başlığı</h3>
+                    <div class="wp-video-meta">
+                        <span id="video-duration"></span>
+                    </div>
+                </div>
+            </div>
+        </section>

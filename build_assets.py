@@ -203,6 +203,13 @@ def bundle_css():
         output_filename = "style.bundle.min.css"
     )
 
+    # WatchParty bundle
+    bundle_css_file(
+        css_root        = Path("Public/WatchParty/Static/CSS"),
+        entry_filename  = "style.min.css",
+        output_filename = "style.bundle.min.css"
+    )
+
 if __name__ == "__main__":
     minify_assets()
     bundle_css()

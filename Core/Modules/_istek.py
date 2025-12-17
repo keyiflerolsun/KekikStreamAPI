@@ -68,7 +68,8 @@ async def istekten_once_sonra(request: Request, call_next):
         raise
     except RuntimeError as exc:
         if "No response returned" in str(exc):
-            konsol.log(f"[yellow]⚠️ Response yok:[/] {request.url.path}")
+            if "proxy" not in request.url.path:
+                konsol.log(f"[yellow]⚠️ Response yok:[/] {request.url.path}")
             return Response(status_code=204)
         raise
     except Exception as exc:
