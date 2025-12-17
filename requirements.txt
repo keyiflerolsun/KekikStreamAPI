@@ -16,5 +16,5 @@ PyJWT
 fastapi-csrf-protect
 csscompressor
 rjsmin
-KekikStream>=1.7.4
+KekikStream
 yt-dlp
