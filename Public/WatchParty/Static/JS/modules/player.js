@@ -631,8 +631,17 @@ export const handleSyncCorrection = async (msg) => {
             }
         } else if (msg.action === 'buffer') {
             logger.sync(`Buffer sync: ${msg.target_time.toFixed(1)}s`);
-            
+
+            // Preserve PLAYING state before pause (prevent event listener from changing state)
+            const wasPlaying = state.playerState === PlayerState.PLAYING;
+
             videoPlayer.pause();
+
+            // Restore state to prevent blocking subsequent syncs
+            if (wasPlaying) {
+                state.playerState = PlayerState.PLAYING;
+            }
+
             showToast('Senkronize ediliyor...', 'warning');
             videoPlayer.currentTime = msg.target_time;
             
