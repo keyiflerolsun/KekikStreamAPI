@@ -128,14 +128,28 @@ class MessageHandler:
             # Seek zamanını kaydet (post-seek buffer ignore için)
             room.last_seek_time = datetime.now().timestamp()
 
+            # Seek öncesi playback state'i sakla
+            was_playing = room.is_playing
+
             # Seek sadece pozisyonu değiştirir, playback state'i korur
             await watch_party_manager.update_playback_state(self.room_id, room.is_playing, current_time)
 
+            # Seek broadcast (sadece pozisyon)
             await watch_party_manager.broadcast_to_room(self.room_id, {
                 "type"         : "seek",
                 "current_time" : current_time,
                 "triggered_by" : self.user.username
             }, exclude_user_id=self.user.user_id)
+
+            # Eğer oda playing durumundaysa, playback state'i sync et
+            # (buffering sırasında seek yapılırsa, pause state kalıcı olmasın)
+            if was_playing:
+                await watch_party_manager.broadcast_to_room(self.room_id, {
+                    "type"         : "sync",
+                    "is_playing"   : True,
+                    "current_time" : current_time,
+                    "triggered_by" : f"{self.user.username} (Seek)"
+                }, exclude_user_id=self.user.user_id)
 
     async def handle_chat(self, message: dict):
         """CHAT mesajını işle"""
