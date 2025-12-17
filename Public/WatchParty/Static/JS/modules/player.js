@@ -621,28 +621,50 @@ export const handleSyncCorrection = async (msg) => {
 
     state.isSyncing = true;
     
-    if (msg.action === 'rate') {
-        const rate = msg.rate || 1.0;
-        // Increased threshold to reduce frequent playback rate changes
-        if (Math.abs(videoPlayer.playbackRate - rate) > 0.02) {
-            logger.sync(`Rate: ${rate}x (drift: ${msg.drift.toFixed(2)}s)`);
-            videoPlayer.playbackRate = rate;
+    try {
+        if (msg.action === 'rate') {
+            const rate = msg.rate || 1.0;
+            // Increased threshold to reduce frequent playback rate changes
+            if (Math.abs(videoPlayer.playbackRate - rate) > 0.02) {
+                logger.sync(`Rate: ${rate}x (drift: ${msg.drift.toFixed(2)}s)`);
+                videoPlayer.playbackRate = rate;
+            }
+        } else if (msg.action === 'buffer') {
+            logger.sync(`Buffer sync: ${msg.target_time.toFixed(1)}s`);
+            
+            videoPlayer.pause();
+            showToast('Senkronize ediliyor...', 'warning');
+            videoPlayer.currentTime = msg.target_time;
+            
+            // Wait for seek with timeout
+            await waitForSeek();
+            
+            // Attempt to resume playback
+            const result = await safePlay();
+            
+            if (result.success) {
+                state.playerState = PlayerState.PLAYING;
+                videoPlayer.playbackRate = 1.0;
+            } else {
+                // If autoplay blocked, show interaction prompt
+                if (result.error?.name === 'NotAllowedError') {
+                    state.isSyncing = false;
+                    showInteractionPrompt();
+                    return;
+                }
+                // Other errors: set to READY state
+                state.playerState = PlayerState.READY;
+                logger.sync('Buffer sync play failed, video paused');
+            }
         }
-    } else if (msg.action === 'buffer') {
-        logger.sync(`Buffer sync: ${msg.target_time.toFixed(1)}s`);
-        
-        videoPlayer.pause();
-        showToast('Senkronize ediliyor...', 'warning');
-        videoPlayer.currentTime = msg.target_time;
-        
-        // Wait for seek
-        await waitForSeek();
-        
-        await safePlay();
-        videoPlayer.playbackRate = 1.0;
+    } catch (e) {
+        logger.sync(`Sync correction error: ${e.message}`);
+        state.playerState = PlayerState.READY;
+        showToast('Senkronizasyon hatası', 'error');
+    } finally {
+        // Always reset isSyncing flag
+        state.isSyncing = false;
     }
-    
-    state.isSyncing = false;
 };
 
 // ============== Getters ==============
