@@ -99,10 +99,20 @@ export const setupVideoEventListeners = () => {
         if (state.playerState === PlayerState.WAITING_INTERACTION) return;
         // Senkronizasyon işlemleri sırasında buffer_end göndermeyin
         if (state.isSyncing) return;
-        // Gerçekten oynuyorsa buffer_end'i gönderin
-        if (state.playerState !== PlayerState.PLAYING) return;
+        // Oynatıyorsak VEYA hazırsak (duraklamadan sonra tampon) buffer_end gönder
+        if (state.playerState !== PlayerState.PLAYING && state.playerState !== PlayerState.READY) return;
         callbacks.onBufferEnd?.();
     });
+
+    // Buffering bittiğinde (video paused durumundayken de tetiklenir)
+    videoPlayer.addEventListener('canplaythrough', () => {
+        if (state.playerState === PlayerState.WAITING_INTERACTION) return;
+        if (state.isSyncing) return;
+        // Sadece READY durumundayken buffer_end gönder (paused buffering)
+        if (state.playerState === PlayerState.READY) {
+            callbacks.onBufferEnd?.();
+        }
+    }, { once: false });
 };
 
 // ============== Helpers ==============
