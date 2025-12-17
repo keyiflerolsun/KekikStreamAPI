@@ -266,13 +266,13 @@ const init = async () => {
             const { url, title, user_agent, referer, subtitle } = window.AUTOLOAD;
             
             // Show input container
-            const inputContainer = document.getElementById('video-input-container');
-            if (inputContainer) {
-                inputContainer.style.display = '';
-                // Toggle button'u aktif yap
-                const toggleBtn = document.querySelector('.controls-toggle');
-                if (toggleBtn) toggleBtn.classList.add('active');
-            }
+            // const inputContainer = document.getElementById('video-input-container');
+            // if (inputContainer) {
+            //     inputContainer.style.display = '';
+            //     // Toggle button'u aktif yap
+            //     const toggleBtn = document.querySelector('.controls-toggle');
+            //     if (toggleBtn) toggleBtn.classList.add('active');
+            // }
             
             // Fill form inputs
             const urlInput = document.getElementById('video-url-input');
@@ -302,6 +302,10 @@ const init = async () => {
                     subtitle_url: subtitle || '' 
                 });
             }, 500);
+
+            // Clean URL parameters
+            const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+            window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
         }
     } catch (e) {
         console.error('Connection failed:', e);

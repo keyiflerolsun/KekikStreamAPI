@@ -54,13 +54,19 @@ export const setupVideoEventListeners = () => {
     const { videoPlayer } = state;
     if (!videoPlayer) return;
 
+    const shouldIgnoreEvent = () => {
+        return state.isSyncing || 
+               // Ignore if just loading
+               state.playerState === PlayerState.LOADING;
+    };
+
     videoPlayer.addEventListener('play', () => {
         // Add video-playing class for mobile UX
         document.body.classList.add('video-playing');
         
-        // Only broadcast user-initiated play when in READY state and not syncing
-        if (state.isSyncing) return;
+        if (shouldIgnoreEvent()) return;
         if (state.playerState !== PlayerState.READY) return;
+
         state.playerState = PlayerState.PLAYING;
         callbacks.onPlay?.(videoPlayer.currentTime);
     });
@@ -69,17 +75,18 @@ export const setupVideoEventListeners = () => {
         // Remove video-playing class
         document.body.classList.remove('video-playing');
         
-        // Only broadcast user-initiated pause when PLAYING and not syncing
-        if (state.isSyncing) return;
+        if (shouldIgnoreEvent()) return;
         if (state.playerState !== PlayerState.PLAYING) return;
         if (videoPlayer.ended) return;
+
         state.playerState = PlayerState.READY;
         callbacks.onPause?.(videoPlayer.currentTime);
     });
 
     videoPlayer.addEventListener('seeked', () => {
-        if (state.isSyncing) return;
+        if (shouldIgnoreEvent()) return;
         if (state.playerState !== PlayerState.PLAYING && state.playerState !== PlayerState.READY) return;
+        
         callbacks.onSeek?.(videoPlayer.currentTime);
     });
 
@@ -91,6 +98,33 @@ export const setupVideoEventListeners = () => {
     videoPlayer.addEventListener('playing', () => {
         if (state.playerState === PlayerState.WAITING_INTERACTION) return;
         callbacks.onBufferEnd?.();
+    });
+};
+
+// ============== Helpers ==============
+const waitForSeek = async (timeout = 5000) => {
+    const { videoPlayer } = state;
+    if (!videoPlayer) return;
+
+    return new Promise(resolve => {
+        let resolved = false;
+
+        const onSeeked = () => {
+            if (resolved) return;
+            resolved = true;
+            resolve(true);
+        };
+
+        videoPlayer.addEventListener('seeked', onSeeked, { once: true });
+
+        setTimeout(() => {
+            if (!resolved) {
+                resolved = true;
+                videoPlayer.removeEventListener('seeked', onSeeked);
+                logger.video('Seek timeout - continuing anyway');
+                resolve(false);
+            }
+        }, timeout);
     });
 };
 
@@ -469,11 +503,8 @@ export const handleSync = async (msg) => {
         logger.sync(`Adjustment: ${timeDiff.toFixed(2)}s`);
         videoPlayer.currentTime = msg.current_time;
         
-        // Wait for seek to complete
-        await new Promise(resolve => {
-            videoPlayer.addEventListener('seeked', resolve, { once: true });
-            setTimeout(resolve, 300);
-        });
+        // Wait for seek to complete (with longer timeout)
+        await waitForSeek();
     }
 
     // Sync play/pause state
@@ -513,14 +544,17 @@ export const handleSeek = async (msg) => {
         return;
     }
 
-    state.isSyncing = true;
-    videoPlayer.currentTime = msg.current_time;
-    
-    // Wait for seek to complete
-    await new Promise(resolve => {
-        videoPlayer.addEventListener('seeked', resolve, { once: true });
-        setTimeout(resolve, 300); // Fallback timeout
-    });
+    const timeDiff = Math.abs(videoPlayer.currentTime - msg.current_time);
+
+    // Only seek if difference is significant (prevents echo loops and stuck states)
+    if (timeDiff > 0.5) {
+        state.isSyncing = true;
+        videoPlayer.currentTime = msg.current_time;
+        
+        // Wait for seek to complete
+        await waitForSeek();
+        state.isSyncing = false;
+    }
 
     // Sync play/pause state if provided
     if (msg.is_playing !== undefined) {
@@ -535,7 +569,6 @@ export const handleSeek = async (msg) => {
         }
     }
     
-    state.isSyncing = false;
     updateSyncInfoText(msg.triggered_by, `${formatTime(msg.current_time)} konumuna atladı`);
 };
 
@@ -563,10 +596,7 @@ export const handleSyncCorrection = async (msg) => {
         videoPlayer.currentTime = msg.target_time;
         
         // Wait for seek
-        await new Promise(resolve => {
-            videoPlayer.addEventListener('seeked', resolve, { once: true });
-            setTimeout(resolve, 500);
-        });
+        await waitForSeek();
         
         await safePlay();
         videoPlayer.playbackRate = 1.0;
