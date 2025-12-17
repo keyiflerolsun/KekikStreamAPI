@@ -1,17 +1,42 @@
 // Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 export const generateRandomUser = () => {
-    const avatars = ['🎬', '🎥', '🎞️', '📽️', '🎭', '🎪', '🌟', '✨', '🔥', '💫', '🎮', '🎯', '🎨', '🎹'];
-    const adjectives = ['Mutlu', 'Neşeli', 'Havalı', 'Süper', 'Efsane', 'Şirin', 'Tatlı', 'Kral', 'Pro'];
-    const nouns = ['İzleyici', 'Misafir', 'Seyirci', 'Konuk', 'Fan', 'Dost', 'Arkadaş'];
+    const avatars = [
+        '🎬','🎥','🎞️','📽️','🍿','🎭','🎪',
+        '🌟','✨','🔥','💫','⚡','🌙','☄️','⭐',
+        '🎮','🎯','🎨','🎹','🎧','🎤','🎻',
+        '😎','🤩','😍','😈','🤓','🧐','🤠',
+        '👑','🦄','🐱','🐺','🦊','🐼','🐸',
+        '🤖','👽','👻','💀','🎃','🐉','🦁'
+    ];
+
+    const adjectives = [
+        'Mutlu','Neşeli','Havalı','Süper','Efsane','Şirin','Tatlı',
+        'Kral','Pro','Gizemli','Çılgın','Uykusuz','Sessiz','Asil',
+        'Eğlenceli','Yıldız','Fenomen','Hızlı','Soğukkanlı',
+        'Meraklı','Tutkulu','Cesur','Karizmatik','Enerjik',
+        'Gececi','Sabahlayan','Dalgın','Hayalperest','Ateşli',
+        'Sakin','Cool','Derin','Parlak','Vahşi','Nazik',
+        'Kararlı','Özgür','Asi','Zeki','Gururlu'
+    ];
+
+    const nouns = [
+        'İzleyici','Misafir','Seyirci','Konuk','Fan','Dost','Arkadaş',
+        'SinemaSever','DiziKurdu','FilmAşığı','Takipçi','Maratoncu',
+        'Spoilerci','Eleştirmen','Yorumcu','Keşifçi','Finalci',
+        'Fragmancı','Ekrancı','Koltukçu','PatlamışMısırcı',
+        'Kahraman','AntiKahraman','Usta','Acemi','Efsane',
+        'Gezgin','Maceracı','Avcı','Koruyucu','Anlatıcı'
+    ];
+
 
     const avatar = avatars[Math.floor(Math.random() * avatars.length)];
     const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
     const noun = nouns[Math.floor(Math.random() * nouns.length)];
-    const number = Math.floor(Math.random() * 100);
+    // const number = Math.floor(Math.random() * 100);
 
     return {
-        username: `${adjective}${noun}${number}`,
+        username: `${adjective}${noun}`,
         avatar
     };
 };
