@@ -7,13 +7,8 @@ from datetime           import datetime
 import json
 
 # ============== Timing Constants (seconds) ==============
-DEBOUNCE_PLAY_TO_PAUSE         = 0.1    # Play sonrası pause ignore window
-DEBOUNCE_BUFFER_TO_PAUSE       = 0.2    # Buffer_end sonrası pause ignore window
-DEBOUNCE_AUTO_RESUME_TO_PAUSE  = 0.3    # Auto-resume sonrası pause ignore window
-DEBOUNCE_PAUSE_TO_AUTO_RESUME  = 1.0    # Pause sonrası auto-resume ignore window (network latency dahil)
-DEBOUNCE_SEEK_TO_BUFFER        = 1.0    # Seek sonrası buffer ignore window (network latency dahil)
-DEBOUNCE_BUFFER_START_TO_PAUSE = 1.0    # Buffer_start sonrası pause ignore window (network latency dahil)
-MIN_BUFFER_DURATION            = 2.0    # Minimum buffer süresi (kısa buffer'ları ignore)
+DEBOUNCE_WINDOW = 1.0       # Genel debounce penceresi (tüm race condition'lar için)
+MIN_BUFFER_DURATION = 2.0   # Minimum buffer süresi (kısa buffer'ları ignore)
 
 class MessageHandler:
     """WebSocket mesaj işleyici sınıfı"""
@@ -99,17 +94,17 @@ class MessageHandler:
         # Debounce kontrolü - tek timestamp ile
         now = datetime.now().timestamp()
         
-        if now - room.last_play_time < DEBOUNCE_PLAY_TO_PAUSE:
+        if now - room.last_play_time < DEBOUNCE_WINDOW:
             return
         
-        if now - room.last_buffer_end_time < DEBOUNCE_BUFFER_TO_PAUSE:
+        if now - room.last_buffer_end_time < DEBOUNCE_WINDOW:
             return
         
-        if now - room.last_auto_resume_time < DEBOUNCE_AUTO_RESUME_TO_PAUSE:
+        if now - room.last_auto_resume_time < DEBOUNCE_WINDOW:
             return
         
-        # Buffering kaynaklı pause'u ignore et (network latency dahil: 1s window)
-        if now - room.last_buffer_start_time < DEBOUNCE_BUFFER_START_TO_PAUSE:
+        # Buffering kaynaklı pause'u ignore et (network latency dahil)
+        if now - room.last_buffer_start_time < DEBOUNCE_WINDOW:
             return
 
         # Pause zamanını kaydet (auto-resume önleme için)
@@ -261,7 +256,7 @@ class MessageHandler:
             return
 
         # 2. Seek sonrası buffer - ignore (post-seek buffer gereksiz pause yaratır)
-        if now - room.last_seek_time < DEBOUNCE_SEEK_TO_BUFFER:
+        if now - room.last_seek_time < DEBOUNCE_WINDOW:
             await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, True)
             return
 
@@ -311,7 +306,7 @@ class MessageHandler:
         # Auto-resume kontrolü
         # ÖNEMLI: Manuel pause sonrası auto-resume yapma
         # NOT: Seek kontrolü YOK - seek video durdurmaz, sadece pozisyon değiştirir
-        if now - room.last_pause_time < DEBOUNCE_PAUSE_TO_AUTO_RESUME:
+        if now - room.last_pause_time < DEBOUNCE_WINDOW:
             return
         
         if not room.buffering_users and not room.is_playing:
