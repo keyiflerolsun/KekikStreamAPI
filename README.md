@@ -12,6 +12,11 @@ Kendi yayın merkezinizi kurmak hiç bu kadar kolay olmamıştı! 🚀
     -   **Gelişmiş Arama**: İstediğiniz içeriği hızla bulun.
     -   **Kategori Yönetimi**: İçerikleri kategorilere göre filtreleyin.
     -   **Sinematik Oynatıcı**: Dahili oynatıcı ile kesintisiz izleme keyfi.
+-   🎭 **Watch Party**: Arkadaşlarınızla senkronize video izleme deneyimi.
+    -   **Gerçek Zamanlı Senkronizasyon**: Otomatik play/pause/seek senkronizasyonu.
+    -   **Akıllı Buffer Yönetimi**: Buffering durumlarında otomatik duraklama ve devam.
+    -   **Canlı Sohbet**: Entegre grup sohbet sistemi.
+    -   **Oda Paylaşımı**: Tek tıkla oda linki paylaşımı.
 -   🛡️ **Proxy Streaming**: Dahili proxy sistemi sayesinde coğrafi kısıtlamaları ve CORS sorunlarını aşın.
 -   🔌 **Geniş Eklenti Desteği**: `KekikStream` altyapısı ile onlarca kaynaktan içerik çekebilme.
 -   🚀 **Yüksek Performans**: Python (FastAPI) ve asenkron mimari ile ışık hızında yanıtlar.
@@ -64,6 +69,41 @@ KekikStreamAPI, modern güvenlik standartlarına uygun olarak geliştirilmiştir
 
 ### Web Arayüzü
 Tarayıcınızdan **http://127.0.0.1:3310** adresine giderek modern web arayüzünü kullanmaya başlayabilirsiniz.
+
+### 🎭 Watch Party
+
+Arkadaşlarınızla birlikte senkronize video izleme deneyimi:
+
+1. **Oda Oluşturma**: Ana sayfadan bir video seçip "Watch Party" butonuna tıklayın.
+2. **Oda Paylaşma**: Otomatik oluşturulan oda linkini arkadaşlarınızla paylaşın.
+3. **Senkronize İzleme**: Herhangi bir kullanıcı videoyu oynatır/duraklatırsa, tüm katılımcılar için otomatik senkronize olur.
+
+**Özellikler**:
+-   ⚡ **Gerçek Zamanlı WebSocket**: Milisaniye seviyesinde senkronizasyon.
+-   🎬 **Akıllı Buffering**: Bir kullanıcı buffering yaşarsa, tüm oda otomatik duraklar ve herkesi bekler.
+-   💬 **Canlı Sohbet**: Video izlerken anlık mesajlaşma.
+-   📍 **Drift Correction**: Otomatik zaman farkı düzeltme sistemi.
+-   🔄 **Auto-Resume**: Buffering bittiğinde otomatik devam.
+-   🎥 **yt-dlp Desteği**: YouTube, Vimeo ve 1000+ site için otomatik stream extraction.
+
+**Kullanım**:
+```
+http://127.0.0.1:3310/watch-party/{ROOM_ID}?url={VIDEO_URL}
+```
+
+**URL Parametreleri**:
+| Parametre    | Zorunlu  | Açıklama                                             |
+|--------------|----------|------------------------------------------------------|
+| `url`        | ✅ Evet  | Video URL'si (Direkt link veya yt-dlp destekli site) |
+| `title`      | ❌ Hayır | Video başlığı                                        |
+| `user_agent` | ❌ Hayır | Özel User-Agent header                               |
+| `referer`    | ❌ Hayır | Özel Referer header                                  |
+| `subtitle`   | ❌ Hayır | Altyazı dosyası URL'si (.srt, .vtt)                  |
+
+**Tam Örnek**:
+```
+http://127.0.0.1:3310/watch-party/{ROOM_ID}?url={VIDEO_URL}&title={VIDEO_TITLE}&user_agent={USER_AGENT}&referer={REFERER}&subtitle={SUBTITLE_URL}
+```
 
 ### Temel API Endpointleri
 
