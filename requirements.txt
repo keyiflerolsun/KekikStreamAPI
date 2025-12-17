@@ -2,7 +2,7 @@ Kekik
 curl_cffi
 fastapi
 uvicorn
-uvloop
+uvloop; platform_system != "Windows"
 httptools
 gunicorn
 websockets
@@ -16,5 +16,5 @@ PyJWT
 fastapi-csrf-protect
 csscompressor
 rjsmin
-KekikStream
+KekikStream>=1.7.4
 yt-dlp
