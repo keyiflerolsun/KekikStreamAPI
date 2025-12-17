@@ -566,6 +566,12 @@ export const handleSync = async (msg) => {
                 showInteractionPrompt();
                 return;
             } else {
+                // AbortError: play() interrupted by pause() - normal race condition, ignore
+                if (result.error?.name === 'AbortError') {
+                    state.playerState = PlayerState.READY;
+                    return;
+                }
+                
                 // Diğer play hataları - log ve kullanıcıya bildir
                 logger.error('Play failed:', result.error?.message || 'Unknown error');
                 showToast('Video başlatılamadı', 'error');
