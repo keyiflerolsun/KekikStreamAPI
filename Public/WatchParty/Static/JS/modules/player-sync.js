@@ -157,29 +157,29 @@ export const handleSyncCorrection = async (msg) => {
             const wasPlaying = state.playerState === PlayerState.PLAYING;
 
             videoPlayer.pause();
-
-            if (wasPlaying) {
-                state.playerState = PlayerState.PLAYING;
-            }
+            state.playerState = PlayerState.READY;  // Pause sırasında READY
 
             showToast('Senkronize ediliyor...', 'warning');
             videoPlayer.currentTime = msg.target_time;
-            
+
             await waitForSeek();
-            
-            const result = await safePlay();
-            
-            if (result.success) {
-                state.playerState = PlayerState.PLAYING;
-                videoPlayer.playbackRate = 1.0;
-            } else {
-                if (result.error?.name === 'NotAllowedError') {
-                    state.isSyncing = false;
-                    showInteractionPrompt();
-                    return;
+
+            // Sadece önceden oynatılıyorsa play et
+            if (wasPlaying) {
+                const result = await safePlay();
+
+                if (result.success) {
+                    state.playerState = PlayerState.PLAYING;
+                    videoPlayer.playbackRate = 1.0;
+                } else {
+                    if (result.error?.name === 'NotAllowedError') {
+                        state.isSyncing = false;
+                        showInteractionPrompt();
+                        return;
+                    }
+                    state.playerState = PlayerState.READY;
+                    logger.sync('Buffer sync play failed, video paused');
                 }
-                state.playerState = PlayerState.READY;
-                logger.sync('Buffer sync play failed, video paused');
             }
         }
     } catch (e) {

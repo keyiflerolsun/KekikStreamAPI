@@ -44,7 +44,17 @@ async def watch_party_websocket(websocket: WebSocket, room_id: str):
                 await handler.handle_typing()
 
             elif msg_type == "video_change" and handler.user:
-                asyncio.create_task(handler.handle_video_change(message))
+                task = asyncio.create_task(handler.handle_video_change(message))
+
+                def log_exception(t):
+                    try:
+                        exc = t.exception()
+                    except asyncio.CancelledError:
+                        return  # Task iptal edilmiş, normal durum
+                    if exc:
+                        konsol.log(f"[red]video_change error:[/] {exc}")
+
+                task.add_done_callback(log_exception)
 
             elif msg_type == "ping":
                 await handler.handle_ping(message)

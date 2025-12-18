@@ -11,84 +11,14 @@ MIN_BUFFER_DURATION = 2.0   # Minimum buffer süresi (kısa buffer'ları ignore)
 class WatchPartyManager:
     """Watch Party oda ve kullanıcı yönetimi"""
 
-    # Action öncelik sıralaması (yüksekten düşüğe)
-    ACTION_PRIORITY = {
-        "seek"   : 3, # En yüksek öncelik
-        "pause"  : 2, # Orta öncelik
-        "play"   : 1  # En düşük öncelik
-    }
-
     def __init__(self):
         self.rooms: dict[str, Room] = {}
         self._lock = asyncio.Lock()
 
-        # Action debounce sistemi
-        self._pending_actions: dict[str, dict] = {}  # room_id -> pending action info
-        self._action_timers: dict[str, asyncio.Task] = {}  # room_id -> timer task
-
     async def get_room(self, room_id: str) -> Room | None:
-        """Odayı getir"""
-        return self.rooms.get(room_id)
-
-    async def schedule_action(self, room_id: str, action_type: str, action_data: dict, username: str):
-        """Action'ı planla - eşzamanlı aksiyonları önlemek için debounce"""
+        """Odayı getir (lock protected)"""
         async with self._lock:
-            current_action = self._pending_actions.get(room_id)
-
-            # Eğer bekleyen aksiyon varsa, önceliğe göre karşılaştır
-            if current_action:
-                current_priority = self.ACTION_PRIORITY.get(current_action['type'], 0)
-                new_priority     = self.ACTION_PRIORITY.get(action_type, 0)
-
-                # Yeni aksiyon daha yüksek öncelikli veya aynı öncelikteyse, üzerine yaz
-                if new_priority >= current_priority:
-                    self._pending_actions[room_id] = {
-                        "type"      : action_type,
-                        "data"      : action_data,
-                        "username"  : username,
-                        "timestamp" : time.perf_counter()
-                    }
-            else:
-                # İlk aksiyon
-                self._pending_actions[room_id] = {
-                    "type"      : action_type,
-                    "data"      : action_data,
-                    "username"  : username,
-                    "timestamp" : time.perf_counter()
-                }
-
-            # Varsa önceki timer'ı iptal et
-            if room_id in self._action_timers:
-                self._action_timers[room_id].cancel()
-
-            # 150ms debounce timer başlat
-            self._action_timers[room_id] = asyncio.create_task(
-                self._execute_pending_action(room_id)
-            )
-
-    async def _execute_pending_action(self, room_id: str):
-        """Bekleyen aksiyonu 150ms sonra çalıştır"""
-        await asyncio.sleep(0.15)  # 150ms debounce
-
-        async with self._lock:
-            if room_id not in self._pending_actions:
-                return
-
-            action_info = self._pending_actions.pop(room_id)
-            self._action_timers.pop(room_id, None)
-
-        # Action'ı çalıştır
-        action_type = action_info["type"]
-        action_data = action_info["data"]
-        username    = action_info["username"]
-
-        # Action tipine göre ilgili handler'ı çağır
-        # Bu kısım message_handlers.py'den çağrılacak
-        return {
-            "action_type" : action_type,
-            "action_data" : action_data,
-            "username"    : username
-        }
+            return self.rooms.get(room_id)
 
     async def join_room(self, room_id: str, websocket: WebSocket, username: str, avatar: str) -> User | None:
         """Odaya katıl"""
@@ -332,7 +262,11 @@ class WatchPartyManager:
         async with self._lock:
             room = self.rooms.get(room_id)
             if not room:
-                return {"accept": False, "is_first": False, "should_pause": False, "last_seek_time": 0.0}
+                return {"accept": False, "is_first": False, "is_post_seek": False, "should_pause": False, "last_seek_time": 0.0}
+
+            time_since_last_buffer = now - room.last_buffer_start_time
+            if room.last_buffer_start_time > 0.0 and time_since_last_buffer < 0.3:
+                return {"accept": False, "is_first": False, "is_post_seek": False, "should_pause": False, "last_seek_time": 0.0}
 
             # İlk buffer mi?
             is_first = room.last_buffer_start_time == 0.0
@@ -566,19 +500,20 @@ class WatchPartyManager:
                     pass
 
     async def add_chat_message(self, room_id: str, username: str, avatar: str, message: str) -> ChatMessage | None:
-        """Chat mesajı ekle"""
-        room = self.rooms.get(room_id)
-        if not room:
-            return None
+        """Chat mesajı ekle (lock protected)"""
+        async with self._lock:
+            room = self.rooms.get(room_id)
+            if not room:
+                return None
 
-        chat_msg = ChatMessage(username=username, avatar=avatar, message=message)
-        room.chat_messages.append(chat_msg)
+            chat_msg = ChatMessage(username=username, avatar=avatar, message=message)
+            room.chat_messages.append(chat_msg)
 
-        # Son 100 mesajı tut
-        if len(room.chat_messages) > 100:
-            room.chat_messages = room.chat_messages[-100:]
+            # Son 100 mesajı tut
+            if len(room.chat_messages) > 100:
+                room.chat_messages = room.chat_messages[-100:]
 
-        return chat_msg
+            return chat_msg
 
     async def broadcast_to_room(self, room_id: str, message: dict, exclude_user_id: str | None = None):
         """Odadaki tüm kullanıcılara mesaj gönder"""

@@ -266,13 +266,16 @@ class MessageHandler:
         if not decision["accept"]:
             return
 
-        # 1. İlk buffer - sadece timestamp set et, ignore
+        # 1. İlk buffer - timestamp set et, listene ekle ama pause ETME
         if decision["is_first"]:
             await watch_party_manager.mark_buffer_start_time(self.room_id, now)
+            # Kullanıcıyı buffering listesine ekle (pause etmeden)
+            await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, True)
             return
 
         # 2. Seek sonrası buffer - listene ekle ama pause ETME (genelde kısa buffer)
         if decision["is_post_seek"]:
+            await watch_party_manager.mark_buffer_start_time(self.room_id, now)
             await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, True)
             return
 

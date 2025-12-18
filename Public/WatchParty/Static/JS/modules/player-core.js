@@ -154,7 +154,7 @@ export const safePlay = async (timeout = 3000) => {
     try {
         const playPromise = videoPlayer.play();
         const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Play zaman aşımı')), timeout)
+            setTimeout(() => reject(new Error('Play timeout')), timeout)
         );
         
         await Promise.race([playPromise, timeoutPromise]);
