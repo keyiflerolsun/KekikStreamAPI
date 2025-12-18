@@ -5,31 +5,46 @@
     justify-content: center;
     gap: 0.5rem;
     padding: 0.5rem;
-    background: var(--wp-bg-card);
-    border: 1px solid var(--wp-border);
+    
+    /* Glassmorphism */
+    background: rgba(var(--wp-bg-card-rgb, 30, 30, 35), 0.8);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: var(--wp-radius-sm);
+    box-shadow: 
+        0 2px 8px rgba(0, 0, 0, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    
     color: var(--wp-text-muted);
     font-size: 0.8125rem;
     font-weight: 500;
     cursor: pointer;
-    transition: var(--wp-transition);
+    transition: all 0.3s ease;
     flex-shrink: 0;
 }
 
 .controls-toggle:hover {
     color: var(--wp-text);
-    border-color: var(--wp-primary);
-    box-shadow: var(--wp-glow);
+    border-color: rgba(239, 127, 26, 0.4);
+    box-shadow: 
+        0 4px 12px rgba(0, 0, 0, 0.2),
+        0 0 20px rgba(239, 127, 26, 0.2);
+    transform: translateY(-1px);
 }
 
 .controls-toggle.active {
     color: var(--wp-primary);
-    border-color: var(--wp-primary);
-    background: rgba(239, 127, 26, 0.1);
+    border-color: rgba(239, 127, 26, 0.4);
+    background: rgba(239, 127, 26, 0.15);
+    box-shadow: 
+        0 4px 12px rgba(0, 0, 0, 0.2),
+        0 0 20px rgba(239, 127, 26, 0.3);
 }
 
 .controls-toggle i {
-    transition: transform 0.2s ease;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .controls-toggle.active i {
@@ -38,10 +53,17 @@
 
 /* Video Input Container */
 .wp-video-input-container {
-    background: var(--wp-bg-card);
+    background: rgba(var(--wp-bg-card-rgb, 30, 30, 35), 0.8);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    
     border-radius: var(--wp-radius);
     padding: 1rem;
-    border: 1px solid var(--wp-border);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 
+        0 2px 8px rgba(0, 0, 0, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    
     flex-shrink: 0;
 }
 
@@ -52,19 +74,22 @@
 
 .wp-input {
     flex: 1;
-    background: var(--wp-bg-input);
-    border: 1px solid var(--wp-border);
+    background: rgba(var(--wp-bg-input-rgb, 37, 36, 35), 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: var(--wp-radius-sm);
     padding: 0.625rem 0.875rem;
     color: var(--wp-text);
     font-size: 0.875rem;
-    transition: var(--wp-transition);
+    transition: all 0.3s ease;
 }
 
 .wp-input:focus {
     outline: none;
-    border-color: var(--wp-primary);
-    box-shadow: var(--wp-glow);
+    border-color: rgba(239, 127, 26, 0.5);
+    box-shadow: 
+        0 0 0 3px rgba(239, 127, 26, 0.1),
+        0 4px 12px rgba(239, 127, 26, 0.15);
+    background: var(--wp-bg-input);
 }
 
 .wp-input::placeholder {
