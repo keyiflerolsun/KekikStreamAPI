@@ -60,6 +60,9 @@ async def lifespan(app: FastAPI):
 
         async with asyncio.TaskGroup() as tg:
             for name in plugin_names:
+                if name in ("RecTV", "BıdıkTV"):
+                    continue
+
                 tg.create_task(_check_plugin(name, sem, lock))
 
         konsol.log(f"[green]Eklenti erişim kontrolleri tamamlandı. (maks {MAX_CONCURRENT_CHECKS} eşzamanlı)")
