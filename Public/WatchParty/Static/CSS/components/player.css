@@ -93,8 +93,8 @@
         aspect-ratio: 16 / 9;
         /* Video shouldn't be too tall on mobile to leave space for chat */
         max-height: 35dvh; 
-        /* Minimum usable height, but small enough to fit with keyboard */
-        min-height: 150px; 
+        /* Minimum usable height - reduced for better keyboard experience */
+        min-height: 120px; 
     }
 
     .wp-video-info {
@@ -109,6 +109,7 @@
     }
 
     body.video-playing .wp-player-wrapper {
-        max-height: 30dvh;
+        max-height: 25dvh; /* More space for chat */
+        min-height: 80px; /* Flexible for keyboard - allows chat messages to remain visible */
     }
 }

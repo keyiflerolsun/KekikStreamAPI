@@ -40,6 +40,9 @@ async def watch_party_websocket(websocket: WebSocket, room_id: str):
             elif msg_type == "chat" and handler.user:
                 await handler.handle_chat(message)
 
+            elif msg_type == "typing" and handler.user:
+                await handler.handle_typing()
+
             elif msg_type == "video_change" and handler.user:
                 asyncio.create_task(handler.handle_video_change(message))
 

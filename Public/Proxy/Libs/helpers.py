@@ -157,11 +157,11 @@ async def stream_wrapper(response: httpx.Response):
                         corrected_ct = 'application/vnd.apple.mpegurl'
                 except:
                     pass
-                
-                # HTML uyarısı
-                if 'text/html' in original_ct.lower() and not corrected_ct:
-                    konsol.print(f"[red]⚠️  UYARI: Kaynak HTML döndürüyor![/red]")
-            
+
+                # # HTML uyarısı
+                # if 'text/html' in original_ct.lower() and not corrected_ct:
+                #     konsol.print(f"[red]⚠️  UYARI: Kaynak HTML döndürüyor![/red]")
+
             yield chunk
             
     except GeneratorExit:

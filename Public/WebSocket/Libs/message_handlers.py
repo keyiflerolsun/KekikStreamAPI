@@ -163,6 +163,14 @@ class MessageHandler:
                 "timestamp" : chat_msg.timestamp
             })
 
+    async def handle_typing(self):
+        """TYPING mesajını işle - kullanıcı yazıyor"""
+        await watch_party_manager.broadcast_to_room(self.room_id, {
+            "type"     : "typing",
+            "username" : self.user.username
+        }, exclude_user_id=self.user.user_id)
+
+
     async def handle_video_change(self, message: dict):
         """VIDEO_CHANGE mesajını işle"""
         url           = message.get("url", "").strip()

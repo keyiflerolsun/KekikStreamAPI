@@ -3,7 +3,7 @@
 // Module Imports
 import { generateRandomUser } from './modules/utils.min.js';
 import { initUI, showToast, copyRoomLink, toggleElement, showLoadingOverlay } from './modules/ui.min.js';
-import { initChat, addChatMessage, addSystemMessage, updateUsersList, loadChatHistory, setCurrentUsername } from './modules/chat.min.js';
+import { initChat, addChatMessage, addSystemMessage, updateUsersList, loadChatHistory, setCurrentUsername, showTypingIndicator } from './modules/chat.min.js';
 import {
     initPlayer,
     setPlayerCallbacks,
@@ -42,6 +42,7 @@ const setupMessageHandlers = () => {
     onMessage('sync_correction', handleSyncCorrection);
     onMessage('seek', handleSeek);
     onMessage('chat', handleChatMessage);
+    onMessage('typing', handleTypingIndicator); // 🆕 Typing indicator
     onMessage('video_changed', handleVideoChanged);
     onMessage('error', (msg) => showToast(msg.message, 'error'));
 };
@@ -102,6 +103,11 @@ const handleUserLeft = (msg) => {
 
 const handleChatMessage = (msg) => {
     addChatMessage(msg.username, msg.avatar, msg.message, msg.timestamp);
+};
+
+// Typing indicator handler
+const handleTypingIndicator = (msg) => {
+    showTypingIndicator(msg.username);
 };
 
 const handleVideoChanged = async (msg) => {
@@ -260,6 +266,21 @@ const init = async () => {
     setupVideoEventListeners();
     setupHeartbeat();
     setupGlobalActions();
+
+    // Setup typing indicator
+    const chatInput = document.getElementById('chat-input');
+    let typingTimeout = null;
+    if (chatInput) {
+        chatInput.addEventListener('input', () => {
+            // Throttle: 1 saniyede bir typing eventi gönder
+            if (!typingTimeout) {
+                send('typing');
+                typingTimeout = setTimeout(() => {
+                    typingTimeout = null;
+                }, 1000);
+            }
+        });
+    }
 
     // Connect
     const { wsUrl } = getRoomConfig();

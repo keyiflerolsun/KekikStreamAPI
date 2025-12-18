@@ -6,20 +6,29 @@ import { escapeHtml } from './utils.min.js';
 const state = {
     chatMessages: null,
     usersList: null,
-    currentUsername: null
+    currentUsername: null,
+    typingTimeouts: {},
+    unreadCount: 0,
+    isAtBottom: true
 };
 
 export const initChat = () => {
     state.chatMessages = document.getElementById('chat-messages');
     state.usersList = document.getElementById('users-list');
+
+    // Initialize scroll tracking for unread badge
+    trackScrollPosition();
 };
 
 export const setCurrentUsername = (username) => {
     state.currentUsername = username;
 };
 
-export const addChatMessage = (username, avatar, message, timestamp = null) => {
+export const addChatMessage = (username, avatar, message, timestamp = null, isHistoryLoad = false) => {
     if (!state.chatMessages) return;
+
+    // Mesaj gelince typing indicator'ı kaldır
+    hideTypingIndicator(username);
 
     // Remove welcome message if exists
     const welcomeMsg = state.chatMessages.querySelector('.wp-chat-welcome');
@@ -43,7 +52,23 @@ export const addChatMessage = (username, avatar, message, timestamp = null) => {
     `;
 
     state.chatMessages.appendChild(msgElement);
-    state.chatMessages.scrollTop = state.chatMessages.scrollHeight;
+    
+    // Track unread messages (only for others' messages AND not history load)
+    if (!isSelf && !isHistoryLoad) incrementUnread();
+    
+    // Akıllı auto-scroll (history reload sırasında scroll yapma)
+    if (!isHistoryLoad) {
+        // Sadece kullanıcı zaten en alttaysa veya kendi mesajıysa scroll et
+        const isNearBottom = 
+            state.chatMessages.scrollHeight - state.chatMessages.scrollTop - state.chatMessages.clientHeight < 100;
+        
+        if (isNearBottom || isSelf) {
+            state.chatMessages.scrollTo({
+                top: state.chatMessages.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+    }
 };
 
 export const addSystemMessage = (message) => {
@@ -67,12 +92,24 @@ export const updateUsersList = (users) => {
         return;
     }
 
-    state.usersList.innerHTML = users.map(user => `
-        <div class="wp-user-badge ${user.is_host ? 'host' : ''}">
-            <span>${user.avatar}</span>
-            <span>${escapeHtml(user.username)}</span>
-        </div>
-    `).join('');
+    // Self kullanıcıyı en başa al
+    const sortedUsers = [...users].sort((a, b) => {
+        const aIsSelf = state.currentUsername && a.username === state.currentUsername;
+        const bIsSelf = state.currentUsername && b.username === state.currentUsername;
+        if (aIsSelf) return -1;  // a en başa
+        if (bIsSelf) return 1;    // b en başa
+        return 0;  // Diğerleri sıralama değişmez
+    });
+
+    state.usersList.innerHTML = sortedUsers.map(user => {
+        const isSelf = state.currentUsername && user.username === state.currentUsername;
+        return `
+            <div class="wp-user-badge ${user.is_host ? 'host' : ''} ${isSelf ? 'self' : ''}">
+                <span>${user.avatar}</span>
+                <span>${escapeHtml(user.username)}</span>
+            </div>
+        `;
+    }).join('');
 
     if (onlineCount) onlineCount.textContent = users.length.toString();
 };
@@ -80,6 +117,101 @@ export const updateUsersList = (users) => {
 export const loadChatHistory = (messages) => {
     if (!state.chatMessages || !messages) return;
 
-    state.chatMessages.innerHTML = '';
-    messages.forEach(msg => addChatMessage(msg.username, msg.avatar, msg.message, msg.timestamp));
+    // Mevcut mesajları kontrol et - sadece yeni olanları ekle
+    const existingMessages = state.chatMessages.querySelectorAll('.wp-chat-message, .wp-chat-system');
+    const existingCount = existingMessages.length;
+    
+    // Eğer mesaj sayısı aynıysa ve içerik değişmemişse hiçbir şey yapma
+    if (existingCount === messages.length) return;
+    
+    // İlk yükleme mi yoksa yeni mesajlar mı?
+    const isInitialLoad = existingCount === 0;
+    
+    // Sadece yeni mesajları ekle (mevcut mesaj sayısından sonrakiler)
+    const newMessages = messages.slice(existingCount);
+    // İLK YÜKLEMEDE isHistoryLoad=true, SONRAKI MESAJLARDA false
+    newMessages.forEach(msg => addChatMessage(msg.username, msg.avatar, msg.message, msg.timestamp, isInitialLoad));
+};
+
+export const showTypingIndicator = (username) => {
+    if (!state.chatMessages) return;
+    
+    const indicatorId = `typing-${username}`;
+    let indicator = document.getElementById(indicatorId);
+    
+    if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.id = indicatorId;
+        indicator.className = 'wp-typing-indicator';
+        indicator.innerHTML = `
+            <div class="wp-typing-dots">
+                <span></span><span></span><span></span>
+            </div>
+            <span>${escapeHtml(username)} yazıyor...</span>
+        `;
+        state.chatMessages.appendChild(indicator);
+        state.chatMessages.scrollTop = state.chatMessages.scrollHeight;
+    }
+    
+    // Auto-hide after 3 seconds
+    if (state.typingTimeouts[username]) clearTimeout(state.typingTimeouts[username]);
+    state.typingTimeouts[username] = setTimeout(() => hideTypingIndicator(username), 3000);
+};
+
+export const hideTypingIndicator = (username) => {
+    const indicatorId = `typing-${username}`;
+    const indicator = document.getElementById(indicatorId);
+    if (indicator) indicator.remove();
+    if (state.typingTimeouts[username]) {
+        clearTimeout(state.typingTimeouts[username]);
+        delete state.typingTimeouts[username];
+    }
+};
+
+export const trackScrollPosition = () => {
+    if (!state.chatMessages) return;
+    
+    state.chatMessages.addEventListener('scroll', () => {
+        const { scrollTop, scrollHeight, clientHeight } = state.chatMessages;
+        state.isAtBottom = scrollHeight - scrollTop - clientHeight < 100;
+        
+        if (state.isAtBottom) {
+            state.unreadCount = 0;
+            updateUnreadBadge();
+        }
+    });
+};
+
+export const incrementUnread = () => {
+    // Sadece yukarıdaysa artır
+    if (!state.isAtBottom) {
+        state.unreadCount++;
+        updateUnreadBadge();
+    }
+};
+
+const updateUnreadBadge = () => {
+    const chatIcon = document.getElementById('chat-icon');
+    let badge = document.getElementById('unread-badge');
+    
+    if (state.unreadCount > 0) {
+        // Hide chat icon
+        if (chatIcon) chatIcon.style.display = 'none';
+        
+        if (!badge) {
+            const chatHeader = document.querySelector('.wp-chat-header > div:first-child');
+            if (!chatHeader) return;
+            
+            badge = document.createElement('div');
+            badge.id = 'unread-badge';
+            badge.className = 'wp-unread-badge';
+            // Insert as first child (icon'un yerine)
+            chatHeader.insertBefore(badge, chatHeader.firstChild);
+        }
+        badge.textContent = state.unreadCount > 99 ? '99+' : state.unreadCount.toString();
+    } else {
+        // Show chat icon back
+        if (chatIcon) chatIcon.style.display = '';
+        if (badge) badge.remove();
+    }
 };
