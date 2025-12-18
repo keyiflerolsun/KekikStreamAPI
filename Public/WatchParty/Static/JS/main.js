@@ -81,6 +81,18 @@ const handleRoomState = async (roomState) => {
         }
 
         await applyState(roomState);
+    } else {
+        // Video yoksa ve kullanıcı host ise controls-toggle'ı aç
+        const currentUser = roomState.users?.find(u => u.username === state.currentUser?.username);
+        if (currentUser?.is_host) {
+            const inputContainer = document.getElementById('video-input-container');
+            const toggleBtn = document.querySelector('.controls-toggle');
+            
+            if (inputContainer && inputContainer.style.display === 'none') {
+                inputContainer.style.display = '';
+                if (toggleBtn) toggleBtn.classList.add('active');
+            }
+        }
     }
 
     if (roomState.chat_messages) {
