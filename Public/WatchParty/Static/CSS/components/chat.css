@@ -95,6 +95,7 @@
     padding: 0.75rem;
     display: flex;
     flex-direction: column;
+    justify-content: flex-end; /* Mesajlar aşağıdan başlar */
     gap: 0.5rem;
     min-height: 0;
     

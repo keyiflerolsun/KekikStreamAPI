@@ -18,6 +18,18 @@ export const initChat = () => {
 
     // Initialize scroll tracking for unread badge
     trackScrollPosition();
+    
+    // Mobile: Klavye açılınca/kapanınca scroll pozisyonunu düzelt
+    if ('visualViewport' in window) {
+        window.visualViewport.addEventListener('resize', () => {
+            // Kullanıcı en alttaysa, scroll pozisyonunu koru
+            if (state.isAtBottom && state.chatMessages) {
+                setTimeout(() => {
+                    state.chatMessages.scrollTop = state.chatMessages.scrollHeight;
+                }, 100);
+            }
+        });
+    }
 };
 
 export const setCurrentUsername = (username) => {
