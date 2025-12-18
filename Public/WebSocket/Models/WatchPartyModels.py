@@ -49,3 +49,4 @@ class Room:
     last_buffer_start_time : float = 0.0  # Son buffer_start zamanı - kısa buffer ignore
     last_seek_time         : float = 0.0  # Son seek zamanı - seek sonrası buffer ignore
     pending_buffer_pause_tasks : dict[str, object] = field(default_factory=dict)  # user_id -> asyncio.Task
+    buffer_pause_epoch_by_user : dict[str, int]    = field(default_factory=dict)  # user-level epoch guard

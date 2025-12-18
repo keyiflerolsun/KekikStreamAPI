@@ -121,6 +121,14 @@ class WatchPartyManager:
                 if user_id in room.buffering_users:
                     room.buffering_users.remove(user_id)
 
+                # Task cleanup (pending delayed pause varsa iptal et)
+                task = room.pending_buffer_pause_tasks.pop(user_id, None)
+                if task and not task.done():
+                    task.cancel()
+
+                # Epoch tracking cleanup
+                room.buffer_pause_epoch_by_user.pop(user_id, None)
+
                 # Host ayrıldıysa yeni host ata
                 if room.host_id == user_id and room.users:
                     room.host_id = next(iter(room.users.keys()))
@@ -360,10 +368,10 @@ class WatchPartyManager:
         Delayed buffer pause: 2 saniye bekle, hala buffering varsa pause et.
         Bu, seek sonrası kısa buffer'ların room'u pause'a çekmesini önler.
         """
-        async def delayed_pause():
+        async def delayed_pause(my_epoch: int):
             await asyncio.sleep(delay)
             
-            # Snapshot al (lock içinde)
+            # Snapshot al (lock içinde) + EPOCH GUARD
             async with self._lock:
                 room = self.rooms.get(room_id)
                 if not room:
@@ -372,6 +380,10 @@ class WatchPartyManager:
                 # Task tamamlandı, dictionary'den sil
                 room.pending_buffer_pause_tasks.pop(user_id, None)
                 
+                # EPOCH GUARD (user-level): Task cancel edildiyse çık
+                if my_epoch != room.buffer_pause_epoch_by_user.get(user_id, 0):
+                    return  # Cancel edilmiş, broadcast etme
+
                 # Hala buffering mi?
                 if user_id not in room.buffering_users:
                     return  # Artık buffering değil, pause etme
@@ -400,22 +412,29 @@ class WatchPartyManager:
         # Önceki task'ı iptal et
         await self.cancel_delayed_buffer_pause(room_id, user_id)
         
-        # Yeni task başlat
+        # Yeni task başlat + EPOCH ARTTIR (user-level)
         async with self._lock:
             room = self.rooms.get(room_id)
             if not room:
                 return
             
-            task = asyncio.create_task(delayed_pause())
+            # User-level epoch init + increment
+            room.buffer_pause_epoch_by_user[user_id] = room.buffer_pause_epoch_by_user.get(user_id, 0) + 1
+            epoch = room.buffer_pause_epoch_by_user[user_id]
+
+            task = asyncio.create_task(delayed_pause(epoch))
             room.pending_buffer_pause_tasks[user_id] = task
 
     async def cancel_delayed_buffer_pause(self, room_id: str, user_id: str) -> None:
-        """Bekleyen delayed pause task'ını iptal et"""
+        """Bekleyen delayed pause task'ını iptal et + EPOCH ARTTIR (user-level)"""
         async with self._lock:
             room = self.rooms.get(room_id)
             if not room:
                 return
             
+            # User-level epoch bump (cancel mark)
+            room.buffer_pause_epoch_by_user[user_id] = room.buffer_pause_epoch_by_user.get(user_id, 0) + 1
+
             task = room.pending_buffer_pause_tasks.pop(user_id, None)
             if task and not task.done():
                 task.cancel()
