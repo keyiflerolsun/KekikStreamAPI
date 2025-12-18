@@ -51,6 +51,11 @@ export const addChatMessage = (username, avatar, message, timestamp = null, isHi
         : new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 
     const isSelf = state.currentUsername && username === state.currentUsername;
+    
+    // ÖNEMLİ: Mesaj eklenmeden ÖNCE scroll pozisyonunu kontrol et
+    const wasNearBottom = !isHistoryLoad && (
+        state.chatMessages.scrollHeight - state.chatMessages.scrollTop - state.chatMessages.clientHeight < 100
+    );
 
     const msgElement = document.createElement('div');
     msgElement.className = `wp-chat-message ${isSelf ? 'wp-chat-message-self' : ''}`;
@@ -68,29 +73,32 @@ export const addChatMessage = (username, avatar, message, timestamp = null, isHi
     // Track unread messages (only for others' messages AND not history load)
     if (!isSelf && !isHistoryLoad) incrementUnread();
     
-    // Akıllı auto-scroll (history reload sırasında scroll yapma)
-    if (!isHistoryLoad) {
-        // Sadece kullanıcı zaten en alttaysa veya kendi mesajıysa scroll et
-        const isNearBottom = 
-            state.chatMessages.scrollHeight - state.chatMessages.scrollTop - state.chatMessages.clientHeight < 100;
-        
-        if (isNearBottom || isSelf) {
-            state.chatMessages.scrollTo({
-                top: state.chatMessages.scrollHeight,
-                behavior: 'smooth'
-            });
-        }
+    // Akıllı auto-scroll
+    // Sadece kullanıcı zaten en alttaysa veya kendi mesajıysa scroll et
+    if (!isHistoryLoad && (wasNearBottom || isSelf)) {
+        state.chatMessages.scrollTo({
+            top: state.chatMessages.scrollHeight,
+            behavior: 'smooth'
+        });
     }
 };
 
 export const addSystemMessage = (message) => {
     if (!state.chatMessages) return;
+    
+    // Sistem mesajı eklemeden ÖNCE scroll pozisyonunu kontrol et
+    const wasNearBottom = 
+        state.chatMessages.scrollHeight - state.chatMessages.scrollTop - state.chatMessages.clientHeight < 100;
 
     const msgElement = document.createElement('div');
     msgElement.className = 'wp-chat-system';
     msgElement.textContent = message;
     state.chatMessages.appendChild(msgElement);
-    state.chatMessages.scrollTop = state.chatMessages.scrollHeight;
+    
+    // Sadece kullanıcı alttaysa scroll et
+    if (wasNearBottom) {
+        state.chatMessages.scrollTop = state.chatMessages.scrollHeight;
+    }
 };
 
 export const updateUsersList = (users) => {
@@ -152,6 +160,10 @@ export const showTypingIndicator = (username) => {
     let indicator = document.getElementById(indicatorId);
     
     if (!indicator) {
+        // Indicator eklemeden ÖNCE scroll pozisyonunu kontrol et
+        const wasNearBottom = 
+            state.chatMessages.scrollHeight - state.chatMessages.scrollTop - state.chatMessages.clientHeight < 100;
+        
         indicator = document.createElement('div');
         indicator.id = indicatorId;
         indicator.className = 'wp-typing-indicator';
@@ -162,7 +174,11 @@ export const showTypingIndicator = (username) => {
             <span>${escapeHtml(username)} yazıyor...</span>
         `;
         state.chatMessages.appendChild(indicator);
-        state.chatMessages.scrollTop = state.chatMessages.scrollHeight;
+        
+        // Sadece kullanıcı alttaysa scroll et
+        if (wasNearBottom) {
+            state.chatMessages.scrollTop = state.chatMessages.scrollHeight;
+        }
     }
     
     // Auto-hide after 3 seconds

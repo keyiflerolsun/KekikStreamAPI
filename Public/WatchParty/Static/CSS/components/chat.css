@@ -95,7 +95,6 @@
     padding: 0.75rem;
     display: flex;
     flex-direction: column;
-    justify-content: flex-end; /* Mesajlar aşağıdan başlar */
     gap: 0.5rem;
     min-height: 0;
     
@@ -114,6 +113,12 @@
     
     /* local = scroll with content, scroll = fixed to container */
     background-attachment: local, local, scroll, scroll;
+}
+
+/* Spacer - Mesajları aşağıya iter, scroll çalışmasını sağlar */
+.wp-chat-spacer {
+    flex-grow: 1;
+    min-height: 0;
 }
 
 .wp-chat-welcome {
