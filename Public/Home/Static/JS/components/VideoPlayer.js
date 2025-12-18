@@ -94,19 +94,11 @@ export default class VideoPlayer {
                 };
             });
 
-            // JSON.parse işlemini try-catch ile güvenli yap
-            let headers = {};
-            try {
-                headers = JSON.parse(link.dataset.headers || '{}');
-            } catch (e) {
-                this.logger.error('Header parsing hatası', e.message);
-            }
-
             return {
                 name: link.dataset.name,
                 url: link.dataset.url,
                 referer: link.dataset.referer,
-                headers: headers,
+                userAgent: link.dataset.userAgent,
                 subtitles: subtitles
             };
         });
@@ -281,15 +273,15 @@ export default class VideoPlayer {
         const originalUrl = selectedVideo.url;
         // Referer bilgisini al
         const referer = selectedVideo.referer || window.location.href;
-        const headers = selectedVideo.headers || {};
+        const userAgent = selectedVideo.userAgent || '';
 
         // Proxy URL'i oluştur
         let proxyUrl = `/proxy/video?url=${encodeURIComponent(originalUrl)}`;
         if (referer) {
             proxyUrl += `&referer=${encodeURIComponent(referer)}`;
         }
-        if (headers) {
-            proxyUrl += `&headers=${encodeURIComponent(JSON.stringify(headers))}`;
+        if (userAgent) {
+            proxyUrl += `&user_agent=${encodeURIComponent(userAgent)}`;
         }
 
         this.logger.info('Proxy URL oluşturuldu', proxyUrl);
@@ -308,7 +300,7 @@ export default class VideoPlayer {
                               contentType.includes('application/x-mpegurl');
                 
                 if (isHLS) {
-                    this.loadHLSVideo(proxyUrl, originalUrl, referer, headers);
+                    this.loadHLSVideo(proxyUrl, referer, userAgent);
                 } else {
                     this.loadNormalVideo(proxyUrl, originalUrl);
                 }
@@ -318,7 +310,7 @@ export default class VideoPlayer {
                 
                 // Fallback: sadece açık .m3u8 uzantıları
                 if (originalUrl.includes('.m3u8')) {
-                    this.loadHLSVideo(proxyUrl, originalUrl, referer, headers);
+                    this.loadHLSVideo(proxyUrl, referer, userAgent);
                 } else {
                     this.loadNormalVideo(proxyUrl, originalUrl);
                 }
@@ -331,7 +323,9 @@ export default class VideoPlayer {
             selectedVideo.subtitles.forEach(subtitle => {
                 try {
                     // Altyazı proxy URL'ini oluştur
-                    const subtitleProxyUrl = `/proxy/subtitle?url=${encodeURIComponent(subtitle.url)}&referer=${encodeURIComponent(referer)}&headers=${encodeURIComponent(JSON.stringify(headers))}`;
+                    let subtitleProxyUrl = `/proxy/subtitle?url=${encodeURIComponent(subtitle.url)}`;
+                    if (referer) subtitleProxyUrl += `&referer=${encodeURIComponent(referer)}`;
+                    if (userAgent) subtitleProxyUrl += `&user_agent=${encodeURIComponent(userAgent)}`;
 
                     // Altyazı track elementini oluştur
                     const track = document.createElement('track');
@@ -373,7 +367,7 @@ export default class VideoPlayer {
             const playerTitleEl = document.querySelector('.player-title');
             const pageTitle = playerTitleEl ? playerTitleEl.textContent.trim() : document.title;
             wpParams.set('title', `${pageTitle} | ${selectedVideo.name}`);
-            wpParams.set('user_agent', headers['User-Agent'] || navigator.userAgent);
+            wpParams.set('user_agent', userAgent || navigator.userAgent);
             wpParams.set('referer', referer);
             
             // İlk altyazıyı ekle (varsa)
@@ -388,7 +382,7 @@ export default class VideoPlayer {
         this.isLoadingVideo = false;
     }
 
-    loadHLSVideo(proxyUrl, originalUrl, referer, headers) {
+    loadHLSVideo(proxyUrl, referer, userAgent) {
         this.logger.info('HLS video formatı tespit edildi');
         this.retryCount = 0; // Reset retry count for new video
 
@@ -417,12 +411,17 @@ export default class VideoPlayer {
 
                             // Tüm diğer URL'leri proxy üzerinden yönlendir
                             this.logger.info('Segment URL proxy\'ye yönlendiriliyor', url);
-                            const newProxyUrl = `/proxy/video?url=${encodeURIComponent(url)}&referer=${encodeURIComponent(referer)}&headers=${encodeURIComponent(JSON.stringify(headers))}`;
+                            let newProxyUrl = `/proxy/video?url=${encodeURIComponent(url)}`;
+                            if (referer) newProxyUrl += `&referer=${encodeURIComponent(referer)}`;
+                            if (userAgent) newProxyUrl += `&user_agent=${encodeURIComponent(userAgent)}`;
+                            
                             xhr.open('GET', newProxyUrl, true);
                         } catch (error) {
                             this.logger.error('xhrSetup hatası', error.message);
                             // Hata durumunda orijinal URL'yi proxy ile kullan
-                            const fallbackUrl = `/proxy/video?url=${encodeURIComponent(url)}&referer=${encodeURIComponent(referer)}&headers=${encodeURIComponent(JSON.stringify(headers))}`;
+                            let fallbackUrl = `/proxy/video?url=${encodeURIComponent(url)}`;
+                            if (referer) fallbackUrl += `&referer=${encodeURIComponent(referer)}`;
+                            if (userAgent) fallbackUrl += `&user_agent=${encodeURIComponent(userAgent)}`;
                             xhr.open('GET', fallbackUrl, true);
                         }
                     }

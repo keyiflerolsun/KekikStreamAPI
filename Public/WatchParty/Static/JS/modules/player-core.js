@@ -165,13 +165,10 @@ export const safePlay = async (timeout = 3000) => {
 };
 
 // ============== Proxy URL Oluşturucu ==============
-const buildProxyUrl = (url, headers = {}, endpoint = 'video') => {
+const buildProxyUrl = (url, userAgent = '', referer = '', endpoint = 'video') => {
     const params = new URLSearchParams();
     params.append('url', url);
-    
-    const userAgent = headers['User-Agent'] || headers['user-agent'];
-    const referer = headers['Referer'] || headers['referer'];
-    
+
     if (userAgent) params.append('user_agent', userAgent);
     if (referer) params.append('referer', referer);
     
@@ -188,7 +185,7 @@ const detectFormat = (url, format) => {
 };
 
 // ============== HLS Yükleme ==============
-const loadHls = (url, headers = {}, useProxy = false) => {
+const loadHls = (url, userAgent = '', referer = '', useProxy = false) => {
     return new Promise((resolve) => {
         const { videoPlayer } = state;
         
@@ -209,17 +206,17 @@ const loadHls = (url, headers = {}, useProxy = false) => {
                 if (requestUrl.includes('/proxy/video')) return;
 
                 try {
-                    const proxyUrl = buildProxyUrl(requestUrl, headers, 'video');
+                    const proxyUrl = buildProxyUrl(requestUrl, userAgent, referer, 'video');
                     xhr.open('GET', proxyUrl, true);
                 } catch (e) {
                     console.error('HLS Proxy Error:', e);
-                    xhr.open('GET', buildProxyUrl(requestUrl, headers, 'video'), true);
+                    xhr.open('GET', buildProxyUrl(requestUrl, userAgent, referer, 'video'), true);
                 }
             }
         };
 
         state.hls = new Hls(hlsConfig);
-        const loadUrl = useProxy ? buildProxyUrl(url, headers, 'video') : url;
+        const loadUrl = useProxy ? buildProxyUrl(url, userAgent, referer, 'video') : url;
         
         logger.video(`HLS: ${useProxy ? 'proxy (forced)' : 'smart-proxy'}`);
         
@@ -251,7 +248,7 @@ const loadHls = (url, headers = {}, useProxy = false) => {
                              logger.video('Switching to forced proxy mode...');
                              resolved = true;
                              state.hls.destroy();
-                             const result = await loadHls(url, headers, true);
+                             const result = await loadHls(url, userAgent, referer, true);
                              resolve(result);
                         } else {
                             if (!resolved) {
@@ -279,10 +276,10 @@ const loadHls = (url, headers = {}, useProxy = false) => {
 };
 
 // ============== Native Video Yükleme ==============
-const loadNative = (url, headers = {}, useProxy = false) => {
+const loadNative = (url, userAgent = '', referer = '', useProxy = false) => {
     return new Promise((resolve) => {
         const { videoPlayer } = state;
-        const loadUrl = useProxy ? buildProxyUrl(url, headers, 'video') : url;
+        const loadUrl = useProxy ? buildProxyUrl(url, userAgent, referer, 'video') : url;
         videoPlayer.src = loadUrl;
 
         const onCanPlay = () => {
@@ -293,7 +290,7 @@ const loadNative = (url, headers = {}, useProxy = false) => {
         const onError = async () => {
             cleanup();
             if (!useProxy && window.PROXY_ENABLED !== false) {
-                const result = await loadNative(url, headers, true);
+                const result = await loadNative(url, userAgent, referer, true);
                 resolve(result);
             } else {
                 showToast('Video yüklenemedi', 'error');
@@ -319,7 +316,7 @@ const loadNative = (url, headers = {}, useProxy = false) => {
 };
 
 // ============== Video Yükle ==============
-export const loadVideo = async (url, format = 'hls', headers = {}, title = '', subtitleUrl = '') => {
+export const loadVideo = async (url, format = 'hls', userAgent = '', referer = '', title = '', subtitleUrl = '') => {
     const { videoPlayer, playerOverlay, videoInfo, videoTitle: titleEl } = state;
     if (!videoPlayer || !playerOverlay) return false;
 
@@ -341,7 +338,7 @@ export const loadVideo = async (url, format = 'hls', headers = {}, title = '', s
     let detectedFormat = format;
     if (window.PROXY_ENABLED !== false) {
         try {
-            const proxyUrl = buildProxyUrl(url, headers, 'video');
+            const proxyUrl = buildProxyUrl(url, userAgent, referer, 'video');
             const headRes = await fetch(proxyUrl, { method: 'HEAD' });
             const contentType = headRes.headers.get('content-type') || '';
             
@@ -361,9 +358,9 @@ export const loadVideo = async (url, format = 'hls', headers = {}, title = '', s
 
     let success = false;
     if (detectedFormat === 'hls' && typeof Hls !== 'undefined' && Hls.isSupported()) {
-        success = await loadHls(url, headers, false);
+        success = await loadHls(url, userAgent, referer, false);
     } else {
-        success = await loadNative(url, headers, false);
+        success = await loadNative(url, userAgent, referer, false);
     }
 
     // Subtitle
@@ -373,7 +370,7 @@ export const loadVideo = async (url, format = 'hls', headers = {}, title = '', s
         track.label = 'Türkçe';
         track.srclang = 'tr';
         if (window.PROXY_ENABLED !== false) {
-             track.src = buildProxyUrl(subtitleUrl, headers, 'subtitle');
+             track.src = buildProxyUrl(subtitleUrl, userAgent, referer, 'subtitle');
         } else {
              track.src = subtitleUrl;
         }

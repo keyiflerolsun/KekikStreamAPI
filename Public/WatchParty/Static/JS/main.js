@@ -55,12 +55,9 @@ const handleRoomState = async (roomState) => {
 
         if (shouldLoad) {
             // Headerları normalize et
-            const headers = roomState.headers || {};
-            const userAgent = roomState.user_agent || headers['User-Agent'] || headers['user-agent'] || '';
-            const referer = roomState.referer || headers['Referer'] || headers['referer'] || '';
+            const userAgent = roomState.user_agent || '';
+            const referer = roomState.referer || '';
             
-            if (userAgent) headers['User-Agent'] = userAgent;
-            if (referer) headers['Referer'] = referer;
             
             // UI Inputlarını Güncelle
             const urlInput = document.getElementById('video-url-input');
@@ -76,7 +73,8 @@ const handleRoomState = async (roomState) => {
             await loadVideo(
                 roomState.video_url, 
                 roomState.video_format, 
-                headers, 
+                userAgent,
+                referer,
                 roomState.video_title, 
                 roomState.subtitle_url
             );
@@ -112,13 +110,10 @@ const handleTypingIndicator = (msg) => {
 
 const handleVideoChanged = async (msg) => {
     // Headerları normalize et
-    const headers = msg.headers || {};
-    const userAgent = msg.user_agent || headers['User-Agent'] || headers['user-agent'] || '';
-    const referer = msg.referer || headers['Referer'] || headers['referer'] || '';
-    
-    if (userAgent) headers['User-Agent'] = userAgent;
-    if (referer) headers['Referer'] = referer;
-    
+    const userAgent = msg.user_agent || '';
+    const referer = msg.referer || '';
+
+
     // UI Inputlarını Güncelle (Stream)
     const urlInput = document.getElementById('video-url-input');
     const uaInput = document.getElementById('custom-user-agent');
@@ -130,7 +125,7 @@ const handleVideoChanged = async (msg) => {
     if (refInput) refInput.value = referer;
     if (subInput) subInput.value = msg.subtitle_url || '';
 
-    await loadVideo(msg.url, msg.format, headers, msg.title, msg.subtitle_url);
+    await loadVideo(msg.url, msg.format, userAgent, referer, msg.title, msg.subtitle_url);
     updateVideoInfo(msg.title, msg.duration);
     showToast(`${msg.changed_by || 'Birisi'} yeni video yükledi`, 'info');
     addSystemMessage(`🎥 Yeni video: ${msg.title || 'Video'}`);

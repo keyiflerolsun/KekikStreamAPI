@@ -40,21 +40,24 @@ def get_content_type(url: str, response_headers: dict) -> str:
 
 def prepare_request_headers(request: Request, url: str, referer: str | None, user_agent: str | None) -> dict:
     """Proxy isteği için headerları hazırlar"""
-    headers = {
-        "Accept"          : "*/*",
-        "Accept-Encoding" : "identity",
-        "Connection"      : "keep-alive"
-    }
-    
-    # User-Agent ayarı
+    headers = {}
+
+    # Standart headerlar (Eğer extra_headers'da yoksa ekle)
+    if "Accept" not in headers:
+        headers["Accept"] = "*/*"
+    if "Accept-Encoding" not in headers:
+        headers["Accept-Encoding"] = "identity"
+    if "Connection" not in headers:
+        headers["Connection"] = "keep-alive"
+
+    # user-agent ayarı
     if user_agent and user_agent != "None":
-        headers["User-Agent"] = user_agent
-    else:
-        headers["User-Agent"] = DEFAULT_USER_AGENT
+        headers["user-agent"] = user_agent
+    elif "user-agent" not in headers:
+        headers["user-agent"] = DEFAULT_USER_AGENT
         
-    # Referer ayarı
     if referer and referer != "None":
-        headers["Referer"] = unquote(referer)
+        headers["referer"] = unquote(referer)
 
     return headers
 
@@ -87,7 +90,7 @@ def detect_hls_from_url(url: str) -> bool:
     indicators = (".m3u8", "/m.php", "/l.php", "/ld.php", "master.txt", "embed/sheila")
     return any(x in url for x in indicators)
 
-def rewrite_hls_manifest(content: bytes, base_url: str, referer: str = None) -> bytes:
+def rewrite_hls_manifest(content: bytes, base_url: str, referer: str = None, user_agent: str = None) -> bytes:
     """
     HLS manifest içindeki göreceli URL'leri proxy URL'lerine dönüştürür.
     
@@ -122,6 +125,8 @@ def rewrite_hls_manifest(content: bytes, base_url: str, referer: str = None) -> 
                 proxy_url = f'/proxy/video?url={quote(absolute_url, safe="")}'
                 if referer:
                     proxy_url += f'&referer={quote(referer, safe="")}'
+                if user_agent:
+                    proxy_url += f'&user_agent={quote(user_agent, safe="")}'
                 return f'URI="{proxy_url}"'
             
             line = re.sub(r'URI="([^"]+)"', replace_uri, line)
@@ -133,6 +138,8 @@ def rewrite_hls_manifest(content: bytes, base_url: str, referer: str = None) -> 
             proxy_url = f'/proxy/video?url={quote(absolute_url, safe="")}'
             if referer:
                 proxy_url += f'&referer={quote(referer, safe="")}'
+            if user_agent:
+                proxy_url += f'&user_agent={quote(user_agent, safe="")}'
             new_lines.append(proxy_url)
         
         else:

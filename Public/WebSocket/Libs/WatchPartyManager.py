@@ -70,7 +70,7 @@ class WatchPartyManager:
                 return True
             return False
 
-    async def update_video(self, room_id: str, url: str, title: str = "", video_format: str = "hls", headers: dict[str, str] = None, subtitle_url: str = "") -> bool:
+    async def update_video(self, room_id: str, url: str, title: str = "", video_format: str = "hls", user_agent: str = "", referer: str = "", subtitle_url: str = "") -> bool:
         """Video URL'sini güncelle"""
         async with self._lock:
             room = self.rooms.get(room_id)
@@ -81,12 +81,12 @@ class WatchPartyManager:
             room.video_title  = title
             room.video_format = video_format
             room.subtitle_url = subtitle_url
+            room.user_agent   = user_agent
+            room.referer      = referer
             room.current_time = 0.0
             room.is_playing   = False
             room.updated_at   = time.perf_counter()
             room.buffering_users.clear()
-            if headers:
-                room.headers = headers
             return True
 
     async def update_playback_state(self, room_id: str, is_playing: bool, current_time: float) -> bool:
@@ -584,7 +584,8 @@ class WatchPartyManager:
                 "subtitle_url" : room.subtitle_url,
                 "current_time" : room.current_time,
                 "is_playing"   : room.is_playing,
-                "headers"      : dict(room.headers),
+                "user_agent"   : room.user_agent,
+                "referer"      : room.referer,
                 "updated_at"   : room.updated_at,
                 "host_id"      : room.host_id,
             }
@@ -605,7 +606,8 @@ class WatchPartyManager:
             "subtitle_url"  : room_snapshot["subtitle_url"],
             "current_time"  : live_time,
             "is_playing"    : room_snapshot["is_playing"],
-            "headers"       : room_snapshot["headers"],
+            "user_agent"    : room_snapshot["user_agent"],
+            "referer"       : room_snapshot["referer"],
             "users"         : [
                 {
                     "user_id"  : user.user_id,

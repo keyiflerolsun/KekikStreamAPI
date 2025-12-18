@@ -50,16 +50,16 @@ async def video_proxy(request: Request, url: str, referer: str = None, user_agen
         timeout          = httpx.Timeout(connect=10.0, read=60.0, write=10.0, pool=10.0),
         verify           = False,
     )
-    
+
     try:
         # HLS Tahmini (URL'den)
         is_hls = detect_hls_from_url(decoded_url)
         detected_content_type = "application/vnd.apple.mpegurl" if is_hls else None
-        
+
         # GET isteğini başlat
         req = client.build_request("GET", decoded_url, headers=request_headers)
         response = await client.send(req, stream=True)
-        
+
         if response.status_code >= 400:
             await response.aclose()
             await client.aclose()
@@ -67,7 +67,7 @@ async def video_proxy(request: Request, url: str, referer: str = None, user_agen
 
         # Response headerlarını hazırla
         final_headers = prepare_response_headers(dict(response.headers), decoded_url, detected_content_type)
-        
+
         # HEAD isteği ise stream yapma, kapat ve dön
         if request.method == "HEAD":
             await response.aclose()
@@ -85,13 +85,13 @@ async def video_proxy(request: Request, url: str, referer: str = None, user_agen
             content = await response.aread()
             await response.aclose()
             await client.aclose()
-            
+
             # Manifest URL'lerini yeniden yaz
-            rewritten_content = rewrite_hls_manifest(content, decoded_url, referer)
-            
+            rewritten_content = rewrite_hls_manifest(content, decoded_url, referer, user_agent)
+
             # Content-Length güncelle
             final_headers["Content-Length"] = str(len(rewritten_content))
-            
+
             return Response(
                 content     = rewritten_content,
                 status_code = response.status_code,
@@ -124,7 +124,7 @@ async def video_proxy(request: Request, url: str, referer: str = None, user_agen
             media_type  = final_headers.get("Content-Type"),
             background  = BackgroundTask(client.aclose)
         )
-        
+
     except Exception as e:
         await client.aclose()
         konsol.print(f"[red]Proxy başlatma hatası: {str(e)}[/red]")

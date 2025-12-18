@@ -183,17 +183,17 @@ class MessageHandler:
             await self.send_error("Video URL'si gerekli")
             return
 
-        headers = {}
-        if user_agent:
-            headers["User-Agent"] = user_agent
-        if referer:
-            headers["Referer"] = referer
+        if not url:
+            await self.send_error("Video URL'si gerekli")
+            return
 
         video_info = await ytdlp_extract_video_info(url)
 
         if video_info and video_info.get("stream_url"):
             if video_info.get("http_headers"):
-                headers.update(video_info.get("http_headers"))
+                h = video_info.get("http_headers")
+                user_agent = h.get("user-agent") or user_agent
+                referer    = h.get("referer") or referer
 
             # Client'tan title geldiyse onu kullan, yoksa video_info'dan al
             title = custom_title or video_info.get("title", "Video")
@@ -203,7 +203,8 @@ class MessageHandler:
                 url          = video_info["stream_url"],
                 title        = title,
                 video_format = video_info.get("format", "mp4"),
-                headers      = headers,
+                user_agent   = user_agent,
+                referer      = referer,
                 subtitle_url = subtitle_url
             )
 
@@ -214,7 +215,8 @@ class MessageHandler:
                 "format"       : video_info.get("format", "mp4"),
                 "thumbnail"    : video_info.get("thumbnail"),
                 "duration"     : video_info.get("duration", 0),
-                "headers"      : headers,
+                "user_agent"   : user_agent,
+                "referer"      : referer,
                 "subtitle_url" : subtitle_url,
                 "changed_by"   : self.user.username
             })
@@ -227,7 +229,8 @@ class MessageHandler:
                 url          = url,
                 title        = title,
                 video_format = video_format,
-                headers      = headers,
+                user_agent   = user_agent,
+                referer      = referer,
                 subtitle_url = subtitle_url
             )
 
@@ -236,7 +239,8 @@ class MessageHandler:
                 "url"          : url,
                 "title"        : title,
                 "format"       : video_format,
-                "headers"      : headers,
+                "user_agent"   : user_agent,
+                "referer"      : referer,
                 "subtitle_url" : subtitle_url,
                 "changed_by"   : self.user.username
             })

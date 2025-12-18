@@ -66,7 +66,7 @@ async def ytdlp_extract_video_info(url: str):
             "format"       : video_format,
             "uploader"     : info.get("uploader", ""),
             "description"  : info.get("description", "")[:200] if info.get("description") else "",
-            "http_headers" : info.get("http_headers", {})
+            "http_headers" : {k.lower(): v for k, v in info.get("http_headers", {}).items()}
         }
 
     except asyncio.TimeoutError:
