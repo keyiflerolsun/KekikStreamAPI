@@ -7,7 +7,7 @@ import { showToast, updateSyncStatus, showConnectionModal, hideConnectionModal, 
 const config = {
     maxReconnectAttempts: 5,
     reconnectDelay: 3000,
-    heartbeatInterval: 5000
+    heartbeatInterval: 1000  // 1s için hızlı stall detection
 };
 
 // ============== State ==============

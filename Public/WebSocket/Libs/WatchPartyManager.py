@@ -287,6 +287,11 @@ class WatchPartyManager:
             # Zaten durmuşsa ignore
             if not room.is_playing:
                 return {"accept": False, "is_playing": False}
+            
+            # RECOVERY SONRASI PAUSE ENGELLE (2 saniye)
+            # Stall recovery'den hemen sonra client buffer/seeking yapabilir
+            if now - room.last_recovery_time < 2.0:
+                return {"accept": False, "is_playing": True}
 
             # Debounce kontrolleri
             # Sadece çok yakın zamanda auto-resume yapıldıysa engelle (300ms)
@@ -348,41 +353,147 @@ class WatchPartyManager:
             room.buffering_users.clear()
             return True
 
-    async def handle_heartbeat(self, room_id: str, user_id: str, client_time: float):
-        """Heartbeat al ve drift kontrolü yap"""
+    async def schedule_delayed_buffer_pause(
+        self, room_id: str, user_id: str, username: str, delay: float = 2.0
+    ) -> None:
+        """
+        Delayed buffer pause: 2 saniye bekle, hala buffering varsa pause et.
+        Bu, seek sonrası kısa buffer'ların room'u pause'a çekmesini önler.
+        """
+        async def delayed_pause():
+            await asyncio.sleep(delay)
+            
+            # Snapshot al (lock içinde)
+            async with self._lock:
+                room = self.rooms.get(room_id)
+                if not room:
+                    return
+                
+                # Task tamamlandı, dictionary'den sil
+                room.pending_buffer_pause_tasks.pop(user_id, None)
+                
+                # Hala buffering mi?
+                if user_id not in room.buffering_users:
+                    return  # Artık buffering değil, pause etme
+                
+                # Video oynatılıyor mu?
+                if not room.is_playing:
+                    return  # Zaten durmuş, tekrar pause etme
+                
+                # Snapshot al (lock dışında kullanmak için)
+                updated_at = room.updated_at
+                base_time = room.current_time
+            
+            # Lock dışında elapsed hesapla ve broadcast
+            now = time.perf_counter()
+            current_time = base_time + (now - updated_at)
+            
+            await self.update_playback_state(room_id, False, current_time)
+            
+            await self.broadcast_to_room(room_id, {
+                "type"         : "sync",
+                "is_playing"   : False,
+                "current_time" : current_time,
+                "triggered_by" : f"{username} (Buffering...)"
+            })
+        
+        # Önceki task'ı iptal et
+        await self.cancel_delayed_buffer_pause(room_id, user_id)
+        
+        # Yeni task başlat
         async with self._lock:
             room = self.rooms.get(room_id)
             if not room:
+                return
+            
+            task = asyncio.create_task(delayed_pause())
+            room.pending_buffer_pause_tasks[user_id] = task
+
+    async def cancel_delayed_buffer_pause(self, room_id: str, user_id: str) -> None:
+        """Bekleyen delayed pause task'ını iptal et"""
+        async with self._lock:
+            room = self.rooms.get(room_id)
+            if not room:
+                return
+            
+            task = room.pending_buffer_pause_tasks.pop(user_id, None)
+            if task and not task.done():
+                task.cancel()
+
+    async def handle_heartbeat(self, room_id: str, user_id: str, client_time: float):
+        """Heartbeat al, drift kontrolü yap ve stall detection"""
+        now = time.perf_counter()
+        
+        async with self._lock:
+            room = self.rooms.get(room_id)
+            if not room:
+                return
+            
+            user = room.users.get(user_id)
+            if not user:
                 return
 
             # Drift hesapla
             server_time = room.current_time
             if room.is_playing:
-                server_time += (time.perf_counter() - room.updated_at)
+                server_time += (now - room.updated_at)
 
             drift = client_time - server_time
 
             # Sadece oynatılıyorsa drift düzeltmesi yap
             if not room.is_playing:
                 return
+            
+            # STALL DETECTION: Client donmuş mu?
+            time_diff = abs(client_time - user.last_client_time)
+            
+            if time_diff < 0.05:  # Client time artmamış (< 50ms)
+                user.stall_count += 1
+            else:
+                user.stall_count = 0  # Reset
+            
+            # Her durumda son client time'ı güncelle
+            user.last_client_time = client_time
+            
+            # Stall şüphesi: 2 ping için daha dengeli (jitter önleme)
+            stalled_suspected = user.stall_count >= 2
+            # Kesin stall: 2 ping üst üste + cooldown (ping 1s → 2s'de recovery)
+            stalled = user.stall_count >= 2 and now - user.last_sync_time > 3.0
 
             # Seek sonrası drift hesaplama yapma (kullanıcılar henüz sync olmadı)
-            time_since_seek = time.perf_counter() - room.last_seek_time
+            time_since_seek = now - room.last_seek_time
             if time_since_seek < DEBOUNCE_WINDOW:
                 return  # Seek sonrası 1s içinde drift ignore
 
             # Drift Analizi ve Düzeltme
             correction = None
-
-            # Büyük drift (> 3 saniye): Buffer simülasyonu
-            # Sadece ciddi desenkronizasyonlarda tetikle
-            if abs(drift) > 3.0:
+            
+            # STALL RECOVERY: Client donmuşsa force sync
+            if stalled:
+                user.last_sync_time = now
+                user.stall_count = 0
+                # Recovery time'ı kaydet (pause blocking için)
+                room.last_recovery_time = now
+                room.last_auto_resume_time = now
                 correction = {
-                    "type"        : "sync_correction",
-                    "action"      : "buffer",
-                    "target_time" : server_time,
-                    "drift"       : drift
+                    "type"         : "sync",
+                    "is_playing"   : True,
+                    "current_time" : server_time,
+                    "force_seek"   : True,
+                    "triggered_by" : "System (Stall Recovery)"
                 }
+
+            # Büyük drift (> 3 saniye): COOLDOWN ile buffer correction
+            # ÖNEMLI: Stall şüpheleniyorsa buffer correction GÖNDERME (kilitler)
+            elif abs(drift) > 3.0 and not stalled_suspected:
+                if now - user.last_sync_time > 3.0:
+                    user.last_sync_time = now
+                    correction = {
+                        "type"        : "sync_correction",
+                        "action"      : "buffer",
+                        "target_time" : server_time,
+                        "drift"       : drift
+                    }
 
             # Orta drift (1.5-3.0 saniye): Orta seviye hız ayarı
             # Gerideyse hızlan (1.05x), ilerideyse yavaşla (0.95x)

@@ -263,7 +263,7 @@ class MessageHandler:
             await watch_party_manager.mark_buffer_start_time(self.room_id, now)
             return
 
-        # 2. Seek sonrası buffer - ignore (post-seek buffer gereksiz pause yaratır)
+        # 2. Seek sonrası buffer - listene ekle ama pause ETME (genelde kısa buffer)
         if decision["is_post_seek"]:
             await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, True)
             return
@@ -271,35 +271,22 @@ class MessageHandler:
         # 3. Buffer_start zamanını kaydet (atomic)
         await watch_party_manager.mark_buffer_start_time(self.room_id, now)
 
-        # Eğer video oynatılıyorsa önce durdur
+        # Buffering listesine ekle
+        await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, True)
+
+        # DELAYED PAUSE: 2 saniye bekle, hala buffering varsa pause et
+        # Bu, seek sonrası kısa buffer'ların (< 2s) room'u pause'a çekmesini önler
         if decision["should_pause"]:
-            # Playback snapshot ile elapsed hesapla (atomic)
-            snapshot = await watch_party_manager.get_playback_snapshot(self.room_id)
-            if not snapshot:
-                return
-
-            # Current time'ı güncelle (video oynarken geçen süreyi ekle)
-            elapsed = now - snapshot["updated_at"]
-            current_time = snapshot["current_time"] + elapsed
-
-            await watch_party_manager.update_playback_state(self.room_id, False, current_time)
-
-            # Buffering listesine ekle
-            await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, True)
-
-            await watch_party_manager.broadcast_to_room(self.room_id, {
-                "type"         : "sync",
-                "is_playing"   : False,
-                "current_time" : current_time,
-                "triggered_by" : f"{self.user.username} (Buffering...)"
-            })
-        else:
-            # Sadece listeye ekle
-            await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, True)
+            await watch_party_manager.schedule_delayed_buffer_pause(
+                self.room_id, self.user.user_id, self.user.username, delay=MIN_BUFFER_DURATION
+            )
 
     async def handle_buffer_end(self):
         """BUFFER_END mesajını işle"""
         now = time.perf_counter()
+        
+        # Delayed pause task'ını iptal et (kısa buffer olduğu için pause gerekmez)
+        await watch_party_manager.cancel_delayed_buffer_pause(self.room_id, self.user.user_id)
         
         # Atomic buffer_end + auto-resume check
         result = await watch_party_manager.buffer_end_and_check_resume(
