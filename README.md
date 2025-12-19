@@ -192,19 +192,34 @@ KekikStreamAPI/
 Yeni medya kaynakları eklemek için [KekikStream](https://github.com/keyiflerolsun/KekikStream) repo'suna katkıda bulunun:
 
 ```python
-from KekikStream import PluginBase
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo
 
 class MyPlugin(PluginBase):
-    name = "MyPlugin"
-    main_url = "https://example.com"
-    
-    def search(self, query):
+    name        = "MyPlugin"
+    language    = "en"
+    main_url    = "https://example.com"
+    favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
+    description = "MyPlugin description"
+
+    main_page   = {
+      f"{main_url}/category/" : "Category Name"
+    }
+
+    async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
+        # Ana sayfa implementasyonu
+        return results
+
+    async def search(self, query: str) -> list[SearchResult]:
         # Arama implementasyonu
-        pass
-    
-    def load_links(self, url):
+        return results
+
+    async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
+        # İçerik detayları
+        return details
+
+    async def load_links(self, url: str) -> list[dict]:
         # Video bağlantıları
-        pass
+        return links
 ```
 
 ---
@@ -245,9 +260,11 @@ Projeyi geliştirmek için katkılarınızı bekliyoruz!
 
 ---
 
-## 📄 Lisans
+## 🌐 Telif Hakkı ve Lisans
 
-Bu proje **GPL-3.0** lisansı ile lisanslanmıştır.
+* *Copyright (C) 2024 by* [keyiflerolsun](https://github.com/keyiflerolsun) ❤️️
+* [GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007](https://github.com/keyiflerolsun/KekikStream/blob/master/LICENSE) *Koşullarına göre lisanslanmıştır..*
+
 
 ---
 
