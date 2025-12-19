@@ -54,6 +54,7 @@ graph TB
         WatchParty[🎭 Watch Party]
         WSS[📡 WebSocket]
         Proxy[🛡️ Proxy]
+        YtDlp[🎬 yt-dlp]
     end
     
     subgraph External[🌍 External Sources]
@@ -68,11 +69,18 @@ graph TB
     FastAPI --> WSS
     FastAPI --> Proxy
     
-    WatchParty <--> WSS
-    API --> KekikStream
-    Proxy --> MediaSources
-    KekikStream --> MediaSources
+    Home --> KekikStream
+    Home --> Proxy
     
+    API --> KekikStream
+
+    WatchParty <--> WSS
+    WatchParty --> Proxy
+    WatchParty --> YtDlp
+
+    YtDlp --> Proxy
+    KekikStream --> MediaSources
+
     style KekikStreamAPI fill:#2b2a29,stroke:#ef7f1a,stroke-width:2px
     style External fill:#0087a3,stroke:#00a0c2,stroke-width:2px
 ```
