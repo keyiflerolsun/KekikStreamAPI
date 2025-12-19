@@ -47,27 +47,34 @@ python basla.py
 graph TB
     Client[🌐 Client]
     
-    subgraph KekikStreamAPI
-        FastAPI[⚡ FastAPI]
+    subgraph KekikStreamAPI[🎬 KekikStreamAPI]
+        FastAPI[⚡ FastAPI Core]
         Home[🏠 Web UI]
-        API[🔌 API]
-        WP[🎭 Watch Party]
+        API[🔌 API /api/v1]
+        WatchParty[🎭 Watch Party]
         WSS[📡 WebSocket]
         Proxy[🛡️ Proxy]
     end
     
-    External[🌍 External Sources]
+    subgraph External[🌍 External Sources]
+        KekikStream[📚 KekikStream]
+        MediaSources[🎥 Media Sources]
+    end
     
-    Client --> FastAPI
+    Client -->|HTTP/WS| FastAPI
     FastAPI --> Home
     FastAPI --> API
-    FastAPI --> WP
+    FastAPI --> WatchParty
     FastAPI --> WSS
     FastAPI --> Proxy
     
-    WP --> WSS
-    Proxy --> External
-    API --> External
+    WatchParty <--> WSS
+    API --> KekikStream
+    Proxy --> MediaSources
+    KekikStream --> MediaSources
+    
+    style KekikStreamAPI fill:#2b2a29,stroke:#ef7f1a,stroke-width:2px
+    style External fill:#0087a3,stroke:#00a0c2,stroke-width:2px
 ```
 
 ---
@@ -84,14 +91,14 @@ graph TB
 
 | Endpoint | Açıklama |
 |----------|----------|
-| `/health` | API sağlık kontrolü |
-| `/get_plugin_names` | Tüm eklenti listesi |
-| `/get_plugin?plugin={name}` | Eklenti detayları |
-| `/search?plugin={name}&query={term}` | İçerik arama |
-| `/get_main_page` | Kategori içerikleri |
-| `/load_item` | İçerik detayları |
-| `/load_links` | Video bağlantıları |
-| `/extract` | Link extraction |
+| `/api/v1/health` | API sağlık kontrolü |
+| `/api/v1/get_plugin_names` | Tüm eklenti listesi |
+| `/api/v1/get_plugin` | Eklenti detayları |
+| `/api/v1/search` | İçerik arama |
+| `/api/v1/get_main_page` | Kategori içerikleri |
+| `/api/v1/load_item` | İçerik detayları |
+| `/api/v1/load_links` | Video bağlantıları |
+| `/api/v1/extract` | Link extraction |
 
 ### 🎭 Watch Party
 
@@ -110,13 +117,13 @@ http://127.0.0.1:3310/watch-party/{ROOM_ID}?url={VIDEO_URL}
 - 🎬 YouTube, Vimeo, HLS, MP4 desteği
 
 **Parametreler:**
-| Parametre | Zorunlu | Açıklama |
-|-----------|---------|----------|
-| `url` | ✅ | Video URL'si |
-| `title` | ❌ | Video başlığı |
-| `user_agent` | ❌ | Özel User-Agent |
-| `referer` | ❌ | Özel Referer |
-| `subtitle` | ❌ | Altyazı URL'si (.srt, .vtt) |
+| Parametre      | Zorunlu   | Açıklama                    |
+|---------------:|:---------:|:----------------------------|
+| `url`          | ✅        | Video URL'si                |
+| `title`        | ❌        | Video başlığı               |
+| `user_agent`   | ❌        | Özel User-Agent             |
+| `referer`      | ❌        | Özel Referer                |
+| `subtitle`     | ❌        | Altyazı URL'si (.srt, .vtt) |
 
 ### 🛡️ Proxy Sistemi
 
@@ -133,16 +140,16 @@ http://127.0.0.1:3310/watch-party/{ROOM_ID}?url={VIDEO_URL}
 
 ```bash
 # Eklenti listesi
-curl http://127.0.0.1:3310/get_plugin_names
+curl http://127.0.0.1:3310/api/v1/get_plugin_names
 
 # Arama
-curl "http://127.0.0.1:3310/search?plugin=Dizilla&query=vikings"
+curl "http://127.0.0.1:3310/api/v1/search?plugin=Dizilla&query=vikings"
 
 # İçerik detayları
-curl "http://127.0.0.1:3310/load_item?plugin=Dizilla&encoded_url=..."
+curl "http://127.0.0.1:3310/api/v1/load_item?plugin=Dizilla&encoded_url=..."
 
 # Video bağlantıları
-curl "http://127.0.0.1:3310/load_links?plugin=Dizilla&encoded_url=..."
+curl "http://127.0.0.1:3310/api/v1/load_links?plugin=Dizilla&encoded_url=..."
 ```
 
 **Response Formatı:**
@@ -240,12 +247,12 @@ class MyPlugin(PluginBase):
 
 ## 📊 Performans
 
-| Metrik | Değer |
-|--------|-------|
-| RAM Kullanımı | ~100-150MB |
-| Eş Zamanlı Kullanıcı | ~100-200 |
-| Watch Party Odası | ~20-30 |
-| API İstekleri | ~1000 req/sec |
+| Metrik               | Değer         |
+|----------------------|---------------|
+| RAM Kullanımı        | ~100-150MB    |
+| Eş Zamanlı Kullanıcı | ~100-200      |
+| Watch Party Odası    | ~20-30        |
+| API İstekleri        | ~1000 req/sec |
 
 ---
 
