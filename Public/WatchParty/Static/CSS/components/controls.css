@@ -5,7 +5,7 @@
     justify-content: center;
     gap: 0.5rem;
     padding: 0.5rem;
-    
+
     /* Glassmorphism */
     background: rgba(var(--wp-bg-card-rgb, 30, 30, 35), 0.8);
     backdrop-filter: blur(8px);
