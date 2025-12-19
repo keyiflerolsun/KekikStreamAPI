@@ -55,7 +55,7 @@
     background: rgba(var(--wp-bg-card-rgb, 30, 30, 35), 0.8);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    
+
     border-radius: var(--wp-radius);
     padding: 1rem;
     border: 1px solid rgba(255, 255, 255, 0.1);
