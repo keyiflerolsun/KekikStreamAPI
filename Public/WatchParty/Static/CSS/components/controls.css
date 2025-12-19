@@ -10,7 +10,7 @@
     background: rgba(var(--wp-bg-card-rgb, 30, 30, 35), 0.8);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    
+
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: var(--wp-radius-sm);
     box-shadow: 
