@@ -1,13 +1,19 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from CLI import konsol
+from CLI              import konsol
+from yt_dlp.extractor import gen_extractors
 import asyncio
 import subprocess
 import json
 
+_EXTRACTORS_CACHE = [ie for ie in gen_extractors() if ie.ie_key() != 'Generic']
+
 async def ytdlp_extract_video_info(url: str):
     """
-    yt-dlp ile video bilgisi çıkar
+    yt-dlp ile video bilgisi çıkar (sadece gerektiğinde)
+
+    Args:
+        url: Video URL'si
 
     Returns:
         {
@@ -19,7 +25,20 @@ async def ytdlp_extract_video_info(url: str):
         }
     """
     try:
-        # yt-dlp komutunu async olarak çalıştır
+        for ie in _EXTRACTORS_CACHE:
+            if ie.suitable(url):
+                konsol.log(f"[cyan][ℹ] yt-dlp extractor: {ie.ie_key()}[/cyan]")
+                return await _extract_with_ytdlp(url)
+
+        return None
+
+    except Exception as e:
+        konsol.log(f"[yellow][⚠] yt-dlp kontrol hatası: {e}[/yellow]")
+        return None
+
+async def _extract_with_ytdlp(url: str):
+    """yt-dlp ile video bilgisi çıkar (internal)"""
+    try:
         cmd = [
             "yt-dlp",
             "--no-warnings",
