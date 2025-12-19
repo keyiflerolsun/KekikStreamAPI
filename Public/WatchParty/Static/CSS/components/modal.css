@@ -17,7 +17,7 @@
     padding: 2.5rem 2rem;
     min-width: 320px;
     max-width: 420px;
-    
+
     /* Modern glassmorphism */
     background: rgba(var(--wp-bg-card-rgb, 30, 30, 35), 0.95);
     backdrop-filter: blur(16px);
