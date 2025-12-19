@@ -1,26 +1,26 @@
 # 🎬 KekikStreamAPI
 
-**Modern, Self-Hosted Medya Streaming Platformu**  
+**Modern, self-hosted medya streaming platformu**  
 Kendi yayın merkezinizi kurun, arkadaşlarınızla senkronize video izleyin! 🚀
 
 ---
 
-## 🌟 Genel Bakış
+## 🚦 Ne Sunar?
 
-**KekikStreamAPI**, [KekikStream](https://github.com/keyiflerolsun/KekikStream) kütüphanesi üzerine inşa edilmiş tam özellikli bir medya streaming platformudur.
+KekikStreamAPI, [KekikStream](https://github.com/keyiflerolsun/KekikStream) kütüphanesini web arayüzü, API ve proxy katmanı ile birleştirerek uçtan uca bir streaming deneyimi sağlar.
 
-### Temel Özellikler
-
-- 🎥 **Çoklu Kaynak Desteği** - Onlarca kaynaktan içerik arama ve izleme
-- 🎭 **Watch Party** - Arkadaşlarınızla gerçek zamanlı senkronize izleme
-- 🌐 **Modern Web Arayüzü** - Responsive, kullanıcı dostu arayüz
-- 🔌 **RESTful API** - Kolay entegrasyon için API
-- 🛡️ **Proxy Streaming** - CORS ve geo-restriction bypass
-- 🎬 **yt-dlp** - YouTube ve 1000+ site desteği
+- 🎥 Çoklu kaynak desteği: Onlarca kaynaktan içerik arama ve izleme  
+- 🎭 Watch Party: Gerçek zamanlı senkronize izleme  
+- 🌐 Modern Web Arayüzü: Responsive, kullanıcı dostu UI  
+- 🔌 RESTful API: Kolay entegrasyon  
+- 🛡️ Proxy Streaming: CORS ve geo-restriction bypass  
+- 🎬 yt-dlp entegrasyonu: YouTube ve 1000+ site desteği
 
 ---
 
 ## 🚀 Hızlı Başlangıç
+
+> Gereksinimler: Docker (önerilen) veya Python 3.11+, `yt-dlp` ve tarayıcı.
 
 ### Docker ile Kurulum (Önerilen)
 
@@ -39,9 +39,11 @@ pip install -r requirements.txt
 python basla.py
 ```
 
+> `AYAR.yml` içindeki port ve proxy ayarlarını ihtiyacınıza göre güncelleyin.
+
 ---
 
-## 🏗️ Mimari
+## 🧭 Mimari ve Akış
 
 ```mermaid
 graph TB
@@ -87,13 +89,13 @@ graph TB
 
 ---
 
-## ✨ Özellikler
+## 🎯 Kullanım Senaryoları
 
 ### 🌐 Web Arayüzü
 
-- Ana sayfa, arama, kategori filtreleme
-- Sinematik video oynatıcı
-- Responsive tasarım (mobil, tablet, desktop)
+- Ana sayfa, arama, kategori filtreleme  
+- Sinematik video oynatıcı  
+- Mobil/desktop uyumlu tasarım
 
 ### 🔌 API Endpoints
 
@@ -112,17 +114,12 @@ graph TB
 
 Gerçek zamanlı senkronize video izleme:
 
-**Kullanım:**
+**Kullanım:**  
 ```
 http://127.0.0.1:3310/watch-party/{ROOM_ID}?url={VIDEO_URL}
 ```
 
-**Özellikler:**
-- ⚡ WebSocket tabanlı senkronizasyon
-- 🔄 Otomatik drift correction
-- 🛡️ Akıllı buffer yönetimi
-- 💬 Canlı grup sohbeti
-- 🎬 YouTube, Vimeo, HLS, MP4 desteği
+**Özellikler:** ⚡ WebSocket tabanlı senkronizasyon • 🔄 Drift correction • 🛡️ Akıllı buffer • 💬 Canlı sohbet • 🎬 YouTube/Vimeo/HLS/MP4
 
 **Parametreler:**
 | Parametre      | Zorunlu   | Açıklama                    |
@@ -135,16 +132,13 @@ http://127.0.0.1:3310/watch-party/{ROOM_ID}?url={VIDEO_URL}
 
 ### 🛡️ Proxy Sistemi
 
-- HLS manifest rewriting
-- Segment caching (performans)
-- CORS bypass
-- Custom headers desteği
+- HLS manifest rewriting, segment caching  
+- CORS bypass ve custom headers  
+- yt-dlp ile geniş kaynak desteği
 
 ---
 
-## 📖 API Kullanımı
-
-### Örnek: İçerik Arama
+## 📖 API Örnekleri
 
 ```bash
 # Eklenti listesi
@@ -176,7 +170,7 @@ curl "http://127.0.0.1:3310/api/v1/load_links?plugin=Dizilla&encoded_url=..."
 
 ---
 
-## 💻 Teknoloji Stack
+## 🧩 Teknoloji Yığını
 
 **Backend:** FastAPI • Uvicorn • WebSockets • httpx  
 **Frontend:** Jinja2 • CSS/JS minification  
@@ -185,7 +179,7 @@ curl "http://127.0.0.1:3310/api/v1/load_links?plugin=Dizilla&encoded_url=..."
 
 ---
 
-## 🛠️ Geliştirme
+## 🛠️ Geliştirme ve Eklenti Geliştirme
 
 ### Proje Yapısı
 
@@ -202,7 +196,7 @@ KekikStreamAPI/
 └── AYAR.yml           # Ana config
 ```
 
-### Eklenti Geliştirme
+### Eklenti Geliştirme (KekikStream)
 
 Yeni medya kaynakları eklemek için [KekikStream](https://github.com/keyiflerolsun/KekikStream) repo'suna katkıda bulunun:
 
@@ -239,17 +233,11 @@ class MyPlugin(PluginBase):
 
 ---
 
-## 🔒 Güvenlik
+## 🔒 Güvenlik İpuçları
 
-- ✅ Security Headers (HSTS, X-Frame-Options, X-Content-Type-Options)
-- ✅ Referrer-Policy
-- ✅ Server header masking
-- ✅ CORS konfigürasyonu
-
-**Production Tavsiyeleri:**
-- Nginx reverse proxy kullanın
-- SSL/TLS aktifleştirin (Let's Encrypt)
-- Rate limiting ekleyin
+- ✅ Security Headers (HSTS, X-Frame-Options, X-Content-Type-Options)  
+- ✅ Referrer-Policy, server header masking, CORS konfigürasyonu  
+- ✅ Üretimde: Nginx reverse proxy, SSL/TLS (Let's Encrypt), rate limiting
 
 ---
 
@@ -268,18 +256,17 @@ class MyPlugin(PluginBase):
 
 Projeyi geliştirmek için katkılarınızı bekliyoruz!
 
-- **Eklenti Geliştirme:** [KekikStream](https://github.com/keyiflerolsun/KekikStream) repo'suna PR gönderin
-- **Bug Raporu:** GitHub Issues kullanın
-- **Feature Request:** Yeni özellik önerileri
+- **Eklenti Geliştirme:** [KekikStream](https://github.com/keyiflerolsun/KekikStream) repo'suna PR gönderin  
+- **Bug Raporu:** GitHub Issues kullanın  
+- **Feature Request:** Yeni özellik önerileri  
 - **Dokümantasyon:** README ve kod dokümantasyonu iyileştirmeleri
 
 ---
 
 ## 🌐 Telif Hakkı ve Lisans
 
-* *Copyright (C) 2024 by* [keyiflerolsun](https://github.com/keyiflerolsun) ❤️️
-* [GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007](https://github.com/keyiflerolsun/KekikStream/blob/master/LICENSE) *Koşullarına göre lisanslanmıştır..*
-
+*Copyright (C) 2024 by* [keyiflerolsun](https://github.com/keyiflerolsun) ❤️️  
+[GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007](https://github.com/keyiflerolsun/KekikStream/blob/master/LICENSE) *Koşullarına göre lisanslanmıştır.*
 
 ---
 
