@@ -1,16 +1,14 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from CLI              import konsol
-from yt_dlp.extractor import gen_extractors
-import asyncio
-import subprocess
-import json
-
-_EXTRACTORS_CACHE = [ie for ie in gen_extractors() if ie.ie_key() != 'Generic']
+from CLI import konsol
+import asyncio, subprocess, json, yt_dlp
 
 async def ytdlp_extract_video_info(url: str):
     """
-    yt-dlp ile video bilgisi çıkar (sadece gerektiğinde)
+    yt-dlp ile video bilgisi çıkar (profesyonel yaklaşım)
+
+    yt-dlp'nin native Python API'sini simulate mode ile kullanarak
+    önce URL'nin uygunluğunu kontrol eder, ardından bilgi çıkarır.
 
     Args:
         url: Video URL'si
@@ -25,12 +23,25 @@ async def ytdlp_extract_video_info(url: str):
         }
     """
     try:
-        for ie in _EXTRACTORS_CACHE:
-            if ie.suitable(url):
-                konsol.log(f"[cyan][ℹ] yt-dlp extractor: {ie.ie_key()}[/cyan]")
-                return await _extract_with_ytdlp(url)
+        # 1. Önce URL'nin yt-dlp ile işlenebilir olup olmadığını kontrol et
+        ydl_opts = {
+            "simulate"     : True,  # Download yok, sadece tespit
+            "quiet"        : True,  # Log kirliliği yok
+            "no_warnings"  : True,  # Uyarı mesajları yok
+            "extract_flat" : True   # Minimal işlem
+        }
 
-        return None
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False, process=False)
+
+            # Generic extractor ise atla
+            if not info or info.get("extractor_key") == "Generic":
+                return None
+
+            konsol.log(f"[cyan][ℹ] yt-dlp extractor: {info.get('extractor_key', 'Unknown')}[/cyan]")
+
+        # 2. Uygunsa tam bilgiyi çıkar
+        return await _extract_with_ytdlp(url)
 
     except Exception as e:
         konsol.log(f"[yellow][⚠] yt-dlp kontrol hatası: {e}[/yellow]")
