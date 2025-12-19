@@ -5,7 +5,7 @@ import asyncio, subprocess, json, yt_dlp
 
 async def ytdlp_extract_video_info(url: str):
     """
-    yt-dlp ile video bilgisi çıkar (profesyonel yaklaşım)
+    yt-dlp ile video bilgisi çıkar
 
     yt-dlp'nin native Python API'sini simulate mode ile kullanarak
     önce URL'nin uygunluğunu kontrol eder, ardından bilgi çıkarır.
@@ -37,8 +37,6 @@ async def ytdlp_extract_video_info(url: str):
             # Generic extractor ise atla
             if not info or info.get("extractor_key") == "Generic":
                 return None
-
-            konsol.log(f"[cyan][ℹ] yt-dlp extractor: {info.get('extractor_key', 'Unknown')}[/cyan]")
 
         # 2. Uygunsa tam bilgiyi çıkar
         return await _extract_with_ytdlp(url)
