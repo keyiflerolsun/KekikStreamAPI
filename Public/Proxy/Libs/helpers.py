@@ -2,7 +2,7 @@
 
 from CLI          import konsol
 from fastapi      import Request
-from urllib.parse import unquote, urljoin, urlencode, quote
+from urllib.parse import unquote, urljoin, quote
 import httpx, traceback, re
 
 DEFAULT_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5)"
@@ -55,7 +55,7 @@ def prepare_request_headers(request: Request, url: str, referer: str | None, use
         headers["user-agent"] = user_agent
     elif "user-agent" not in headers:
         headers["user-agent"] = DEFAULT_USER_AGENT
-        
+
     if referer and referer != "None":
         headers["referer"] = unquote(referer)
 
@@ -64,25 +64,25 @@ def prepare_request_headers(request: Request, url: str, referer: str | None, use
 def prepare_response_headers(response_headers: dict, url: str, detected_content_type: str = None) -> dict:
     """Client'a dönecek headerları hazırlar"""
     headers = CORS_HEADERS.copy()
-    
+
     # Content-Type belirle
     headers["Content-Type"] = detected_content_type or get_content_type(url, response_headers)
-    
+
     # Transfer edilecek headerlar
     important_headers = [
         "content-range", "accept-ranges",
         "etag", "cache-control", "content-disposition",
         "content-length"
     ]
-    
+
     for header in important_headers:
         if val := response_headers.get(header):
             headers[header.title()] = val
-            
+
     # Zorunlu headerlar
     if "Accept-Ranges" not in headers:
         headers["Accept-Ranges"] = "bytes"
-        
+
     return headers
 
 def detect_hls_from_url(url: str) -> bool:
@@ -106,17 +106,17 @@ def rewrite_hls_manifest(content: bytes, base_url: str, referer: str = None, use
         text = content.decode('utf-8')
     except UnicodeDecodeError:
         return content  # Binary içerik, değiştirme
-    
+
     # HLS manifest değilse değiştirme
     if not text.strip().startswith('#EXTM3U'):
         return content
-    
+
     lines = text.split('\n')
     new_lines = []
-    
+
     for line in lines:
         stripped = line.strip()
-        
+
         # URI="..." içeren satırları işle (audio/subtitle tracks)
         if 'URI="' in line:
             def replace_uri(match):
@@ -128,10 +128,10 @@ def rewrite_hls_manifest(content: bytes, base_url: str, referer: str = None, use
                 if user_agent:
                     proxy_url += f'&user_agent={quote(user_agent, safe="")}'
                 return f'URI="{proxy_url}"'
-            
+
             line = re.sub(r'URI="([^"]+)"', replace_uri, line)
             new_lines.append(line)
-        
+
         # Segment URL satırları (# ile başlamayan ve boş olmayan)
         elif stripped and not stripped.startswith('#'):
             absolute_url = urljoin(base_url, stripped)
@@ -141,10 +141,10 @@ def rewrite_hls_manifest(content: bytes, base_url: str, referer: str = None, use
             if user_agent:
                 proxy_url += f'&user_agent={quote(user_agent, safe="")}'
             new_lines.append(proxy_url)
-        
+
         else:
             new_lines.append(line)
-    
+
     return '\n'.join(new_lines).encode('utf-8')
 
 async def stream_wrapper(response: httpx.Response):
@@ -153,7 +153,7 @@ async def stream_wrapper(response: httpx.Response):
         original_ct  = response.headers.get('content-type', 'bilinmiyor')
         first_chunk  = None
         corrected_ct = None
-        
+
         async for chunk in response.aiter_bytes(chunk_size=DEFAULT_CHUNK_SIZE):
             if first_chunk is None:
                 first_chunk = chunk
@@ -201,7 +201,7 @@ def process_subtitle_content(content: bytes, content_type: str, url: str) -> byt
         content.strip().startswith(b"1\r\n") or 
         content.strip().startswith(b"1\n")
     )
-    
+
     if is_srt:
         try:
             content = content.replace(b"\r\n", b"\n")
@@ -211,5 +211,5 @@ def process_subtitle_content(content: bytes, content_type: str, url: str) -> byt
             return content
         except Exception as e:
             konsol.print(f"[yellow]SRT dönüştürme hatası: {str(e)}[/yellow]")
-            
+
     return content

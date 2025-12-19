@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from CLI import konsol
-import asyncio, subprocess, json, yt_dlp
+import asyncio, subprocess, json, yt_dlp, os, sys
 
 async def ytdlp_extract_video_info(url: str):
     """
@@ -23,26 +23,37 @@ async def ytdlp_extract_video_info(url: str):
         }
     """
     try:
-        # 1. Önce URL'nin yt-dlp ile işlenebilir olup olmadığını kontrol et
-        ydl_opts = {
-            "simulate"     : True,  # Download yok, sadece tespit
-            "quiet"        : True,  # Log kirliliği yok
-            "no_warnings"  : True,  # Uyarı mesajları yok
-            "extract_flat" : True   # Minimal işlem
-        }
+        # stderr'ı geçici olarak kapat (hata mesajlarını gizle)
+        old_stderr = sys.stderr
+        sys.stderr = open(os.devnull, "w")
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False, process=False)
+        try:
+            ydl_opts = {
+                "simulate"              : True,  # Download yok, sadece tespit
+                "quiet"                 : True,  # Log kirliliği yok
+                "no_warnings"           : True,  # Uyarı mesajları yok
+                "extract_flat"          : True,  # Minimal işlem
+                "no_check_certificates" : True,
+                "ignoreerrors"          : True   # Hataları yoksay
+            }
 
-            # Generic extractor ise atla
-            if not info or info.get("extractor_key") == "Generic":
-                return None
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                # URL'yi işleyebiliyor mu kontrol et
+                info = ydl.extract_info(url, download=False, process=False)
 
-        # 2. Uygunsa tam bilgiyi çıkar
-        return await _extract_with_ytdlp(url)
+                # Generic extractor ise atla
+                if not info or info.get("extractor_key") == "Generic":
+                    return None
 
-    except Exception as e:
-        konsol.log(f"[yellow][⚠] yt-dlp kontrol hatası: {e}[/yellow]")
+                # 2. Uygunsa tam bilgiyi çıkar
+                return await _extract_with_ytdlp(url)
+        finally:
+            # stderr'ı geri yükle
+            sys.stderr.close()
+            sys.stderr = old_stderr
+
+    except Exception:
+        # yt-dlp işleyemezse None döndür
         return None
 
 async def _extract_with_ytdlp(url: str):
