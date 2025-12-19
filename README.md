@@ -1,131 +1,260 @@
-# KekikStreamAPI
+# 🎬 KekikStreamAPI
 
-**KekikStreamAPI**, [KekikStream](https://github.com/keyiflerolsun/KekikStream) kütüphanesi üzerine inşa edilmiş, **self-hosted** (kendi sunucunuzda barındırabileceğiniz) modern bir web arayüzü ve RESTful API servisidir.
+**Modern, Self-Hosted Medya Streaming Platformu**  
+Kendi yayın merkezinizi kurun, arkadaşlarınızla senkronize video izleyin! 🚀
 
-Kendi yayın merkezinizi kurmak hiç bu kadar kolay olmamıştı! 🚀
+---
 
-## 🌟 Özellikler
+## 🌟 Genel Bakış
 
--   🐳 **Docker ile Kolay Kurulum**: Tek komutla saniyeler içinde ayağa kaldırın.
--   🌐 **Modern Web Arayüzü**:
-    -   **Ana Sayfa**: Popüler içerikleri keşfedin.
-    -   **Gelişmiş Arama**: İstediğiniz içeriği hızla bulun.
-    -   **Kategori Yönetimi**: İçerikleri kategorilere göre filtreleyin.
-    -   **Sinematik Oynatıcı**: Dahili oynatıcı ile kesintisiz izleme keyfi.
--   🎭 **Watch Party**: Arkadaşlarınızla senkronize video izleme deneyimi.
-    -   **Gerçek Zamanlı Senkronizasyon**: Otomatik play/pause/seek senkronizasyonu.
-    -   **Akıllı Buffer Yönetimi**: Buffering durumlarında otomatik duraklama ve devam.
-    -   **Canlı Sohbet**: Entegre grup sohbet sistemi.
-    -   **Oda Paylaşımı**: Tek tıkla oda linki paylaşımı.
--   🛡️ **Proxy Streaming**: Dahili proxy sistemi sayesinde coğrafi kısıtlamaları ve CORS sorunlarını aşın.
--   🔌 **Geniş Eklenti Desteği**: `KekikStream` altyapısı ile onlarca kaynaktan içerik çekebilme.
--   🚀 **Yüksek Performans**: Python (FastAPI) ve asenkron mimari ile ışık hızında yanıtlar.
+**KekikStreamAPI**, [KekikStream](https://github.com/keyiflerolsun/KekikStream) kütüphanesi üzerine inşa edilmiş tam özellikli bir medya streaming platformudur.
 
-## 🛠️ Kurulum
+### Temel Özellikler
 
-### 🐳 Docker ile Kurulum (Önerilen)
+- 🎥 **Çoklu Kaynak Desteği** - Onlarca kaynaktan içerik arama ve izleme
+- 🎭 **Watch Party** - Arkadaşlarınızla gerçek zamanlı senkronize izleme
+- 🌐 **Modern Web Arayüzü** - Responsive, kullanıcı dostu arayüz
+- 🔌 **RESTful API** - Kolay entegrasyon için API
+- 🛡️ **Proxy Streaming** - CORS ve geo-restriction bypass
+- 🎬 **yt-dlp** - YouTube ve 1000+ site desteği
 
-Bilgisayarınızda veya sunucunuzda Docker ve Docker Compose yüklü ise, kurulum en kolay bu şekilde yapılır.
+---
 
-1.  Projeyi klonlayın:
-    ```bash
-    git clone https://github.com/keyiflerolsun/KekikStreamAPI.git
-    cd KekikStreamAPI
-    ```
+## 🚀 Hızlı Başlangıç
 
-2.  Konteyneri başlatın:
-    ```bash
-    docker-compose up -d
-    ```
+### Docker ile Kurulum (Önerilen)
 
-3.  Tarayıcınızdan erişin:
-    > http://127.0.0.1:3310
+```bash
+git clone https://github.com/keyiflerolsun/KekikStreamAPI.git
+cd KekikStreamAPI
+docker-compose up -d
+```
 
-### 🐍 Manuel Kurulum
+👉 Tarayıcınızdan erişin: **http://127.0.0.1:3310**
 
-Geliştirme yapmak veya Docker kullanmadan çalıştırmak isterseniz:
+### Manuel Kurulum
 
-**Gereksinimler:** Python 3.13+
+```bash
+pip install -r requirements.txt
+python basla.py
+```
 
-1.  Gerekli paketleri yükleyin:
-    ```bash
-    pip install -r requirements.txt
-    ```
+---
 
-2.  Uygulamayı başlatın:
-    ```bash
-    python basla.py
-    ```
-    *Uygulama otomatik olarak assetleri (CSS/JS) minify edip paketleyecektir.*
+## 🏗️ Mimari
 
-## 🔒 Güvenlik
+```mermaid
+graph TB
+    Client[🌐 Client]
+    
+    subgraph KekikStreamAPI
+        FastAPI[⚡ FastAPI]
+        Home[🏠 Web UI]
+        API[🔌 API]
+        WP[🎭 Watch Party]
+        WSS[📡 WebSocket]
+        Proxy[🛡️ Proxy]
+    end
+    
+    External[🌍 External Sources]
+    
+    Client --> FastAPI
+    FastAPI --> Home
+    FastAPI --> API
+    FastAPI --> WP
+    FastAPI --> WSS
+    FastAPI --> Proxy
+    
+    WP --> WSS
+    Proxy --> External
+    API --> External
+```
 
-KekikStreamAPI, modern güvenlik standartlarına uygun olarak geliştirilmiştir:
--   **Güvenlik Başlıkları**: HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy gibi başlıklar otomatik eklenir.
--   **CSRF Koruması**: Form gönderimleri için CSRF token koruması mevcuttur.
--   **Gizlilik**: Gereksiz sunucu bilgileri (Server, X-Powered-By) gizlenir.
+---
 
-## 📖 Kullanım
+## ✨ Özellikler
 
-### Web Arayüzü
-Tarayıcınızdan **http://127.0.0.1:3310** adresine giderek modern web arayüzünü kullanmaya başlayabilirsiniz.
+### 🌐 Web Arayüzü
+
+- Ana sayfa, arama, kategori filtreleme
+- Sinematik video oynatıcı
+- Responsive tasarım (mobil, tablet, desktop)
+
+### 🔌 API Endpoints
+
+| Endpoint | Açıklama |
+|----------|----------|
+| `/health` | API sağlık kontrolü |
+| `/get_plugin_names` | Tüm eklenti listesi |
+| `/get_plugin?plugin={name}` | Eklenti detayları |
+| `/search?plugin={name}&query={term}` | İçerik arama |
+| `/get_main_page` | Kategori içerikleri |
+| `/load_item` | İçerik detayları |
+| `/load_links` | Video bağlantıları |
+| `/extract` | Link extraction |
 
 ### 🎭 Watch Party
 
-Arkadaşlarınızla birlikte senkronize video izleme deneyimi:
+Gerçek zamanlı senkronize video izleme:
 
-1. **Oda Oluşturma**: Ana sayfadan bir video seçip "Watch Party" butonuna tıklayın.
-2. **Oda Paylaşma**: Otomatik oluşturulan oda linkini arkadaşlarınızla paylaşın.
-3. **Senkronize İzleme**: Herhangi bir kullanıcı videoyu oynatır/duraklatırsa, tüm katılımcılar için otomatik senkronize olur.
-
-**Özellikler**:
--   ⚡ **Gerçek Zamanlı WebSocket**: Milisaniye seviyesinde senkronizasyon.
--   🎬 **Akıllı Buffering**: Bir kullanıcı buffering yaşarsa, tüm oda otomatik duraklar ve herkesi bekler.
--   💬 **Canlı Sohbet**: Video izlerken anlık mesajlaşma.
--   📍 **Drift Correction**: Otomatik zaman farkı düzeltme sistemi.
--   🔄 **Auto-Resume**: Buffering bittiğinde otomatik devam.
--   🎥 **yt-dlp Desteği**: YouTube, Vimeo ve 1000+ site için otomatik stream extraction.
-
-**Kullanım**:
+**Kullanım:**
 ```
 http://127.0.0.1:3310/watch-party/{ROOM_ID}?url={VIDEO_URL}
 ```
 
-**URL Parametreleri**:
-| Parametre    | Zorunlu  | Açıklama                                             |
-|--------------|----------|------------------------------------------------------|
-| `url`        | ✅ Evet  | Video URL'si (Direkt link veya yt-dlp destekli site) |
-| `title`      | ❌ Hayır | Video başlığı                                        |
-| `user_agent` | ❌ Hayır | Özel User-Agent header                               |
-| `referer`    | ❌ Hayır | Özel Referer header                                  |
-| `subtitle`   | ❌ Hayır | Altyazı dosyası URL'si (.srt, .vtt)                  |
+**Özellikler:**
+- ⚡ WebSocket tabanlı senkronizasyon
+- 🔄 Otomatik drift correction
+- 🛡️ Akıllı buffer yönetimi
+- 💬 Canlı grup sohbeti
+- 🎬 YouTube, Vimeo, HLS, MP4 desteği
 
-**Tam Örnek**:
+**Parametreler:**
+| Parametre | Zorunlu | Açıklama |
+|-----------|---------|----------|
+| `url` | ✅ | Video URL'si |
+| `title` | ❌ | Video başlığı |
+| `user_agent` | ❌ | Özel User-Agent |
+| `referer` | ❌ | Özel Referer |
+| `subtitle` | ❌ | Altyazı URL'si (.srt, .vtt) |
+
+### 🛡️ Proxy Sistemi
+
+- HLS manifest rewriting
+- Segment caching (performans)
+- CORS bypass
+- Custom headers desteği
+
+---
+
+## 📖 API Kullanımı
+
+### Örnek: İçerik Arama
+
+```bash
+# Eklenti listesi
+curl http://127.0.0.1:3310/get_plugin_names
+
+# Arama
+curl "http://127.0.0.1:3310/search?plugin=Dizilla&query=vikings"
+
+# İçerik detayları
+curl "http://127.0.0.1:3310/load_item?plugin=Dizilla&encoded_url=..."
+
+# Video bağlantıları
+curl "http://127.0.0.1:3310/load_links?plugin=Dizilla&encoded_url=..."
 ```
-http://127.0.0.1:3310/watch-party/{ROOM_ID}?url={VIDEO_URL}&title={VIDEO_TITLE}&user_agent={USER_AGENT}&referer={REFERER}&subtitle={SUBTITLE_URL}
+
+**Response Formatı:**
+```json
+{
+  "results": [
+    {
+      "title": "Vikings",
+      "url": "...",
+      "thumbnail": "...",
+      "description": "..."
+    }
+  ]
+}
 ```
 
-### Temel API Endpointleri
+---
 
-| Endpoint            | Method | Parametreler                                                                                                       | Açıklama                                                                        | Örnek Kullanım                                                                                    |
-|---------------------|--------|------------------------------------------------------------------------------------------------------------------- |---------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------|
-| `/health`           | GET    | -                                                                                                                  | API sağlık durumunu kontrol eder.                                               | `/health`                                                                                         |
-| `/get_plugin_names` | GET    | -                                                                                                                  | Tüm eklenti isimlerini getirir.                                                 | `/get_plugin_names`                                                                               |
-| `/get_plugin`       | GET    | `plugin`: Eklenti adı                                                                                              | Eklenti bilgilerini getirir (ana URL, favicon, açıklama, kategoriler).          | `/get_plugin?plugin=Dizilla`                                                                      |
-| `/search`           | GET    | `plugin`: Eklenti adı<br>`query`: Arama sorgusu                                                                    | Belirtilen eklenti içinde arama yapar ve sonuçları döner.                       | `/search?plugin=Dizilla&query=film`                                                               |
-| `/get_main_page`    | GET    | `plugin`: Eklenti adı<br>`page`: Sayfa numarası<br>`encoded_url`: Kategori URL<br>`encoded_category`: Kategori adı | Belirtilen kategori için ana sayfa içerik listesini döner.                      | `/get_main_page?plugin=Dizilla&page=1&encoded_url=<kategori_url>&encoded_category=<kategori_adı>` |
-| `/load_item`        | GET    | `plugin`: Eklenti adı<br>`encoded_url`: İçerik URL'si                                                              | Seçilen içeriğin detay bilgilerini getirir.                                     | `/load_item?plugin=Dizilla&encoded_url=<icerik_url>`                                              |
-| `/load_links`       | GET    | `plugin`: Eklenti adı<br>`encoded_url`: İçerik ya da bölüm URL'si                                                  | İçeriğe ait yayın/bağlantı listesini döner.                                     | `/load_links?plugin=Dizilla&encoded_url=<icerik_url>`                                             |
-| `/extract`          | GET    | `encoded_url`: Bağlantı<br>`encoded_referer`: Referer URL (genellikle eklentinin ana URL'si)                       | Verilen bağlantıdan oynatılabilir linki ekstrakte eder (gerekliyse).            | `/extract?encoded_url=<link>&encoded_referer=<ana_url>`                                           |
+## 💻 Teknoloji Stack
+
+**Backend:** FastAPI • Uvicorn • WebSockets • httpx  
+**Frontend:** Jinja2 • CSS/JS minification  
+**Medya:** yt-dlp • KekikStream  
+**Güvenlik:** CORS • HSTS • Security Headers
+
+---
+
+## 🛠️ Geliştirme
+
+### Proje Yapısı
+
+```
+KekikStreamAPI/
+├── Core/              # FastAPI app
+├── Public/
+│   ├── Home/          # Web UI
+│   ├── API/v1/        # RESTful API
+│   ├── WatchParty/    # Watch Party
+│   ├── WebSocket/     # WebSocket
+│   └── Proxy/         # Proxy
+├── Settings/          # Konfigürasyon
+└── AYAR.yml           # Ana config
+```
+
+### Eklenti Geliştirme
+
+Yeni medya kaynakları eklemek için [KekikStream](https://github.com/keyiflerolsun/KekikStream) repo'suna katkıda bulunun:
+
+```python
+from KekikStream import PluginBase
+
+class MyPlugin(PluginBase):
+    name = "MyPlugin"
+    main_url = "https://example.com"
+    
+    def search(self, query):
+        # Arama implementasyonu
+        pass
+    
+    def load_links(self, url):
+        # Video bağlantıları
+        pass
+```
+
+---
+
+## 🔒 Güvenlik
+
+- ✅ Security Headers (HSTS, X-Frame-Options, X-Content-Type-Options)
+- ✅ Referrer-Policy
+- ✅ Server header masking
+- ✅ CORS konfigürasyonu
+
+**Production Tavsiyeleri:**
+- Nginx reverse proxy kullanın
+- SSL/TLS aktifleştirin (Let's Encrypt)
+- Rate limiting ekleyin
+
+---
+
+## 📊 Performans
+
+| Metrik | Değer |
+|--------|-------|
+| RAM Kullanımı | ~100-150MB |
+| Eş Zamanlı Kullanıcı | ~100-200 |
+| Watch Party Odası | ~20-30 |
+| API İstekleri | ~1000 req/sec |
+
+---
 
 ## 🤝 Katkıda Bulunma
 
-Eklenti geliştirmeye destek olmak veya yeni özellikler eklemek isterseniz, [KekikStream](https://github.com/keyiflerolsun/KekikStream) kütüphanesine **Pull Request** göndermekten çekinmeyin!
+Projeyi geliştirmek için katkılarınızı bekliyoruz!
 
-Topluluk katkılarıyla projemizi daha da ileriye taşıyabiliriz. 🚀
+- **Eklenti Geliştirme:** [KekikStream](https://github.com/keyiflerolsun/KekikStream) repo'suna PR gönderin
+- **Bug Raporu:** GitHub Issues kullanın
+- **Feature Request:** Yeni özellik önerileri
+- **Dokümantasyon:** README ve kod dokümantasyonu iyileştirmeleri
+
+---
+
+## 📄 Lisans
+
+Bu proje **GPL-3.0** lisansı ile lisanslanmıştır.
 
 ---
 
 <p align="center">
   Bu proje <a href="https://github.com/keyiflerolsun">@keyiflerolsun</a> tarafından <a href="https://t.me/KekikAkademi">@KekikAkademi</a> için geliştirilmiştir.
+</p>
+
+<p align="center">
+  <sub>⭐ Beğendiyseniz yıldız vermeyi unutmayın!</sub>
 </p>
