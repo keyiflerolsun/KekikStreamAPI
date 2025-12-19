@@ -27,7 +27,7 @@ async def izle(request: Request, eklenti_adi: str, url: str, baslik: str):
                     "name"       : link.get("name"),
                     "url"        : link.get("url"),
                     "referer"    : link.get("referer"),
-                    "user_agent" : link.get("user_agent"),
+                    "user_agent" : link.get("user_agent", ""),
                     "subtitles"  : [sub.dict() for sub in link.get("subtitles", [])]
                 })
         else:
@@ -44,7 +44,7 @@ async def izle(request: Request, eklenti_adi: str, url: str, baslik: str):
                             "name"       : link.get("name"),
                             "url"        : data.url,
                             "referer"    : data.referer,
-                            "user_agent" : link.get("user_agent"),
+                            "user_agent" : link.get("user_agent", ""),
                             "subtitles"  : [sub.model_dump() for sub in data.subtitles]
                         })
 
