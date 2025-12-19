@@ -40,7 +40,7 @@
     color: var(--wp-error);
     margin-bottom: 1.25rem;
     display: inline-block;
-    
+
     /* Pulsing glow effect */
     filter: drop-shadow(0 0 20px var(--wp-error));
     animation: iconPulse 2s ease-in-out infinite;
