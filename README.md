@@ -50,7 +50,7 @@ graph TB
     subgraph KekikStreamAPI[🎬 KekikStreamAPI]
         FastAPI[⚡ FastAPI Core]
         Home[🏠 Web UI]
-        API[🔌 API /api/v1]
+        API[🔌 API]
         WatchParty[🎭 Watch Party]
         WSS[📡 WebSocket]
         Proxy[🛡️ Proxy]
@@ -97,16 +97,16 @@ graph TB
 
 ### 🔌 API Endpoints
 
-| Endpoint | Açıklama |
-|----------|----------|
-| `/api/v1/health` | API sağlık kontrolü |
-| `/api/v1/get_plugin_names` | Tüm eklenti listesi |
-| `/api/v1/get_plugin` | Eklenti detayları |
-| `/api/v1/search` | İçerik arama |
-| `/api/v1/get_main_page` | Kategori içerikleri |
-| `/api/v1/load_item` | İçerik detayları |
-| `/api/v1/load_links` | Video bağlantıları |
-| `/api/v1/extract` | Link extraction |
+| Endpoint                     | Açıklama            |
+|------------------------------|---------------------|
+| `/api/v1/health`             | API sağlık kontrolü |
+| `/api/v1/get_plugin_names`   | Tüm eklenti listesi |
+| `/api/v1/get_plugin`         | Eklenti detayları   |
+| `/api/v1/search`             | İçerik arama        |
+| `/api/v1/get_main_page`      | Kategori içerikleri |
+| `/api/v1/load_item`          | İçerik detayları    |
+| `/api/v1/load_links`         | Video bağlantıları  |
+| `/api/v1/extract`            | Link extraction     |
 
 ### 🎭 Watch Party
 
