@@ -88,8 +88,8 @@ const handleRoomState = async (roomState) => {
             const inputContainer = document.getElementById('video-input-container');
             const toggleBtn = document.querySelector('.controls-toggle');
             
-            if (inputContainer && inputContainer.style.display === 'none') {
-                inputContainer.style.display = '';
+            if (inputContainer && (inputContainer.style.display === 'none' || window.getComputedStyle(inputContainer).display === 'none')) {
+                inputContainer.style.display = 'block';
                 if (toggleBtn) toggleBtn.classList.add('active');
             }
         }
@@ -305,7 +305,7 @@ const init = async () => {
             // Show input container
             const inputContainer = document.getElementById('video-input-container');
             if (inputContainer) {
-                inputContainer.style.display = '';
+                inputContainer.style.display = 'block';
                 // Toggle button'u aktif yap
                 const toggleBtn = document.querySelector('.controls-toggle');
                 if (toggleBtn) toggleBtn.classList.add('active');
