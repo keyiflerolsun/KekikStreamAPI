@@ -87,7 +87,7 @@ const handleRoomState = async (roomState) => {
         if (currentUser?.is_host) {
             const inputContainer = document.getElementById('video-input-container');
             const toggleBtn = document.querySelector('.controls-toggle');
-            
+
             if (inputContainer && (inputContainer.style.display === 'none' || window.getComputedStyle(inputContainer).display === 'none')) {
                 inputContainer.style.display = 'block';
                 if (toggleBtn) toggleBtn.classList.add('active');
