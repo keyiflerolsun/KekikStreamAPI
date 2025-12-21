@@ -57,7 +57,7 @@ const handleRoomState = async (roomState) => {
             // Headerları normalize et
             const userAgent = roomState.user_agent || '';
             const referer = roomState.referer || '';
-            
+
             // UI Inputlarını Güncelle
             const urlInput = document.getElementById('video-url-input');
             const uaInput = document.getElementById('custom-user-agent');
