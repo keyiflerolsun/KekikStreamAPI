@@ -19,12 +19,16 @@ async def izle(request: Request, eklenti_adi: str, url: str, baslik: str):
 
         links = []
         for link in load_links:
+            subtitles = []
+            if link.subtitles:
+                subtitles = [sub.model_dump() for sub in link.subtitles]
+            
             links.append({
-                "name"       : link.get("name"),
-                "url"        : link.get("url"),
-                "referer"    : link.get("referer", ""),
-                "user_agent" : link.get("user_agent", ""),
-                "subtitles"  : [sub.dict() for sub in link.get("subtitles", [])]
+                "name"       : link.name,
+                "url"        : link.url,
+                "referer"    : link.referer or "",
+                "user_agent" : link.user_agent or "",
+                "subtitles"  : subtitles
             })
 
         context = {

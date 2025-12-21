@@ -201,7 +201,7 @@ KekikStreamAPI/
 Yeni medya kaynakları eklemek için [KekikStream](https://github.com/keyiflerolsun/KekikStream) repo'suna katkıda bulunun:
 
 ```python
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, ExtractResult
 
 class MyPlugin(PluginBase):
     name        = "MyPlugin"
@@ -226,7 +226,7 @@ class MyPlugin(PluginBase):
         # İçerik detayları
         return details
 
-    async def load_links(self, url: str) -> list[dict]:
+    async def load_links(self, url: str) -> list[ExtractResult]:
         # Video bağlantıları
         return links
 ```
