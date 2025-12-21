@@ -1,11 +1,9 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from .        import api_v1_router, api_v1_global_message
-from Core     import Request, JSONResponse
-from ..Libs   import plugin_manager
-
-from random       import choice
-from urllib.parse import quote_plus
+from .      import api_v1_router, api_v1_global_message
+from Core   import Request, JSONResponse
+from ..Libs import plugin_manager
+from random import choice
 
 @api_v1_router.get("/load_links")
 async def load_links(request:Request):
@@ -23,17 +21,14 @@ async def load_links(request:Request):
     plugin = plugin_manager.select_plugin(_plugin)
     links  = await plugin.load_links(_encoded_url)
 
-    if hasattr(plugin, "play") and callable(getattr(plugin, "play", None)):
-        result = []
-        for link in links:
-            result.append({
-                "name"       : link.get("name"),
-                "url"        : link.get("url"),
-                "referer"    : link.get("referer"),
-                "user_agent" : link.get("user_agent"),
-                "subtitles"  : link.get("subtitles")
-            })
+    result = []
+    for link in links:
+        result.append({
+            "name"       : link.get("name"),
+            "url"        : link.get("url"),
+            "referer"    : link.get("referer"),
+            "user_agent" : link.get("user_agent"),
+            "subtitles"  : link.get("subtitles")
+        })
 
-        return {**api_v1_global_message, "must_extract": False, "result": result}
-
-    return {**api_v1_global_message, "must_extract": True, "result": [{"name": link.get("name"), "url": quote_plus(link.get("url"))} for link in links]}
+    return {**api_v1_global_message, "result": result}
