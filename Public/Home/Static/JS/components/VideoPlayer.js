@@ -360,7 +360,8 @@ export default class VideoPlayer {
         // Watch Party butonunun linkini güncelle
         const watchPartyButton = document.getElementById('watch-party-button');
         if (watchPartyButton) {
-            const newRoomId = crypto.randomUUID().slice(0, 8).toUpperCase();
+            // Math.random() tabanlı ID (HTTP ve tüm tarayıcılarda çalışır)
+            const newRoomId = Math.random().toString(36).substring(2, 10).toUpperCase();
             const wpParams = new URLSearchParams();
             wpParams.set('url', selectedVideo.url);
             // Sayfa başlığını al (player-title elementinden)
