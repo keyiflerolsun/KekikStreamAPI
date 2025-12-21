@@ -139,7 +139,7 @@ const handleVideoChanged = async (msg) => {
     updateVideoInfo(msg.title, msg.duration);
     showToast(`${msg.changed_by || 'Birisi'} yeni video yükledi`, 'info');
     addSystemMessage(`🎥 Yeni video: ${msg.title || 'Video'}`);
-    
+
     // Close input container after video loads successfully
     const inputContainer = document.getElementById('video-input-container');
     if (inputContainer && inputContainer.style.display !== 'none') {
