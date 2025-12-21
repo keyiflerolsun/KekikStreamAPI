@@ -4,69 +4,112 @@ from CLI     import konsol
 from fastapi import WebSocket, WebSocketDisconnect
 from .       import wss_router
 from ..Libs  import MessageHandler
-import json, asyncio
+import json, asyncio, time
 
 @wss_router.websocket("/watch_party/{room_id}")
 async def watch_party_websocket(websocket: WebSocket, room_id: str):
-    """Watch Party WebSocket endpoint"""
     await websocket.accept()
-
     handler = MessageHandler(websocket, room_id.upper())
+
+    def log_task_exception(t: asyncio.Task):
+        try:
+            exc = t.exception()
+        except asyncio.CancelledError:
+            return
+        if exc:
+            konsol.log(f"[red]ws task error:[/] {exc}")
+
+    # (needs_user, takes_msg, background, fn)
+    handlers = {
+        "join"        : (False, True,  False, handler.handle_join),
+        "ping"        : (False, True,  False, handler.handle_ping),
+        "get_state"   : (False, False, False, handler.handle_get_state),
+
+        "typing"      : (True,  False, False, handler.handle_typing),
+        "buffer_start": (True,  False, False, handler.handle_buffer_start),
+        "buffer_end"  : (True,  False, False, handler.handle_buffer_end),
+
+        "play"        : (True,  True,  False, handler.handle_play),
+        "pause"       : (True,  True,  False, handler.handle_pause),
+        "seek"        : (True,  True,  False, handler.handle_seek),
+        "chat"        : (True,  True,  False, handler.handle_chat),
+        "seek_ready"  : (True,  True,  False, handler.handle_seek_ready),
+
+        "video_change": (True,  True,  True,  handler.handle_video_change),
+    }
+
+    MAX_PAYLOAD = 512 * 1024  # 512 KB
+    
+    # Rate limiting
+    general_msg_count = 0
+    general_last_time = time.perf_counter()
+    
+    high_msg_count = 0
+    high_last_time = time.perf_counter()
+
+    HIGH_FREQ_OPS = {"ping", "seek", "seek_ready"}
 
     try:
         while True:
-            raw_message = await websocket.receive_text()
-
+            raw = await websocket.receive_text()
+            
+            # 1. Flood Control: Payload Size
+            if len(raw.encode("utf-8")) > MAX_PAYLOAD:
+                await handler.send_error("Mesaj boyutu çok büyük")
+                # İstersen disconnect et: break
+                continue
+            
             try:
-                message = json.loads(raw_message)
+                msg = json.loads(raw)
             except json.JSONDecodeError:
                 await handler.send_error("Geçersiz JSON formatı")
                 continue
 
-            msg_type = message.get("type")
+            t = msg.get("type")
+            if not t:
+                continue
 
-            if msg_type == "join":
-                await handler.handle_join(message)
+            # 2. Flood Control: Rate Limit (Dual Bucket)
+            now = time.perf_counter()
+            
+            if t in HIGH_FREQ_OPS:
+                # High Frequency Bucket (30/s)
+                if now - high_last_time > 1.0:
+                    high_msg_count = 0
+                    high_last_time = now
+                
+                high_msg_count += 1
+                if high_msg_count > 30:
+                    # High freq limit aşımı - sessiz drop veya error
+                    # await handler.send_error("Çok hızlı işlem (high-freq)") 
+                    continue
+            else:
+                # General Bucket (10/s)
+                if now - general_last_time > 1.0:
+                    general_msg_count = 0
+                    general_last_time = now
+                
+                general_msg_count += 1
+                if general_msg_count > 10:
+                    await handler.send_error("Çok hızlı işlem yapıyorsunuz")
+                    continue
 
-            elif msg_type == "play" and handler.user:
-                await handler.handle_play(message)
+            entry = handlers.get(t)
+            if not entry:
+                continue
 
-            elif msg_type == "pause" and handler.user:
-                await handler.handle_pause(message)
+            needs_user, takes_msg, bg, fn = entry
 
-            elif msg_type == "seek" and handler.user:
-                await handler.handle_seek(message)
+            if needs_user and not handler.user:
+                continue
 
-            elif msg_type == "chat" and handler.user:
-                await handler.handle_chat(message)
+            call = (lambda f=fn, m=msg: f(m)) if takes_msg else (lambda f=fn: f())
 
-            elif msg_type == "typing" and handler.user:
-                await handler.handle_typing()
-
-            elif msg_type == "video_change" and handler.user:
-                task = asyncio.create_task(handler.handle_video_change(message))
-
-                def log_exception(t):
-                    try:
-                        exc = t.exception()
-                    except asyncio.CancelledError:
-                        return  # Task iptal edilmiş, normal durum
-                    if exc:
-                        konsol.log(f"[red]video_change error:[/] {exc}")
-
-                task.add_done_callback(log_exception)
-
-            elif msg_type == "ping":
-                await handler.handle_ping(message)
-
-            elif msg_type == "buffer_start" and handler.user:
-                await handler.handle_buffer_start()
-
-            elif msg_type == "buffer_end" and handler.user:
-                await handler.handle_buffer_end()
-
-            elif msg_type == "get_state":
-                await handler.handle_get_state()
+            if bg:
+                task = asyncio.create_task(call())
+                task.add_done_callback(log_task_exception)
+            else:
+                await call()
 
     except WebSocketDisconnect:
         pass

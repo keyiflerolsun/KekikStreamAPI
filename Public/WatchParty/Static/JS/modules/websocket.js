@@ -2,6 +2,7 @@
 
 import { sleep } from './utils.min.js';
 import { showToast, updateSyncStatus, showConnectionModal, hideConnectionModal, updatePing } from './ui.min.js';
+import { setWebSocketRef } from './player-core.min.js';
 
 // ============== Config ==============
 const config = {
@@ -41,6 +42,7 @@ export const connect = async (url) => {
 
     return new Promise((resolve, reject) => {
         state.ws = new WebSocket(url);
+        setWebSocketRef(state.ws);
 
         state.ws.onopen = () => {
             state.isConnected = true;

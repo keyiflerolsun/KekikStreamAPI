@@ -26,7 +26,9 @@ export const state = {
     syncInterval: null,
     isSyncing: false,       // Senkronizasyon sırasında event yayınını engelle
     lastSeekTime: 0,        // Son seek zamanı - ön yüz seek debounce
-    lastBufferEndTime: 0    // Son buffer_end zamanı - ön yüz buffer debounce (event engelleme)
+    lastBufferEndTime: 0,   // Son buffer_end zamanı - ön yüz buffer debounce (event engelleme)
+    ws: null,               // WebSocket instance ref
+    lastSeekReadyEpoch: 0   // Son gönderilen seek_ready epoch
 };
 
 // ============== Geri Çağırma Fonksiyonları ==============
@@ -76,11 +78,13 @@ export const setupVideoEventListeners = () => {
         document.body.classList.remove('video-playing');
         
         if (shouldIgnoreEvent()) return;
+        if (state.playerState === PlayerState.LOADING) return;
         if (state.playerState !== PlayerState.PLAYING) return;
         if (videoPlayer.ended) return;
         
         const timeSinceSeek = Date.now() - state.lastSeekTime;
-        if (timeSinceSeek < 500) return;
+        // Seek debounce'u biraz artırdık, çünkü seeking event'iyle çakışabilir
+        if (timeSinceSeek < 1000) return;
         
         const timeSinceBufferEnd = Date.now() - state.lastBufferEndTime;
         if (timeSinceBufferEnd < 200) return;
@@ -89,12 +93,18 @@ export const setupVideoEventListeners = () => {
         callbacks.onPause?.(videoPlayer.currentTime);
     });
 
-    videoPlayer.addEventListener('seeked', () => {
+    let seekTimeout;
+    videoPlayer.addEventListener('seeking', () => {
         if (shouldIgnoreEvent()) return;
+        if (state.playerState === PlayerState.LOADING) return;
         if (state.playerState !== PlayerState.PLAYING && state.playerState !== PlayerState.READY) return;
         
         state.lastSeekTime = Date.now();
-        callbacks.onSeek?.(videoPlayer.currentTime);
+        
+        clearTimeout(seekTimeout);
+        seekTimeout = setTimeout(() => {
+            callbacks.onSeek?.(videoPlayer.currentTime);
+        }, 150); // Debounce
     });
 
     videoPlayer.addEventListener('waiting', () => {
@@ -498,6 +508,10 @@ export const isPlaying = () => state.playerState === PlayerState.PLAYING;
 export const getLastLoadedUrl = () => state.lastLoadedUrl;
 
 // ============== Ayarlayıcılar ==============
+export const setWebSocketRef = (ws) => {
+    state.ws = ws;
+};
+
 export const updateVideoInfo = (title, duration) => {
     if (state.videoTitle && title) state.videoTitle.textContent = title;
     if (state.videoDuration && duration) state.videoDuration.textContent = formatDuration(duration);

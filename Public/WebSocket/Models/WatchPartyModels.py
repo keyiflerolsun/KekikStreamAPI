@@ -19,6 +19,7 @@ class User:
     # Per-user buffer spam prevention
     last_buffer_trigger_time : float = 0.0   # Son buffer pause tetikleme zamanı
     buffer_trigger_count     : int   = 0     # Ardışık buffer tetikleme sayısı
+    last_rate_sent           : float = 1.0   # Son gönderilen playback rate (spam önleme)
 
 @dataclass
 class ChatMessage:
@@ -35,7 +36,8 @@ class Room:
     video_url       : str = ""
     video_title     : str = ""
     video_format    : str = "hls"  # "hls" | "mp4" | "webm" | "youtube"
-    video_duration  : float = 0.0  # Video süresi (saniye) - time overflow önleme
+    video_duration  : float = 0.0  # Video süresi (saniye) - 0 = live/unknown
+    is_live         : bool = False # Canlı yayın modu (duration=0 + hls)
     subtitle_url    : str = ""     # Altyazı dosyası URL'si
     current_time    : float = 0.0
     is_playing      : bool = False
@@ -62,4 +64,11 @@ class Room:
     # Delayed buffer pause task management
     pending_buffer_pause_tasks : dict[str, object] = field(default_factory=dict)  # user_id -> asyncio.Task
     buffer_pause_epoch_by_user : dict[str, int]    = field(default_factory=dict)  # user-level epoch guard
+    
+    # Seek-sync coordination (herkes hazır olana kadar bekle)
+    seek_sync_epoch          : int      = 0
+    seek_sync_waiting_users  : set[str] = field(default_factory=set)
+    seek_sync_was_playing    : bool     = False
+    seek_sync_target_time    : float    = 0.0
+    pending_seek_sync_task   : object | None = None  # asyncio.Task
 
