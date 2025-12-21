@@ -54,13 +54,32 @@ export default class VideoPlayer {
             // Logları kopyala
             document.getElementById('copy-logs').addEventListener('click', () => {
                 const logText = this.logger.getFormattedLogs();
-                navigator.clipboard.writeText(logText)
-                    .then(() => {
+                
+                // Clipboard API kullanılabilir mi kontrol et (HTTPS veya localhost gerektirir)
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(logText)
+                        .then(() => {
+                            this.logger.info('Loglar panoya kopyalandı');
+                        })
+                        .catch(err => {
+                            this.logger.error('Kopyalama hatası', err.message);
+                        });
+                } else {
+                    // Fallback: execCommand kullan (HTTP için)
+                    try {
+                        const textArea = document.createElement('textarea');
+                        textArea.value = logText;
+                        textArea.style.position = 'fixed';
+                        textArea.style.left = '-9999px';
+                        document.body.appendChild(textArea);
+                        textArea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textArea);
                         this.logger.info('Loglar panoya kopyalandı');
-                    })
-                    .catch(err => {
+                    } catch (err) {
                         this.logger.error('Kopyalama hatası', err.message);
-                    });
+                    }
+                }
             });
 
             // Logları indir
@@ -286,6 +305,16 @@ export default class VideoPlayer {
 
         this.logger.info('Proxy URL oluşturuldu', proxyUrl);
 
+        // URL'den format tespiti (player-core.js ile uyumlu)
+        const detectFormatFromUrl = (url) => {
+            const lowerUrl = url.toLowerCase();
+            if (lowerUrl.includes('.m3u8') || lowerUrl.includes('/hls/') || lowerUrl.includes('/m3u8/')) return 'hls';
+            if (lowerUrl.includes('.mp4') || lowerUrl.includes('/mp4/')) return 'mp4';
+            if (lowerUrl.includes('.mkv')) return 'mkv';
+            if (lowerUrl.includes('.webm')) return 'webm';
+            return 'native';
+        };
+
         // Video formatını proxy'den Content-Type ile belirle
         this.logger.info('Video formatı tespit ediliyor (Content-Type sorgulanıyor)...');
         
@@ -294,22 +323,29 @@ export default class VideoPlayer {
                 const contentType = response.headers.get('content-type') || '';
                 this.logger.info(`Content-Type: ${contentType}`);
                 
-                // HLS mi kontrol et (proxy Content-Type'ı düzeltiyor)
-                const isHLS = contentType.includes('mpegurl') || 
-                              contentType.includes('application/vnd.apple.mpegurl') ||
-                              contentType.includes('application/x-mpegurl');
+                // Content-Type'dan HLS kontrolü
+                const isHLSByContentType = contentType.includes('mpegurl') || 
+                                           contentType.includes('mpeg');
                 
-                if (isHLS) {
+                // URL pattern'den HLS kontrolü (Content-Type boş veya yanlışsa fallback)
+                const urlFormat = detectFormatFromUrl(originalUrl);
+                const isHLSByUrl = urlFormat === 'hls';
+                
+                this.logger.info(`Format tespiti: Content-Type=${isHLSByContentType ? 'HLS' : 'other'}, URL=${urlFormat}`);
+                
+                // Content-Type veya URL'den biri HLS ise HLS olarak yükle
+                if (isHLSByContentType || isHLSByUrl) {
                     this.loadHLSVideo(proxyUrl, referer, userAgent);
                 } else {
                     this.loadNormalVideo(proxyUrl, originalUrl);
                 }
             })
             .catch(error => {
-                this.logger.error('Content-Type alınamadı, .m3u8 uzantısından tahmin ediliyor', error.message);
+                this.logger.error('Content-Type alınamadı, URL pattern ile tahmin ediliyor', error.message);
                 
-                // Fallback: sadece açık .m3u8 uzantıları
-                if (originalUrl.includes('.m3u8')) {
+                // Fallback: URL pattern'den format tespiti
+                const urlFormat = detectFormatFromUrl(originalUrl);
+                if (urlFormat === 'hls') {
                     this.loadHLSVideo(proxyUrl, referer, userAgent);
                 } else {
                     this.loadNormalVideo(proxyUrl, originalUrl);
