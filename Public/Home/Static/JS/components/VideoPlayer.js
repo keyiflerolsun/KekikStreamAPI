@@ -14,6 +14,7 @@ export default class VideoPlayer {
         this.videoData = [];
         this.retryCount = 0;
         this.maxRetries = 5;
+        this.lastLoadedBaseUrl = null; // HLS segment URL'leri için base URL takibi
 
         // DOM Elementleri
         this.videoPlayer = document.getElementById('video-player');
@@ -436,18 +437,47 @@ export default class VideoPlayer {
                     maxBufferLength: 30,
                     maxMaxBufferLength: 600,
                     startLevel: -1, // Otomatik kalite seçimi
-                    // Tüm istekleri proxy üzerinden yönlendir (player-core.js ile uyumlu)
+                    // Tüm istekleri proxy üzerinden yönlendir
                     xhrSetup: (xhr, url) => {
-                        // URL zaten proxy URL'i ise dokunma (HLS.js varsayılan davranışını kullan)
-                        if (url.includes('/proxy/video')) {
+                        // Zaten tam proxy URL ise, base URL'i kaydet ve dokunma
+                        if (url.includes('/proxy/video?url=')) {
+                            // Base URL'i çıkar ve kaydet (segment URL'leri için kullanılacak)
+                            const match = url.match(/url=([^&]+)/);
+                            if (match) {
+                                try {
+                                    const decodedUrl = decodeURIComponent(match[1]);
+                                    this.lastLoadedBaseUrl = decodedUrl.substring(0, decodedUrl.lastIndexOf('/') + 1);
+                                } catch (e) { /* ignore */ }
+                            }
                             return;
                         }
+                        
+                        // Yanlış çözümlenmiş relative URL (örn: /proxy/image2_0.jpg)
+                        // Bu, manifest'teki relative URL'lerin proxy base'e göre çözümlenmesinden kaynaklanır
+                        if (url.includes('/proxy/') && !url.includes('/proxy/video?url=')) {
+                            if (this.lastLoadedBaseUrl) {
+                                // Dosya adını çıkar
+                                const filename = url.split('/').pop();
+                                // Doğru URL'i oluştur
+                                const correctUrl = this.lastLoadedBaseUrl + filename;
+                                
+                                let proxyUrl = `/proxy/video?url=${encodeURIComponent(correctUrl)}`;
+                                if (referer) proxyUrl += `&referer=${encodeURIComponent(referer)}`;
+                                if (userAgent) proxyUrl += `&user_agent=${encodeURIComponent(userAgent)}`;
+                                
+                                xhr.open('GET', proxyUrl, true);
+                                return;
+                            }
+                        }
 
-                        // Tüm URL'leri proxy üzerinden yönlendir
+                        // Normal URL'leri proxy üzerinden yönlendir
                         try {
                             let proxyUrl = `/proxy/video?url=${encodeURIComponent(url)}`;
                             if (referer) proxyUrl += `&referer=${encodeURIComponent(referer)}`;
                             if (userAgent) proxyUrl += `&user_agent=${encodeURIComponent(userAgent)}`;
+                            
+                            // Base URL'i kaydet
+                            this.lastLoadedBaseUrl = url.substring(0, url.lastIndexOf('/') + 1);
                             
                             xhr.open('GET', proxyUrl, true);
                         } catch (error) {
