@@ -124,7 +124,6 @@ const handleVideoChanged = async (msg) => {
     const userAgent = msg.user_agent || '';
     const referer = msg.referer || '';
 
-
     // UI Inputlarını Güncelle (Stream)
     const urlInput = document.getElementById('video-url-input');
     const uaInput = document.getElementById('custom-user-agent');
