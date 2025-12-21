@@ -22,6 +22,7 @@ export const state = {
     hls: null,
     lastLoadedUrl: null,
     lastLoadedBaseUrl: null, // HLS segment URL'leri için base URL takibi
+    lastLoadedOrigin: null, // HLS absolute path'leri için origin takibi
     playerState: PlayerState.IDLE,
     syncInterval: null,
     isSyncing: false,       // Senkronizasyon sırasında event yayınını engelle
@@ -214,7 +215,7 @@ const loadHls = (url, userAgent = '', referer = '', useProxy = false) => {
             maxLoadingDelay: 4,
             minAutoBitrate: 0,
             xhrSetup: (!useProxy && !isProxyEnabled) ? undefined : (xhr, requestUrl) => {
-                // Zaten tam proxy URL ise, base URL'i kaydet ve dokunma
+                // 1. Zaten tam proxy URL ise, base URL'i kaydet ve dokunma
                 if (requestUrl.includes('/proxy/video?url=')) {
                     // Base URL'i çıkar ve kaydet (segment URL'leri için kullanılacak)
                     const match = requestUrl.match(/url=([^&]+)/);
@@ -227,7 +228,21 @@ const loadHls = (url, userAgent = '', referer = '', useProxy = false) => {
                     return;
                 }
                 
-                // Yanlış çözümlenmiş relative URL (örn: /proxy/image2_0.jpg)
+                // 2. Browser tarafından yanlış çözümlenmiş yerel URL'ler (Manifest'te / ile başlayan path'ler)
+                if (requestUrl.startsWith(window.location.origin) && !requestUrl.includes('/proxy/')) {
+                    // Local origin'i kaldır, path'i al
+                    const path = requestUrl.substring(window.location.origin.length);
+                    
+                    // Remote origin ile birleştir
+                    if (state.lastLoadedOrigin) {
+                        const correctUrl = state.lastLoadedOrigin + path;
+                        const proxyUrl = buildProxyUrl(correctUrl, userAgent, referer, 'video');
+                        xhr.open('GET', proxyUrl, true);
+                        return;
+                    }
+                }
+                
+                // 3. Yanlış çözümlenmiş relative URL (örn: /proxy/image2_0.jpg)
                 if (requestUrl.includes('/proxy/') && !requestUrl.includes('/proxy/video?url=')) {
                     if (state.lastLoadedBaseUrl) {
                         // Dosya adını çıkar
@@ -241,11 +256,13 @@ const loadHls = (url, userAgent = '', referer = '', useProxy = false) => {
                     }
                 }
 
-                // Normal URL'leri proxy üzerinden yönlendir
+                // 4. Normal URL'leri proxy üzerinden yönlendir
                 try {
                     const proxyUrl = buildProxyUrl(requestUrl, userAgent, referer, 'video');
-                    // Base URL'i kaydet
-                    state.lastLoadedBaseUrl = requestUrl.substring(0, requestUrl.lastIndexOf('/') + 1);
+                    // Base URL'i kaydet (http ile başlıyorsa)
+                    if (requestUrl.startsWith('http')) {
+                        state.lastLoadedBaseUrl = requestUrl.substring(0, requestUrl.lastIndexOf('/') + 1);
+                    }
                     xhr.open('GET', proxyUrl, true);
                 } catch (e) {
                     console.error('HLS Proxy Error:', e);
@@ -372,6 +389,13 @@ export const loadVideo = async (url, format = 'hls', userAgent = '', referer = '
         state.hls = null;
     }
     videoPlayer.querySelectorAll('track').forEach(t => t.remove());
+
+    // Origin'i kaydet
+    try {
+        state.lastLoadedOrigin = new URL(url).origin;
+    } catch (e) {
+        state.lastLoadedOrigin = null;
+    }
 
     // Content-Type Pre-check
     let detectedFormat = format;

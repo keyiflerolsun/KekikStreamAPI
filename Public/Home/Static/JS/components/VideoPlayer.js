@@ -15,6 +15,7 @@ export default class VideoPlayer {
         this.retryCount = 0;
         this.maxRetries = 5;
         this.lastLoadedBaseUrl = null; // HLS segment URL'leri için base URL takibi
+        this.lastLoadedOrigin = null; // HLS absolute path'leri için origin takibi
 
         // DOM Elementleri
         this.videoPlayer = document.getElementById('video-player');
@@ -423,6 +424,13 @@ export default class VideoPlayer {
     loadHLSVideo(originalUrl, referer, userAgent) {
         this.logger.info('HLS video formatı tespit edildi');
         this.retryCount = 0; // Reset retry count for new video
+        
+        // Uzak sunucunun origin'ini al (absolute path'leri çözümlemek için)
+        try {
+            this.lastLoadedOrigin = new URL(originalUrl).origin;
+        } catch (e) {
+            this.lastLoadedOrigin = null;
+        }
 
         // HLS video için
         if (Hls.isSupported()) {
@@ -439,7 +447,7 @@ export default class VideoPlayer {
                     startLevel: -1, // Otomatik kalite seçimi
                     // Tüm istekleri proxy üzerinden yönlendir
                     xhrSetup: (xhr, url) => {
-                        // Zaten tam proxy URL ise, base URL'i kaydet ve dokunma
+                        // 1. Zaten tam proxy URL ise, base URL'i kaydet ve devam et
                         if (url.includes('/proxy/video?url=')) {
                             // Base URL'i çıkar ve kaydet (segment URL'leri için kullanılacak)
                             const match = url.match(/url=([^&]+)/);
@@ -452,7 +460,29 @@ export default class VideoPlayer {
                             return;
                         }
                         
-                        // Yanlış çözümlenmiş relative URL (örn: /proxy/image2_0.jpg)
+                        // 2. Browser tarafından yanlış çözümlenmiş yerel URL'ler (Manifest'te / ile başlayan path'ler)
+                        // Örn: http://127.0.0.1:3310/f0/segment.ts -> Aslında remote host'ta /f0/segment.ts
+                        if (url.startsWith(window.location.origin) && !url.includes('/proxy/')) {
+                            this.logger.info('Local path detected, converting to proxy...', url);
+                            
+                            // Local origin'i kaldır, path'i al
+                            const path = url.substring(window.location.origin.length);
+                            
+                            // Remote origin ile birleştir
+                            if (this.lastLoadedOrigin) {
+                                const correctUrl = this.lastLoadedOrigin + path;
+                                this.logger.info('Corrected URL:', correctUrl);
+                                
+                                let proxyUrl = `/proxy/video?url=${encodeURIComponent(correctUrl)}`;
+                                if (referer) proxyUrl += `&referer=${encodeURIComponent(referer)}`;
+                                if (userAgent) proxyUrl += `&user_agent=${encodeURIComponent(userAgent)}`;
+                                
+                                xhr.open('GET', proxyUrl, true);
+                                return;
+                            }
+                        }
+                        
+                        // 3. Yanlış çözümlenmiş relative URL (örn: /proxy/image2_0.jpg)
                         // Bu, manifest'teki relative URL'lerin proxy base'e göre çözümlenmesinden kaynaklanır
                         if (url.includes('/proxy/') && !url.includes('/proxy/video?url=')) {
                             if (this.lastLoadedBaseUrl) {
@@ -470,14 +500,16 @@ export default class VideoPlayer {
                             }
                         }
 
-                        // Normal URL'leri proxy üzerinden yönlendir
+                        // 4. Diğer tüm durumlar (Normal URL'ler) -> Proxy'ye sar
                         try {
                             let proxyUrl = `/proxy/video?url=${encodeURIComponent(url)}`;
                             if (referer) proxyUrl += `&referer=${encodeURIComponent(referer)}`;
                             if (userAgent) proxyUrl += `&user_agent=${encodeURIComponent(userAgent)}`;
                             
-                            // Base URL'i kaydet
-                            this.lastLoadedBaseUrl = url.substring(0, url.lastIndexOf('/') + 1);
+                            // Base URL'i kaydet (eğer http ile başlıyorsa)
+                            if (url.startsWith('http')) {
+                                this.lastLoadedBaseUrl = url.substring(0, url.lastIndexOf('/') + 1);
+                            }
                             
                             xhr.open('GET', proxyUrl, true);
                         } catch (error) {
