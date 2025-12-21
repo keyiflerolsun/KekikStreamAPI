@@ -292,11 +292,11 @@ export default class VideoPlayer {
 
         // Orijinal URL'i al
         const originalUrl = selectedVideo.url;
-        // Referer bilgisini al
-        const referer = selectedVideo.referer || window.location.href;
-        const userAgent = selectedVideo.userAgent || navigator.userAgent;
+        // Referer ve userAgent bilgilerini al (boşsa fallback kullanma)
+        const referer = selectedVideo.referer || '';
+        const userAgent = selectedVideo.userAgent || '';
 
-        // Proxy URL'i oluştur
+        // Proxy URL'i oluştur (sadece değer varsa ekle)
         let proxyUrl = `/proxy/video?url=${encodeURIComponent(originalUrl)}`;
         if (referer) {
             proxyUrl += `&referer=${encodeURIComponent(referer)}`;
@@ -406,9 +406,9 @@ export default class VideoPlayer {
             const playerTitleEl = document.querySelector('.player-title');
             const pageTitle = playerTitleEl ? playerTitleEl.textContent.trim() : document.title;
             wpParams.set('title', `${pageTitle} | ${selectedVideo.name}`);
-            wpParams.set('user_agent', userAgent || navigator.userAgent);
-            wpParams.set('referer', referer);
-            
+            wpParams.set('user_agent', userAgent || '');
+            wpParams.set('referer', referer || '');
+
             // İlk altyazıyı ekle (varsa)
             if (selectedVideo.subtitles && selectedVideo.subtitles.length > 0) {
                 wpParams.set('subtitle', selectedVideo.subtitles[0].url);
