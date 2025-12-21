@@ -47,7 +47,7 @@ async def watch_party_websocket(websocket: WebSocket, room_id: str):
     high_msg_count = 0
     high_last_time = time.perf_counter()
 
-    HIGH_FREQ_OPS = {"ping", "seek", "seek_ready"}
+    HIGH_FREQ_OPS = {"ping", "seek", "seek_ready", "buffer_start", "buffer_end"}
 
     try:
         while True:

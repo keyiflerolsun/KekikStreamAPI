@@ -860,29 +860,29 @@ class WatchPartyManager:
 
             return chat_msg
 
-    async def broadcast_to_room(self, room_id: str, message: dict, exclude_user_id: str | None = None):
-        """Odadaki tüm kullanıcılara mesaj gönder"""
-        async with self._lock:
-            room = self.rooms.get(room_id)
-            if not room:
-                return
-            # Sözlük değişebileceği için (async await sırasında) kopyasını al
-            current_users = list(room.users.items())
+    async def broadcast_to_room(self, room_id: str, message: dict, exclude_user_id: str | None = None) -> None:
+        """Odadaki herkese mesaj gönder (parallel safe send)"""
+        users = await self.get_room_users_sockets(room_id)
+        if not users:
+            return
 
         message_str = json.dumps(message, ensure_ascii=False)
-        broken_connections = []
+        
+        # Helper: Safe send with timeout
+        async def _safe_send(ws, msg, timeout=1.5):
+            try:
+                await asyncio.wait_for(ws.send_text(msg), timeout=timeout)
+            except Exception:
+                pass # Fail silently for slow clients
 
-        for user_id, user in current_users:
+        tasks = []
+        for user_id, websocket in users.items():
             if exclude_user_id and user_id == exclude_user_id:
                 continue
-            try:
-                await user.websocket.send_text(message_str)
-            except Exception:
-                broken_connections.append(user_id)
-
-        # Kopmuş bağlantıları temizle
-        for user_id in broken_connections:
-            await self.leave_room(room_id, user_id)
+            tasks.append(_safe_send(websocket, message_str))
+            
+        if tasks:
+            await asyncio.gather(*tasks)
 
     async def get_playback_snapshot(self, room_id: str) -> dict | None:
         """Playback state'ini atomic olarak oku"""

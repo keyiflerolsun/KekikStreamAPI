@@ -165,8 +165,12 @@ class MessageHandler:
         # Seek deduplicate: Önceki seek zamanını atomic olarak kaydet ve al
         prev_seek_time = await watch_party_manager.mark_seek_time(self.room_id, now)
 
-        # Dedup: çok yakın zamanda aynı yere seek varsa skip
-        time_diff_from_last = abs(snapshot["current_time"] - current_time)
+        # Dedup: Live time hesabı (playing ise ilerlemiştir)
+        snapshot_time = snapshot["current_time"]
+        if snapshot["is_playing"]:
+            snapshot_time += (now - snapshot["updated_at"])
+
+        time_diff_from_last = abs(snapshot_time - current_time)
         time_since_last_seek = now - prev_seek_time
         if time_diff_from_last < 0.2 and time_since_last_seek < 0.15:
             return
