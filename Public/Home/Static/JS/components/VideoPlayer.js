@@ -512,8 +512,15 @@ export default class VideoPlayer {
                     });
                 });
 
-                // HLS kaynağını yükle (raw URL - xhrSetup proxy'ye çevirir)
-                hls.loadSource(originalUrl);
+                // Manifest için proxy URL oluştur
+                let manifestProxyUrl = `/proxy/video?url=${encodeURIComponent(originalUrl)}`;
+                if (referer) manifestProxyUrl += `&referer=${encodeURIComponent(referer)}`;
+                if (userAgent) manifestProxyUrl += `&user_agent=${encodeURIComponent(userAgent)}`;
+                
+                this.logger.info('HLS manifest yükleniyor (proxy)', manifestProxyUrl);
+                
+                // HLS kaynağını yükle (proxy URL - segment URL'leri için xhrSetup devreye girer)
+                hls.loadSource(manifestProxyUrl);
                 hls.attachMedia(this.videoPlayer);
             } catch (error) {
                 this.logger.error('HLS yükleme hatası', error.message);
