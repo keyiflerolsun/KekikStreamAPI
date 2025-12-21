@@ -62,10 +62,14 @@ class MessageHandler:
         # Manuel play yapıldığında buffer listesini temizle (atomic)
         await watch_party_manager.clear_buffering_users(self.room_id)
         
+        # TÜM pending delayed pause task'larını iptal et (manuel play her şeyi override eder)
+        await watch_party_manager.cancel_all_delayed_buffer_pause(self.room_id)
+        
         # Play zamanını kaydet (atomic)
         await watch_party_manager.mark_play_time(self.room_id, time.perf_counter())
         
-        await watch_party_manager.update_playback_state(self.room_id, True, current_time)
+        # pause_reason temizle - atomik update_playback_state kullan
+        await watch_party_manager.update_playback_state(self.room_id, True, current_time, pause_reason="")
 
         await watch_party_manager.broadcast_to_room(self.room_id, {
             "type"         : "sync",
@@ -88,13 +92,14 @@ class MessageHandler:
         # Pause zamanını kaydet (auto-resume önleme için) - atomic
         await watch_party_manager.mark_pause_time(self.room_id, now)
 
-        await watch_party_manager.update_playback_state(self.room_id, False, current_time)
+        # Atomik update: is_playing=False + pause_reason="manual" tek lock'ta
+        await watch_party_manager.update_playback_state(self.room_id, False, current_time, pause_reason="manual")
 
         await watch_party_manager.broadcast_to_room(self.room_id, {
             "type"         : "sync",
             "is_playing"   : False,
             "current_time" : current_time,
-            "force_seek"   : True,  # Pause durumunda kesin sync için
+            "force_seek"   : True,
             "triggered_by" : self.user.username
         }, exclude_user_id=self.user.user_id)
 
@@ -117,7 +122,7 @@ class MessageHandler:
 
         # Seek deduplicate: Aynı pozisyona çok yakın zamanda seek varsa, sadece state güncelle
         time_diff_from_last = abs(snapshot["current_time"] - current_time)
-        time_since_last_seek = now - prev_seek_time  # FIX: prev_seek_time kullan
+        time_since_last_seek = now - prev_seek_time  # prev_seek_time kullan
         
         # Seek sadece pozisyonu değiştirir, playback state'i korur
         await watch_party_manager.update_playback_state(self.room_id, snapshot["is_playing"], current_time)
@@ -183,10 +188,6 @@ class MessageHandler:
             await self.send_error("Video URL'si gerekli")
             return
 
-        if not url:
-            await self.send_error("Video URL'si gerekli")
-            return
-
         video_info = await ytdlp_extract_video_info(url)
 
         if video_info and video_info.get("stream_url"):
@@ -205,7 +206,8 @@ class MessageHandler:
                 video_format = video_info.get("format", "mp4"),
                 user_agent   = user_agent,
                 referer      = referer,
-                subtitle_url = subtitle_url
+                subtitle_url = subtitle_url,
+                duration     = video_info.get("duration", 0)
             )
 
             await watch_party_manager.broadcast_to_room(self.room_id, {
@@ -231,7 +233,8 @@ class MessageHandler:
                 video_format = video_format,
                 user_agent   = user_agent,
                 referer      = referer,
-                subtitle_url = subtitle_url
+                subtitle_url = subtitle_url,
+                duration     = 0  # Duration bilinmiyor
             )
 
             await watch_party_manager.broadcast_to_room(self.room_id, {
@@ -264,33 +267,35 @@ class MessageHandler:
         """BUFFER_START mesajını işle"""
         now = time.perf_counter()
 
-        # Atomic decision: Buffer start kabul edilmeli mi?
-        decision = await watch_party_manager.should_accept_buffer_start(self.room_id, now, DEBOUNCE_WINDOW)
+        # Atomic decision: Buffer start kabul edilmeli mi? (user_id eklendi)
+        decision = await watch_party_manager.should_accept_buffer_start(
+            self.room_id, self.user.user_id, now, DEBOUNCE_WINDOW
+        )
         
         if not decision["accept"]:
             return
 
         # 1. İlk buffer - timestamp set et, listene ekle ama pause ETME
         if decision["is_first"]:
-            await watch_party_manager.mark_buffer_start_time(self.room_id, now)
-            # Kullanıcıyı buffering listesine ekle (pause etmeden)
+            await watch_party_manager.cancel_delayed_buffer_pause(self.room_id, self.user.user_id)  # Fix #7
+            await watch_party_manager.mark_buffer_start_time(self.room_id, self.user.user_id, now)
             await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, True)
             return
 
         # 2. Seek sonrası buffer - listene ekle ama pause ETME (genelde kısa buffer)
         if decision["is_post_seek"]:
-            await watch_party_manager.mark_buffer_start_time(self.room_id, now)
+            await watch_party_manager.cancel_delayed_buffer_pause(self.room_id, self.user.user_id)  # Fix #7
+            await watch_party_manager.mark_buffer_start_time(self.room_id, self.user.user_id, now)
             await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, True)
             return
 
-        # 3. Buffer_start zamanını kaydet (atomic)
-        await watch_party_manager.mark_buffer_start_time(self.room_id, now)
+        # 3. Buffer_start zamanını kaydet (user-based)
+        await watch_party_manager.mark_buffer_start_time(self.room_id, self.user.user_id, now)
 
         # Buffering listesine ekle
         await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, True)
 
         # DELAYED PAUSE: 2 saniye bekle, hala buffering varsa pause et
-        # Bu, seek sonrası kısa buffer'ların (< 2s) room'u pause'a çekmesini önler
         if decision["should_pause"]:
             await watch_party_manager.schedule_delayed_buffer_pause(
                 self.room_id, self.user.user_id, self.user.username, delay=MIN_BUFFER_DURATION

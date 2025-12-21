@@ -42,6 +42,30 @@ export const applyState = async (serverState) => {
     state.isSyncing = false;
 };
 
+// ============== Yardımcı: Zaman seekable mı? (sadece HLS için) ==============
+const isTimeSeekable = (time) => {
+    const { videoPlayer, hls } = state;
+    
+    // HLS kullanılmıyorsa (MP4/native), tarayıcı kendi halleder - her zaman true
+    if (!hls) {
+        return true;
+    }
+    
+    // HLS için seekable range kontrolü
+    if (!videoPlayer || !videoPlayer.seekable || videoPlayer.seekable.length === 0) {
+        return true; // Seekable bilgisi yoksa true varsay
+    }
+    
+    for (let i = 0; i < videoPlayer.seekable.length; i++) {
+        const start = videoPlayer.seekable.start(i);
+        const end = videoPlayer.seekable.end(i);
+        if (time >= start && time <= end) {
+            return true;
+        }
+    }
+    return false;
+};
+
 // ============== Senkronizasyonu İşle (diğer kullanıcılardan) ==============
 export const handleSync = async (msg) => {
     const { videoPlayer } = state;
@@ -60,9 +84,15 @@ export const handleSync = async (msg) => {
     const shouldSeek = msg.force_seek || timeDiff > 0.5;
     
     if (shouldSeek) {
-        logger.sync(`${msg.force_seek ? 'Force sync' : 'Adjustment'}: ${timeDiff.toFixed(2)}s`);
-        videoPlayer.currentTime = msg.current_time;
-        await waitForSeek();
+        // Seekable kontrolü: Hedef zaman seekable değilse, mevcut konumda kal
+        if (!isTimeSeekable(msg.current_time)) {
+            logger.sync(`Target ${msg.current_time.toFixed(1)}s not seekable, staying at ${videoPlayer.currentTime.toFixed(1)}s`);
+            // Seek yapma, sadece play/pause state'i sync et
+        } else {
+            logger.sync(`${msg.force_seek ? 'Force sync' : 'Adjustment'}: ${timeDiff.toFixed(2)}s`);
+            videoPlayer.currentTime = msg.current_time;
+            await waitForSeek();
+        }
     }
 
     // Sync play/pause state
@@ -152,6 +182,13 @@ export const handleSyncCorrection = async (msg) => {
                 videoPlayer.playbackRate = rate;
             }
         } else if (msg.action === 'buffer') {
+            // Seekable kontrolü: Hedef zaman seekable değilse, seek yapma
+            if (!isTimeSeekable(msg.target_time)) {
+                logger.sync(`Buffer sync: ${msg.target_time.toFixed(1)}s not seekable, skipping`);
+                state.isSyncing = false;
+                return;
+            }
+            
             logger.sync(`Buffer sync: ${msg.target_time.toFixed(1)}s`);
 
             const wasPlaying = state.playerState === PlayerState.PLAYING;

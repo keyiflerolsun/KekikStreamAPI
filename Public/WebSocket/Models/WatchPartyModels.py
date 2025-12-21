@@ -16,6 +16,9 @@ class User:
     last_client_time  : float = 0.0  # Son heartbeat'teki client time
     stall_count       : int   = 0    # Ardışık stall sayısı
     last_sync_time    : float = 0.0  # Son force sync zamanı (spam önleme)
+    # Per-user buffer spam prevention
+    last_buffer_trigger_time : float = 0.0   # Son buffer pause tetikleme zamanı
+    buffer_trigger_count     : int   = 0     # Ardışık buffer tetikleme sayısı
 
 @dataclass
 class ChatMessage:
@@ -32,6 +35,7 @@ class Room:
     video_url       : str = ""
     video_title     : str = ""
     video_format    : str = "hls"  # "hls" | "mp4" | "webm" | "youtube"
+    video_duration  : float = 0.0  # Video süresi (saniye) - time overflow önleme
     subtitle_url    : str = ""     # Altyazı dosyası URL'si
     current_time    : float = 0.0
     is_playing      : bool = False
@@ -42,12 +46,20 @@ class Room:
     updated_at      : float = field(default_factory=lambda: time.perf_counter())
     host_id         : str | None = None  # İlk katılan kullanıcı (host)
     buffering_users : set[str]   = field(default_factory=set)
-    last_auto_resume_time  : float = 0.0  # Son auto-resume zamanı - gecikmeli pause önleme
-    last_recovery_time     : float = 0.0  # Son stall recovery zamanı - recovery sonrası pause önleme
-    last_play_time         : float = 0.0  # Son play zamanı - gecikmeli pause önleme
-    last_pause_time        : float = 0.0  # Son manuel pause zamanı - pause sonrası auto-resume önleme
-    last_buffer_end_time   : float = 0.0  # Son buffer_end zamanı - gecikmeli pause önleme
-    last_buffer_start_time : float = 0.0  # Son buffer_start zamanı - kısa buffer ignore
-    last_seek_time         : float = 0.0  # Son seek zamanı - seek sonrası buffer ignore
+    
+    # Pause/Resume tracking
+    pause_reason           : str   = ""     # "manual" | "buffer" | "system" - auto-resume kontrolü
+    last_auto_resume_time  : float = 0.0    # Son auto-resume zamanı
+    last_recovery_time     : float = 0.0    # Son stall recovery zamanı
+    last_play_time         : float = 0.0    # Son play zamanı
+    last_pause_time        : float = 0.0    # Son manuel pause zamanı
+    last_seek_time         : float = 0.0    # Son seek zamanı
+    
+    # User-based buffer timing (kritik: user bazlı hesaplama için)
+    buffer_start_time_by_user : dict[str, float] = field(default_factory=dict)  # user_id -> buffer start time
+    buffer_end_time_by_user   : dict[str, float] = field(default_factory=dict)  # user_id -> buffer end time
+    
+    # Delayed buffer pause task management
     pending_buffer_pause_tasks : dict[str, object] = field(default_factory=dict)  # user_id -> asyncio.Task
     buffer_pause_epoch_by_user : dict[str, int]    = field(default_factory=dict)  # user-level epoch guard
+

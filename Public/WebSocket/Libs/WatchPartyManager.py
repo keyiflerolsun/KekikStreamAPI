@@ -58,6 +58,10 @@ class WatchPartyManager:
 
                 # Epoch tracking cleanup
                 room.buffer_pause_epoch_by_user.pop(user_id, None)
+                
+                # Buffer timing dict cleanup
+                room.buffer_start_time_by_user.pop(user_id, None)
+                room.buffer_end_time_by_user.pop(user_id, None)
 
                 # Host ayrıldıysa yeni host ata
                 if room.host_id == user_id and room.users:
@@ -70,27 +74,48 @@ class WatchPartyManager:
                 return True
             return False
 
-    async def update_video(self, room_id: str, url: str, title: str = "", video_format: str = "hls", user_agent: str = "", referer: str = "", subtitle_url: str = "") -> bool:
-        """Video URL'sini güncelle"""
+    async def update_video(self, room_id: str, url: str, title: str = "", video_format: str = "hls", user_agent: str = "", referer: str = "", subtitle_url: str = "", duration: float = 0.0) -> bool:
+        """Video URL'sini güncelle - full state reset yapılır"""
         async with self._lock:
             room = self.rooms.get(room_id)
             if not room:
                 return False
 
-            room.video_url    = url
-            room.video_title  = title
-            room.video_format = video_format
-            room.subtitle_url = subtitle_url
-            room.user_agent   = user_agent
-            room.referer      = referer
-            room.current_time = 0.0
-            room.is_playing   = False
-            room.updated_at   = time.perf_counter()
+            # Pending task'ları iptal et
+            for t in room.pending_buffer_pause_tasks.values():
+                if t and not t.done():
+                    t.cancel()
+            room.pending_buffer_pause_tasks.clear()
+            room.buffer_pause_epoch_by_user.clear()
+
+            # Buffer timing reset
             room.buffering_users.clear()
+            room.buffer_start_time_by_user.clear()
+            room.buffer_end_time_by_user.clear()
+
+            # Pause/resume state reset
+            room.pause_reason = ""
+            room.last_auto_resume_time = 0.0
+            room.last_recovery_time = 0.0
+            room.last_play_time = 0.0
+            room.last_pause_time = 0.0
+            room.last_seek_time = 0.0
+
+            # Video state
+            room.video_url      = url
+            room.video_title    = title
+            room.video_format   = video_format
+            room.video_duration = duration
+            room.subtitle_url   = subtitle_url
+            room.user_agent     = user_agent
+            room.referer        = referer
+            room.current_time   = 0.0
+            room.is_playing     = False
+            room.updated_at     = time.perf_counter()
             return True
 
-    async def update_playback_state(self, room_id: str, is_playing: bool, current_time: float) -> bool:
-        """Oynatım durumunu güncelle"""
+    async def update_playback_state(self, room_id: str, is_playing: bool, current_time: float, pause_reason: str | None = None) -> bool:
+        """Oynatım durumunu güncelle - opsiyonel pause_reason için atomik"""
         async with self._lock:
             room = self.rooms.get(room_id)
             if not room:
@@ -99,6 +124,10 @@ class WatchPartyManager:
             room.is_playing   = is_playing
             room.current_time = current_time
             room.updated_at   = time.perf_counter()
+            
+            # Atomik pause_reason güncellemesi
+            if pause_reason is not None:
+                room.pause_reason = pause_reason
 
             return True
 
@@ -138,6 +167,15 @@ class WatchPartyManager:
             room.last_pause_time = timestamp
             return True
 
+    async def set_pause_reason(self, room_id: str, reason: str) -> bool:
+        """Pause nedenini atomik olarak kaydet (manual/buffer/system)"""
+        async with self._lock:
+            room = self.rooms.get(room_id)
+            if not room:
+                return False
+            room.pause_reason = reason
+            return True
+
     async def mark_seek_time(self, room_id: str, timestamp: float) -> float:
         """Seek zamanını atomik olarak kaydet ve önceki değeri döndür"""
         async with self._lock:
@@ -148,22 +186,22 @@ class WatchPartyManager:
             room.last_seek_time = timestamp
             return prev
 
-    async def mark_buffer_start_time(self, room_id: str, timestamp: float) -> bool:
-        """Buffer start zamanını atomik olarak kaydet"""
+    async def mark_buffer_start_time(self, room_id: str, user_id: str, timestamp: float) -> bool:
+        """Buffer start zamanını user bazında atomik olarak kaydet"""
         async with self._lock:
             room = self.rooms.get(room_id)
             if not room:
                 return False
-            room.last_buffer_start_time = timestamp
+            room.buffer_start_time_by_user[user_id] = timestamp
             return True
 
-    async def mark_buffer_end_time(self, room_id: str, timestamp: float) -> bool:
-        """Buffer end zamanını atomik olarak kaydet"""
+    async def mark_buffer_end_time(self, room_id: str, user_id: str, timestamp: float) -> bool:
+        """Buffer end zamanını user bazında atomik olarak kaydet"""
         async with self._lock:
             room = self.rooms.get(room_id)
             if not room:
                 return False
-            room.last_buffer_end_time = timestamp
+            room.buffer_end_time_by_user[user_id] = timestamp
             return True
 
     async def buffer_end_and_check_resume(
@@ -171,6 +209,7 @@ class WatchPartyManager:
     ) -> dict | None:
         """
         Buffer end işlemini atomic olarak yap ve auto-resume gerekiyorsa döndür.
+        User-based buffer timing kullanır.
         Returns: None veya {"should_resume": bool, "current_time": float}
         """
         async with self._lock:
@@ -178,36 +217,38 @@ class WatchPartyManager:
             if not room:
                 return None
 
-            # Kısa buffer kontrolü
-            buffer_duration = now - room.last_buffer_start_time
-            if buffer_duration < min_buffer_duration and room.last_buffer_start_time > 0:
-                # Kısa buffer - timestamp güncelle, listeden çıkar, auto-resume yapma
-                room.last_buffer_end_time = now
+            # User-based kısa buffer kontrolü
+            user_buffer_start = room.buffer_start_time_by_user.get(user_id, 0.0)
+            buffer_duration = now - user_buffer_start
+            
+            # Buffer end zamanını kaydet
+            room.buffer_end_time_by_user[user_id] = now
+            
+            if buffer_duration < min_buffer_duration and user_buffer_start > 0:
+                # Kısa buffer - listeden çıkar, auto-resume yapma
                 if user_id in room.buffering_users:
                     room.buffering_users.remove(user_id)
                 return {"should_resume": False, "current_time": room.current_time}
 
-            # Normal buffer end
-            room.last_buffer_end_time = now
+            # Normal buffer end - listeden çıkar
             if user_id in room.buffering_users:
                 room.buffering_users.remove(user_id)
 
             # Auto-resume kontrolü (atomic)
+            # Sadece buffer kaynaklı pause'ta auto-resume yap
+            if room.pause_reason != "buffer":
+                return {"should_resume": False, "current_time": room.current_time}
+            
             # Manuel pause sonrası auto-resume yapma
             if now - room.last_pause_time < debounce_window:
                 return {"should_resume": False, "current_time": room.current_time}
 
-            # Buffering users listesi boş VE video durmuşsa
+            # Buffering users listesi boş VE video durmuşsa auto-resume
             if not room.buffering_users and not room.is_playing:
-                # Son buffering çok eskiyse, bu manuel pause (auto-resume yapma)
-                time_since_buffer_start = now - room.last_buffer_start_time
-                if time_since_buffer_start > 5.0:
-                    return {"should_resume": False, "current_time": room.current_time}
-
-                # Auto-resume yap
                 room.last_auto_resume_time = now
                 room.is_playing = True
-                room.updated_at = now
+                room.pause_reason = ""  # Pause reason temizle
+                room.updated_at = now  # Tutarlılık: now kullan
                 return {"should_resume": True, "current_time": room.current_time}
 
             return {"should_resume": False, "current_time": room.current_time}
@@ -222,12 +263,15 @@ class WatchPartyManager:
             if not room:
                 return {"accept": False, "is_playing": False}
 
-            # Zaten durmuşsa ignore
+            # Zaten durmuşsa:
             if not room.is_playing:
+                # Buffer pause'u manuel pause'a çevirmeye izin ver
+                # (kullanıcı auto-resume'u engellemek isteyebilir)
+                if room.pause_reason == "buffer":
+                    return {"accept": True, "is_playing": False}
                 return {"accept": False, "is_playing": False}
             
             # RECOVERY SONRASI PAUSE ENGELLE (2 saniye)
-            # Stall recovery'den hemen sonra client buffer/seeking yapabilir
             if now - room.last_recovery_time < 2.0:
                 return {"accept": False, "is_playing": True}
 
@@ -238,38 +282,41 @@ class WatchPartyManager:
 
             # Manuel play'den hemen sonraki pause'ları kontrollü geçir (500ms)
             if now - room.last_play_time < 0.5:
-                # Eğer auto-resume yoksa veya uzun zaman önceyse, izin ver (kullanıcı pause)
                 if room.last_auto_resume_time == 0.0 or now - room.last_auto_resume_time > 0.5:
                     return {"accept": True, "is_playing": True}
                 else:
-                    return {"accept": False, "is_playing": True}  # Engelle (auto-resume hemen sonrası)
+                    return {"accept": False, "is_playing": True}
 
-            # Buffer end'den hemen sonraki pause'ları engelle (200ms)
-            if now - room.last_buffer_end_time < 0.2:
+            # User-based: Herhangi bir kullanıcı yakın zamanda buffer end yaptıysa engelle
+            latest_buffer_end = max(room.buffer_end_time_by_user.values()) if room.buffer_end_time_by_user else 0.0
+            if now - latest_buffer_end < 0.2:
                 return {"accept": False, "is_playing": True}
 
-            # Buffer start'tan hemen sonraki pause'ları engelle (500ms)
-            if now - room.last_buffer_start_time < 0.5:
+            # User-based: Herhangi bir kullanıcı yakın zamanda buffer start yaptıysa engelle
+            latest_buffer_start = max(room.buffer_start_time_by_user.values()) if room.buffer_start_time_by_user else 0.0
+            if now - latest_buffer_start < 0.5:
                 return {"accept": False, "is_playing": True}
 
             return {"accept": True, "is_playing": True}
 
-    async def should_accept_buffer_start(self, room_id: str, now: float, debounce_window: float) -> dict:
+    async def should_accept_buffer_start(self, room_id: str, user_id: str, now: float, debounce_window: float) -> dict:
         """
-        Buffer start kabul edilmeli mi? Atomic karar ver.
-        Returns: {"accept": bool, "is_first": bool, "should_pause": bool, "last_seek_time": float}
+        Buffer start kabul edilmeli mi? Atomic karar ver. User-based timing kullanır.
+        Returns: {"accept": bool, "is_first": bool, "is_post_seek": bool, "should_pause": bool}
         """
         async with self._lock:
             room = self.rooms.get(room_id)
             if not room:
-                return {"accept": False, "is_first": False, "is_post_seek": False, "should_pause": False, "last_seek_time": 0.0}
+                return {"accept": False, "is_first": False, "is_post_seek": False, "should_pause": False}
 
-            time_since_last_buffer = now - room.last_buffer_start_time
-            if room.last_buffer_start_time > 0.0 and time_since_last_buffer < 0.3:
-                return {"accept": False, "is_first": False, "is_post_seek": False, "should_pause": False, "last_seek_time": 0.0}
+            # User-based: Bu kullanıcının son buffer start zamanı
+            user_last_buffer_start = room.buffer_start_time_by_user.get(user_id, 0.0)
+            time_since_last_buffer = now - user_last_buffer_start
+            if user_last_buffer_start > 0.0 and time_since_last_buffer < 0.3:
+                return {"accept": False, "is_first": False, "is_post_seek": False, "should_pause": False}
 
-            # İlk buffer mi?
-            is_first = room.last_buffer_start_time == 0.0
+            # İlk buffer mi? (bu kullanıcı için)
+            is_first = user_last_buffer_start == 0.0
 
             # Seek sonrası buffer mı?
             time_since_seek = now - room.last_seek_time
@@ -279,11 +326,10 @@ class WatchPartyManager:
             should_pause = room.is_playing
 
             return {
-                "accept"         : True,
-                "is_first"       : is_first,
-                "is_post_seek"   : is_post_seek,
-                "should_pause"   : should_pause,
-                "last_seek_time" : room.last_seek_time,
+                "accept"       : True,
+                "is_first"     : is_first,
+                "is_post_seek" : is_post_seek,
+                "should_pause" : should_pause,
             }
 
     async def clear_buffering_users(self, room_id: str) -> bool:
@@ -301,7 +347,40 @@ class WatchPartyManager:
         """
         Delayed buffer pause: 2 saniye bekle, hala buffering varsa pause et.
         Bu, seek sonrası kısa buffer'ların room'u pause'a çekmesini önler.
+        
+        Per-user spam prevention: Aynı kullanıcı 30 saniyede 3+ kez tetiklerse, ignore et.
         """
+        # Önceki task'ı HER ZAMAN iptal et (spam olsa bile)
+        # Bu, spam return olduğunda eski task'ın ghost-pause yapmasını önler
+        await self.cancel_delayed_buffer_pause(room_id, user_id)
+        
+        now = time.perf_counter()
+        
+        # Per-user buffer spam kontrolü
+        async with self._lock:
+            room = self.rooms.get(room_id)
+            if not room:
+                return
+            
+            user = room.users.get(user_id)
+            if not user:
+                return
+            
+            # 30 saniye içinde kaç kez tetikledi?
+            time_since_last = now - user.last_buffer_trigger_time
+            
+            if time_since_last < 30.0:
+                user.buffer_trigger_count += 1
+            else:
+                # 30 saniyeden fazla geçti, sayacı sıfırla
+                user.buffer_trigger_count = 1
+            
+            user.last_buffer_trigger_time = now
+            
+            # 30 saniyede 3+ kez tetiklediyse, bu kullanıcıyı ignore et
+            if user.buffer_trigger_count > 3:
+                return  # Eski task zaten iptal edildi, güvenli
+        
         async def delayed_pause(my_epoch: int):
             await asyncio.sleep(delay)
             
@@ -329,22 +408,26 @@ class WatchPartyManager:
                 # Snapshot al (lock dışında kullanmak için)
                 updated_at = room.updated_at
                 base_time = room.current_time
+                video_duration = room.video_duration  # Duration cap için
             
-            # Lock dışında elapsed hesapla ve broadcast
+            # Lock dışında elapsed hesapla
             now = time.perf_counter()
             current_time = base_time + (now - updated_at)
             
-            await self.update_playback_state(room_id, False, current_time)
+            # VIDEO DURATION CAP (Fix #3)
+            if video_duration > 0:
+                current_time = min(current_time, video_duration)
+            
+            # Atomik update: is_playing=False + pause_reason="buffer" tek lock'ta (Fix #6)
+            await self.update_playback_state(room_id, False, current_time, pause_reason="buffer")
             
             await self.broadcast_to_room(room_id, {
                 "type"         : "sync",
                 "is_playing"   : False,
                 "current_time" : current_time,
+                "force_seek"   : True,  # Client'ların tam aynı karede durması için
                 "triggered_by" : f"{username} (Buffering...)"
             })
-        
-        # Önceki task'ı iptal et
-        await self.cancel_delayed_buffer_pause(room_id, user_id)
         
         # Yeni task başlat + EPOCH ARTTIR (user-level)
         async with self._lock:
@@ -373,6 +456,27 @@ class WatchPartyManager:
             if task and not task.done():
                 task.cancel()
 
+    async def cancel_all_delayed_buffer_pause(self, room_id: str) -> None:
+        """Tüm kullanıcıların pending delayed pause task'larını iptal et (optimize: tek lock)"""
+        tasks_to_cancel = []
+
+        async with self._lock:
+            room = self.rooms.get(room_id)
+            if not room:
+                return
+
+            # Hepsini invalidate et (epoch bump) + cancel listesine ekle
+            for uid, task in room.pending_buffer_pause_tasks.items():
+                room.buffer_pause_epoch_by_user[uid] = room.buffer_pause_epoch_by_user.get(uid, 0) + 1
+                if task and not task.done():
+                    tasks_to_cancel.append(task)
+
+            room.pending_buffer_pause_tasks.clear()
+
+        # Lock dışında task'ları iptal et
+        for t in tasks_to_cancel:
+            t.cancel()
+
     async def handle_heartbeat(self, room_id: str, user_id: str, client_time: float):
         """Heartbeat al, drift kontrolü yap ve stall detection"""
         now = time.perf_counter()
@@ -390,6 +494,16 @@ class WatchPartyManager:
             server_time = room.current_time
             if room.is_playing:
                 server_time += (now - room.updated_at)
+            
+            # VIDEO DURATION CAP: Server time video süresini geçmesin
+            if room.video_duration > 0:
+                server_time = min(server_time, room.video_duration)
+                
+                # Video bitti mi? (client ve server video sonuna yakın)
+                video_near_end = room.video_duration - 0.5  # 0.5s tolerance
+                if client_time >= video_near_end or server_time >= video_near_end:
+                    # Video bitmiş, stall detection ve drift correction yapma
+                    return
 
             drift = client_time - server_time
 
@@ -575,19 +689,19 @@ class WatchPartyManager:
             if not room:
                 return None
 
-            # Snapshot: lock içinde kopyala, dictionary changed size hatasını önle
             room_snapshot = {
-                "room_id"      : room.room_id,
-                "video_url"    : room.video_url,
-                "video_title"  : room.video_title,
-                "video_format" : room.video_format,
-                "subtitle_url" : room.subtitle_url,
-                "current_time" : room.current_time,
-                "is_playing"   : room.is_playing,
-                "user_agent"   : room.user_agent,
-                "referer"      : room.referer,
-                "updated_at"   : room.updated_at,
-                "host_id"      : room.host_id,
+                "room_id"        : room.room_id,
+                "video_url"      : room.video_url,
+                "video_title"    : room.video_title,
+                "video_format"   : room.video_format,
+                "video_duration" : room.video_duration,  # Duration cap için eklendi
+                "subtitle_url"   : room.subtitle_url,
+                "current_time"   : room.current_time,
+                "is_playing"     : room.is_playing,
+                "user_agent"     : room.user_agent,
+                "referer"        : room.referer,
+                "updated_at"     : room.updated_at,
+                "host_id"        : room.host_id,
             }
             users_snapshot = list(room.users.values())
             chat_snapshot = list(room.chat_messages[-50:])
@@ -597,6 +711,10 @@ class WatchPartyManager:
         if room_snapshot["is_playing"]:
             elapsed = time.perf_counter() - room_snapshot["updated_at"]
             live_time += elapsed
+        
+        # VIDEO DURATION CAP (Fix #5)
+        if room_snapshot["video_duration"] > 0:
+            live_time = min(live_time, room_snapshot["video_duration"])
 
         return {
             "room_id"       : room_snapshot["room_id"],
