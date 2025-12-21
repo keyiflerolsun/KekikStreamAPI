@@ -20,6 +20,15 @@ class WatchPartyManager:
         async with self._lock:
             return self.rooms.get(room_id)
 
+    async def get_room_users_sockets(self, room_id: str) -> dict[str, WebSocket]:
+        """Odadaki kullanıcıların socketlerini getir (thread-safe copy)"""
+        async with self._lock:
+            room = self.rooms.get(room_id)
+            if not room:
+                return {}
+            # Return dict: {user_id: websocket}
+            return {uid: u.websocket for uid, u in room.users.items()}
+
     async def join_room(self, room_id: str, websocket: WebSocket, username: str, avatar: str) -> User | None:
         """Odaya katıl"""
         async with self._lock:
