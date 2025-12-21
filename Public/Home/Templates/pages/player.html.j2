@@ -72,7 +72,7 @@
 
     <div id="video-links-data" style="display: none;">
         {% for link in links %}
-            <div class="video-link-item" data-name="{{ link.name }}" data-url="{{ link.url }}" data-referer="{{ link.referer }}" data-user-agent="{{ link.user_agent }}">
+            <div class="video-link-item" data-name="{{ link.name }}" data-url="{{ link.url }}" data-referer="{{ link.referer|default('', true) }}" data-user-agent="{{ link.user_agent|default('', true) }}">
                 {% for subtitle in link.subtitles %}
                     <div class="subtitle-item" data-name="{{ subtitle.name }}" data-url="{{ subtitle.url }}"></div>
                 {% endfor %}

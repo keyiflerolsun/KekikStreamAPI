@@ -26,8 +26,8 @@ async def load_links(request:Request):
         result.append({
             "name"       : link.get("name"),
             "url"        : link.get("url"),
-            "referer"    : link.get("referer"),
-            "user_agent" : link.get("user_agent"),
+            "referer"    : link.get("referer", ""),
+            "user_agent" : link.get("user_agent", ""),
             "subtitles"  : link.get("subtitles")
         })
 
