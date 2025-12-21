@@ -292,7 +292,7 @@ export default class VideoPlayer {
         const originalUrl = selectedVideo.url;
         // Referer bilgisini al
         const referer = selectedVideo.referer || window.location.href;
-        const userAgent = selectedVideo.userAgent || '';
+        const userAgent = selectedVideo.userAgent || navigator.userAgent;
 
         // Proxy URL'i oluştur
         let proxyUrl = `/proxy/video?url=${encodeURIComponent(originalUrl)}`;
