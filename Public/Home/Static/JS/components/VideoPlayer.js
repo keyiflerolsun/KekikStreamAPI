@@ -335,7 +335,7 @@ export default class VideoPlayer {
                 
                 // Content-Type veya URL'den biri HLS ise HLS olarak yükle
                 if (isHLSByContentType || isHLSByUrl) {
-                    this.loadHLSVideo(proxyUrl, referer, userAgent);
+                    this.loadHLSVideo(originalUrl, referer, userAgent);
                 } else {
                     this.loadNormalVideo(proxyUrl, originalUrl);
                 }
@@ -346,7 +346,7 @@ export default class VideoPlayer {
                 // Fallback: URL pattern'den format tespiti
                 const urlFormat = detectFormatFromUrl(originalUrl);
                 if (urlFormat === 'hls') {
-                    this.loadHLSVideo(proxyUrl, referer, userAgent);
+                    this.loadHLSVideo(originalUrl, referer, userAgent);
                 } else {
                     this.loadNormalVideo(proxyUrl, originalUrl);
                 }
@@ -419,7 +419,7 @@ export default class VideoPlayer {
         this.isLoadingVideo = false;
     }
 
-    loadHLSVideo(proxyUrl, referer, userAgent) {
+    loadHLSVideo(originalUrl, referer, userAgent) {
         this.logger.info('HLS video formatı tespit edildi');
         this.retryCount = 0; // Reset retry count for new video
 
@@ -436,26 +436,23 @@ export default class VideoPlayer {
                     maxBufferLength: 30,
                     maxMaxBufferLength: 600,
                     startLevel: -1, // Otomatik kalite seçimi
-                    // Segment yüklemeleri için proxy kullanma
+                    // Tüm istekleri proxy üzerinden yönlendir (player-core.js ile uyumlu)
                     xhrSetup: (xhr, url) => {
-                        try {
-                            // URL'nin zaten bir proxy URL'i olup olmadığını kontrol et
-                            if (url.includes('/proxy/video')) {
-                                // Zaten proxy URL'i, direkt kullan
-                                xhr.open('GET', url, true);
-                                return;
-                            }
+                        // URL zaten proxy URL'i ise dokunma (HLS.js varsayılan davranışını kullan)
+                        if (url.includes('/proxy/video')) {
+                            return;
+                        }
 
-                            // Tüm diğer URL'leri proxy üzerinden yönlendir
-                            this.logger.info('Segment URL proxy\'ye yönlendiriliyor', url);
-                            let newProxyUrl = `/proxy/video?url=${encodeURIComponent(url)}`;
-                            if (referer) newProxyUrl += `&referer=${encodeURIComponent(referer)}`;
-                            if (userAgent) newProxyUrl += `&user_agent=${encodeURIComponent(userAgent)}`;
+                        // Tüm URL'leri proxy üzerinden yönlendir
+                        try {
+                            let proxyUrl = `/proxy/video?url=${encodeURIComponent(url)}`;
+                            if (referer) proxyUrl += `&referer=${encodeURIComponent(referer)}`;
+                            if (userAgent) proxyUrl += `&user_agent=${encodeURIComponent(userAgent)}`;
                             
-                            xhr.open('GET', newProxyUrl, true);
+                            xhr.open('GET', proxyUrl, true);
                         } catch (error) {
-                            this.logger.error('xhrSetup hatası', error.message);
-                            // Hata durumunda orijinal URL'yi proxy ile kullan
+                            console.error('HLS Proxy Error:', error);
+                            // Hata durumunda yine proxy üzerinden dene
                             let fallbackUrl = `/proxy/video?url=${encodeURIComponent(url)}`;
                             if (referer) fallbackUrl += `&referer=${encodeURIComponent(referer)}`;
                             if (userAgent) fallbackUrl += `&user_agent=${encodeURIComponent(userAgent)}`;
@@ -515,8 +512,8 @@ export default class VideoPlayer {
                     });
                 });
 
-                // HLS kaynağını yükle
-                hls.loadSource(proxyUrl);
+                // HLS kaynağını yükle (raw URL - xhrSetup proxy'ye çevirir)
+                hls.loadSource(originalUrl);
                 hls.attachMedia(this.videoPlayer);
             } catch (error) {
                 this.logger.error('HLS yükleme hatası', error.message);
@@ -527,6 +524,10 @@ export default class VideoPlayer {
             this.logger.info('Native HLS desteği kullanılıyor');
 
             try {
+                // Native için proxy URL gerekli
+                let proxyUrl = `/proxy/video?url=${encodeURIComponent(originalUrl)}`;
+                if (referer) proxyUrl += `&referer=${encodeURIComponent(referer)}`;
+                if (userAgent) proxyUrl += `&user_agent=${encodeURIComponent(userAgent)}`;
                 this.videoPlayer.src = proxyUrl;
             } catch (error) {
                 this.logger.error('Native HLS yükleme hatası', error.message);
