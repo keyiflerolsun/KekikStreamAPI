@@ -138,7 +138,7 @@
     align-items: center;
     gap: 0.375rem;
     padding: 0.375rem 0.75rem;
-    
+
     /* Glassmorphism */
     background: rgba(var(--wp-bg-input-rgb, 37, 36, 35), 0.8);
     backdrop-filter: blur(8px);
