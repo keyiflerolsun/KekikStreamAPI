@@ -4,6 +4,7 @@ from Core                            import kekik_FastAPI, Request, JSONResponse
 from starlette.exceptions            import HTTPException as StarletteHTTPException
 from fastapi_csrf_protect.exceptions import CsrfProtectError
 from pydantic                        import ValidationError
+from Settings                        import PRODUCTION
 
 @kekik_FastAPI.exception_handler(StarletteHTTPException)
 async def custom_http_exception_handler(request: Request, exc):
@@ -23,9 +24,14 @@ async def validation_exception_handler(request: Request, exc: ValidationError):
 @kekik_FastAPI.exception_handler(CsrfProtectError)
 async def csrf_exception_handler(request: Request, exc: CsrfProtectError):
     """CSRF hatalarını JSON olarak döndür"""
+    if not PRODUCTION:
+        detail = exc.message
+    else:
+        detail = "CSRF doğrulaması başarısız oldu."
+
     return JSONResponse(
         status_code = exc.status_code,
-        content     = {"success": False, "message": exc.message}
+        content     = {"success": False, "message": detail}
     )
 
 @kekik_FastAPI.get("/favicon.ico")

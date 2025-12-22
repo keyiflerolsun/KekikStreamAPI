@@ -7,9 +7,10 @@ from Core.Modules            import lifespan
 from fastapi.staticfiles     import StaticFiles
 from fastapi.responses       import JSONResponse, HTMLResponse, RedirectResponse, PlainTextResponse, FileResponse
 from fastapi_csrf_protect    import CsrfProtect
+from Settings                import PROJE
 
 kekik_FastAPI = FastAPI(
-    title       = "KekikStreamAPI",
+    title       = PROJE,
     openapi_url = None,
     docs_url    = None,
     redoc_url   = None,

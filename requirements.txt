@@ -12,7 +12,6 @@ Jinja2
 python-multipart
 python-dotenv
 pymongo
-PyJWT
 fastapi-csrf-protect
 csscompressor
 rjsmin

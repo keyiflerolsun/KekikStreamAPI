@@ -1,7 +1,9 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from curl_cffi import AsyncSession
+from functools import lru_cache
 
+@lru_cache(maxsize=128)
 async def ip_log(hedef_ip:str) -> dict[str, str]:
     try:
         async with AsyncSession(timeout=3) as oturum:

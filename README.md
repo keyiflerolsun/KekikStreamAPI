@@ -39,7 +39,7 @@ pip install -r requirements.txt
 python basla.py
 ```
 
-> `AYAR.yml` içindeki port ve proxy ayarlarını ihtiyacınıza göre güncelleyin.
+> `AYAR.yml` içindeki port ayarını ve `.env` içindeki proxy ve eklenti kullanılabilirlik ayarlarını ihtiyacınıza göre güncelleyin.
 
 ---
 
