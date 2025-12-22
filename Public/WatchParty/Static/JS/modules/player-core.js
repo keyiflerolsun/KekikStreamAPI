@@ -85,7 +85,8 @@ export const setupVideoEventListeners = () => {
         
         const timeSinceSeek = Date.now() - state.lastSeekTime;
         // Seek debounce'u biraz artırdık, çünkü seeking event'iyle çakışabilir
-        if (timeSinceSeek < 1000) return;
+        // 400ms debounce (1000ms çok geniş, "durduramıyorum" hissi yaratıyordu)
+        if (timeSinceSeek < 400) return;
         
         const timeSinceBufferEnd = Date.now() - state.lastBufferEndTime;
         if (timeSinceBufferEnd < 200) return;

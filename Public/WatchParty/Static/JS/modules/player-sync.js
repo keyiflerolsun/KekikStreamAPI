@@ -11,14 +11,14 @@ export const applyState = async (serverState) => {
 
     // If waiting for interaction, just update time silently
     if (state.playerState === PlayerState.WAITING_INTERACTION) {
-        videoPlayer.currentTime = serverState.current_time;
+        videoPlayer.currentTime = clampTime(serverState.current_time);
         return;
     }
 
     state.isSyncing = true;
     
     logger.sync(`State: ${serverState.current_time.toFixed(1)}s, playing=${serverState.is_playing}`);
-    videoPlayer.currentTime = serverState.current_time;
+    videoPlayer.currentTime = clampTime(serverState.current_time);
 
     if (serverState.is_playing) {
         const result = await safePlay();
@@ -47,67 +47,68 @@ const applyPlayPause = async (shouldPlay) => {
     const { videoPlayer } = state;
     if (!videoPlayer) return { blocked: false };
 
-    if (shouldPlay) {
-        if (videoPlayer.paused) {
-            const result = await safePlay();
-            if (result.success) {
-                state.playerState = PlayerState.PLAYING;
-                return { blocked: false };
-            }
-            if (result.error?.name === 'NotAllowedError') {
-                showInteractionPrompt();
-                return { blocked: true };
-            }
-            if (result.error?.name === 'AbortError') {
-                state.playerState = PlayerState.READY;
-                return { blocked: false };
-            }
-            logger.error('Play failed:', result.error?.message || 'Unknown');
-            showToast('Video başlatılamadı', 'error');
-            state.playerState = PlayerState.READY;
-            return { blocked: false };
-        }
+    // Zaten doğru state'deyse erken çık
+    if (shouldPlay && !videoPlayer.paused) {
         state.playerState = PlayerState.PLAYING;
         return { blocked: false };
     }
+    if (!shouldPlay && videoPlayer.paused) {
+        state.playerState = PlayerState.READY;
+        return { blocked: false };
+    }
 
-    if (!videoPlayer.paused) videoPlayer.pause();
+    // LOADING/WAITING state'lerinde işlem yapma
+    if (state.playerState === PlayerState.LOADING || state.playerState === PlayerState.WAITING_INTERACTION) {
+        return { blocked: false };
+    }
+
+    if (shouldPlay) {
+        const result = await safePlay();
+        if (result.success) {
+            state.playerState = PlayerState.PLAYING;
+            return { blocked: false };
+        }
+        if (result.error?.name === 'NotAllowedError') {
+            showInteractionPrompt();
+            return { blocked: true };
+        }
+        if (result.error?.name === 'AbortError') {
+            state.playerState = PlayerState.READY;
+            return { blocked: false };
+        }
+        logger.error('Play failed:', result.error?.message || 'Unknown');
+        showToast('Video başlatılamadı', 'error');
+        state.playerState = PlayerState.READY;
+        return { blocked: false };
+    }
+
+    videoPlayer.pause();
     state.playerState = PlayerState.READY;
     return { blocked: false };
 };
 
-// ============== Yardımcı: Zaman seekable mı? (sadece HLS için) ==============
-const isTimeSeekable = (time) => {
-    const { videoPlayer, hls } = state;
-    
-    // HLS kullanılmıyorsa (MP4/native), tarayıcı kendi halleder - her zaman true
-    if (!hls) {
-        return true;
-    }
-    
-    // HLS için seekable range kontrolü
-    if (!videoPlayer || !videoPlayer.seekable || videoPlayer.seekable.length === 0) {
-        return true; // Seekable bilgisi yoksa true varsay
-    }
-    
-    for (let i = 0; i < videoPlayer.seekable.length; i++) {
-        const start = videoPlayer.seekable.start(i);
-        const end = videoPlayer.seekable.end(i);
-        if (time >= start && time <= end) {
-            return true;
-        }
-    }
-    return false;
-};
+// ============== Yardımcı: Zamanı güvenli aralığa clamp et ==============
+const EPS = 0.25;
 
-// HLS için: Seekable olmayan zamanı en yakın seekable noktaya clamp et
-const clampToSeekable = (t) => {
+const clampTime = (t) => {
     const { videoPlayer } = state;
-    if (!videoPlayer?.seekable || videoPlayer.seekable.length === 0) return t;
+    if (!videoPlayer) return t;
 
-    const start = videoPlayer.seekable.start(0);
-    const end = videoPlayer.seekable.end(videoPlayer.seekable.length - 1);
-    return Math.max(start, Math.min(t, end));
+    // VOD / MP4: duration biliniyorsa
+    if (Number.isFinite(videoPlayer.duration) && videoPlayer.duration > 0) {
+        const safeEnd = Math.max(0, videoPlayer.duration - EPS);
+        return Math.min(Math.max(t, 0), safeEnd);
+    }
+
+    // HLS: seekable window varsa
+    if (videoPlayer.seekable && videoPlayer.seekable.length > 0) {
+        const start = videoPlayer.seekable.start(0);
+        const end = videoPlayer.seekable.end(videoPlayer.seekable.length - 1);
+        const safeEnd = Math.max(start, end - EPS);
+        return Math.min(Math.max(t, start), safeEnd);
+    }
+
+    return Math.max(t, 0);
 };
 
 // ============== Senkronizasyonu İşle (diğer kullanıcılardan) ==============
@@ -116,7 +117,7 @@ export const handleSync = async (msg) => {
     if (!videoPlayer) return;
 
     if (state.playerState === PlayerState.WAITING_INTERACTION) {
-        videoPlayer.currentTime = msg.current_time;
+        videoPlayer.currentTime = clampTime(msg.current_time);
         
         // WAITING_INTERACTION'da da seek barrier ready gönder (yoksa timeout)
         void maybeSeekBarrierReady(msg, false);
@@ -128,19 +129,12 @@ export const handleSync = async (msg) => {
 
     state.isSyncing = true;
     
-    const timeDiff = Math.abs(videoPlayer.currentTime - msg.current_time);
+    const target = clampTime(msg.current_time);
+    const timeDiff = Math.abs(videoPlayer.currentTime - target);
     const shouldSeek = msg.force_seek || timeDiff > 1.0;  // Soft sync: 1 saniye tolerans
     
     if (shouldSeek) {
-        let target = msg.current_time;
-        
-        // Seekable kontrolü: Hedef zaman seekable değilse en yakın noktaya clamp et
-        if (!isTimeSeekable(target)) {
-            target = clampToSeekable(target);
-            logger.sync(`Target ${msg.current_time.toFixed(1)}s not seekable, clamped to ${target.toFixed(1)}s`);
-        }
-        
-        // Clamp sonrası hâlâ fark varsa seek yap
+        // clampTime ile güvenli seek
         if (Math.abs(videoPlayer.currentTime - target) > 0.05 || msg.force_seek) {
             videoPlayer.currentTime = target;
             await waitForSeek();
@@ -231,15 +225,17 @@ export const handleSeek = async (msg) => {
     if (!videoPlayer) return;
     if (state.playerState === PlayerState.LOADING) return;
     if (state.playerState === PlayerState.WAITING_INTERACTION) {
-        videoPlayer.currentTime = msg.current_time;
+        videoPlayer.currentTime = clampTime(msg.current_time);
         return;
     }
 
-    const timeDiff = Math.abs(videoPlayer.currentTime - msg.current_time);
+    // timeDiff'i clamped target ile hesapla (doğru karşılaştırma)
+    const target = clampTime(msg.current_time);
+    const timeDiff = Math.abs(videoPlayer.currentTime - target);
 
     if (timeDiff > 0.5) {
         state.isSyncing = true;
-        videoPlayer.currentTime = msg.current_time;
+        videoPlayer.currentTime = target;
         await waitForSeek();
         state.isSyncing = false;
     }
@@ -257,95 +253,13 @@ export const handleSeek = async (msg) => {
         }
     }
     
-    updateSyncInfoText(msg.triggered_by, `${formatTime(msg.current_time)} konumuna atladı`);
+    // Clamped target zamanı göster (doğru UX, target üst satırlarda tanımlı)
+    updateSyncInfoText(msg.triggered_by, `${formatTime(target)} konumuna atladı`);
 };
 
-// ============== Senkronizasyon Düzeltmesi İşle (sunucu heartbeat) ==============
+// ============== Senkronizasyon Düzeltmesi (Server artık göndermiyor, no-op) ==============
 export const handleSyncCorrection = async (msg) => {
-    const { videoPlayer } = state;
-    if (!videoPlayer) return;
-
-    // Skip if not playing
-    if (state.playerState !== PlayerState.PLAYING) return;
-
-    state.isSyncing = true;
-    
-    try {
-        if (msg.action === 'rate') {
-            const rate = msg.rate || 1.0;
-            if (Math.abs(videoPlayer.playbackRate - rate) > 0.02) {
-                logger.sync(`Rate: ${rate}x (drift: ${msg.drift.toFixed(2)}s)`);
-                videoPlayer.playbackRate = rate;
-            }
-        } else if (msg.action === 'live_edge') {
-            if (!videoPlayer?.seekable || videoPlayer.seekable.length === 0) return;
-
-            const end = videoPlayer.seekable.end(videoPlayer.seekable.length - 1);
-            const start = videoPlayer.seekable.start(0);
-            const offset = msg.offset ?? 2.0;
-
-            const target = Math.max(start, end - offset);
-            logger.sync(`Live edge sync: target=${target.toFixed(1)}s (drift: ${msg.drift.toFixed(2)}s)`);
-
-            const wasPlaying = state.playerState === PlayerState.PLAYING;
-
-            videoPlayer.pause();
-            state.playerState = PlayerState.READY;
-
-            videoPlayer.currentTime = target;
-            await waitForSeek();
-
-            if (wasPlaying) {
-                const r = await safePlay();
-                if (r.success) {
-                    state.playerState = PlayerState.PLAYING;
-                    videoPlayer.playbackRate = 1.0;
-                }
-            }
-        } else if (msg.action === 'buffer') {
-            let target = msg.target_time;
-            
-            // Seekable kontrolü: Hedef zaman seekable değilse clamp et (skip yerine)
-            if (!isTimeSeekable(target)) {
-                target = clampToSeekable(target);
-                logger.sync(`Buffer sync: ${msg.target_time.toFixed(1)}s not seekable, clamped to ${target.toFixed(1)}s`);
-            } else {
-                logger.sync(`Buffer sync: ${target.toFixed(1)}s`);
-            }
-
-            const wasPlaying = state.playerState === PlayerState.PLAYING;
-
-            videoPlayer.pause();
-            state.playerState = PlayerState.READY;  // Pause sırasında READY
-
-            showToast('Senkronize ediliyor...', 'warning');
-            videoPlayer.currentTime = target;
-
-            await waitForSeek();
-
-            // Sadece önceden oynatılıyorsa play et
-            if (wasPlaying) {
-                const result = await safePlay();
-
-                if (result.success) {
-                    state.playerState = PlayerState.PLAYING;
-                    videoPlayer.playbackRate = 1.0;
-                } else {
-                    if (result.error?.name === 'NotAllowedError') {
-                        state.isSyncing = false;
-                        showInteractionPrompt();
-                        return;
-                    }
-                    state.playerState = PlayerState.READY;
-                    logger.sync('Buffer sync play failed, video paused');
-                }
-            }
-        }
-    } catch (e) {
-        logger.sync(`Sync correction error: ${e.message}`);
-        state.playerState = PlayerState.READY;
-        showToast('Senkronizasyon hatası', 'error');
-    } finally {
-        state.isSyncing = false;
-    }
+    // Server 1A Simplification ile sync_correction göndermiyor.
+    // Bu handler geriye uyumluluk için bırakıldı ama hiçbir şey yapmıyor.
+    return;
 };

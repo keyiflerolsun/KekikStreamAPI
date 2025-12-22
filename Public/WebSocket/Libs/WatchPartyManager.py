@@ -171,7 +171,6 @@ class WatchPartyManager:
             room.video_title    = title
             room.video_format   = video_format
             room.video_duration = duration
-            room.is_live        = (duration <= 0.0 and video_format == "hls")
             room.subtitle_url   = subtitle_url
             room.user_agent     = user_agent
             room.referer        = referer
@@ -203,8 +202,10 @@ class WatchPartyManager:
         if room.is_playing:
             t += (now - room.updated_at)
 
+        # Epsilon margin: Sona zıplamayı önle
         if room.video_duration > 0:
-            t = min(t, room.video_duration)
+            safe_end = max(0.0, room.video_duration - 0.25)
+            t = min(t, safe_end)
 
         if t < 0:
             t = 0.0
@@ -232,8 +233,10 @@ class WatchPartyManager:
                 return None
 
             t = room.current_time
+            # epsilon clamp (sona zıplama önleme)
             if room.video_duration > 0:
-                t = min(t, room.video_duration)
+                safe_end = max(0.0, room.video_duration - 0.25)
+                t = min(t, safe_end)
 
             room.current_time = t
             room.is_playing = True
@@ -312,16 +315,23 @@ class WatchPartyManager:
                 return None
 
             # User-based kısa buffer kontrolü
-            user_buffer_start = room.buffer_start_time_by_user.get(user_id, 0.0)
+            user_buffer_start = room.buffer_start_time_by_user.get(user_id)
+            
+            # Buffer start yoksa kısa buffer gibi davran (devasa duration önleme)
+            if not user_buffer_start:
+                if user_id in room.buffering_users:
+                    room.buffering_users.discard(user_id)
+                return {"should_resume": False, "current_time": room.current_time}
+            
             buffer_duration = now - user_buffer_start
             
             # Buffer end zamanını kaydet
             room.buffer_end_time_by_user[user_id] = now
             
-            if buffer_duration < min_buffer_duration and user_buffer_start > 0:
+            if buffer_duration < min_buffer_duration:
                 # Kısa buffer - listeden çıkar, auto-resume yapma
                 if user_id in room.buffering_users:
-                    room.buffering_users.remove(user_id)
+                    room.buffering_users.discard(user_id)
                 return {"should_resume": False, "current_time": room.current_time}
 
             # Normal buffer end - listeden çıkar
@@ -508,11 +518,12 @@ class WatchPartyManager:
             now = time.perf_counter()
             current_time = base_time + (now - updated_at)
             
-            # VIDEO DURATION CAP (Fix #3)
+            # VIDEO DURATION CAP + epsilon (sona zıplama önleme)
             if video_duration > 0:
-                current_time = min(current_time, video_duration)
+                safe_end = max(0.0, video_duration - 0.25)
+                current_time = min(current_time, safe_end)
             
-            # Atomik update: is_playing=False + pause_reason="buffer" tek lock'ta (Fix #6)
+            # Atomik update: is_playing=False + pause_reason="buffer" tek lock'ta
             await self.update_playback_state(room_id, False, current_time, pause_reason="buffer", now=now)
             
             await self.broadcast_to_room(room_id, {
@@ -581,9 +592,10 @@ class WatchPartyManager:
             room.seek_sync_epoch += 1
             epoch = room.seek_sync_epoch
 
-            # Duration clamp
+            # Duration clamp (epsilon margin: sona zıplamayı önle)
             if room.video_duration > 0:
-                target_time = max(0.0, min(target_time, room.video_duration))
+                safe_end = max(0.0, room.video_duration - 0.25)  # 250ms epsilon
+                target_time = max(0.0, min(target_time, safe_end))
 
             room.seek_sync_was_playing = was_playing
             room.seek_sync_target_time = target_time
@@ -713,7 +725,7 @@ class WatchPartyManager:
             task.cancel()
 
     async def handle_heartbeat(self, room_id: str, user_id: str, client_time: float):
-        """Heartbeat al, drift kontrolü yap ve stall detection"""
+        """Heartbeat al, stall/büyük drift varsa hard sync gönder (sadeleştirilmiş)"""
         now = time.perf_counter()
         
         ws = None
@@ -728,125 +740,61 @@ class WatchPartyManager:
             if not user:
                 return
 
-            # Drift hesapla
-            server_time = room.current_time
-            if room.is_playing:
-                server_time += (now - room.updated_at)
-            
-            # VIDEO DURATION CAP: Server time video süresini geçmesin
+            # Oynatılmıyorsa işlem yapma
+            if not room.is_playing:
+                return
+
+            # Server time hesapla
+            server_time = room.current_time + (now - room.updated_at)
+
+            # VOD duration clamp (epsilon için standardize)
             if room.video_duration > 0:
-                server_time = min(server_time, room.video_duration)
+                safe_end = max(0.0, room.video_duration - 0.25)
+                server_time = min(server_time, safe_end)
                 
-                # Video bitti mi? (client ve server video sonuna yakın)
-                video_near_end = room.video_duration - 0.5  # 0.5s tolerance
-                if client_time >= video_near_end or server_time >= video_near_end:
-                    # Video bitmiş, stall detection ve drift correction yapma
+                # Video sonuna yakın ve süresi yeterli uzunsa correction yapma
+                if room.video_duration >= 1.0 and server_time >= room.video_duration - 0.5:
                     return
+
+            # Seek sonrası 1sn drift ignore
+            if now - room.last_seek_time < DEBOUNCE_WINDOW:
+                user.last_client_time = client_time
+                user.stall_count = 0
+                return
+
+            # Stall detection
+            if abs(client_time - user.last_client_time) < 0.05:
+                user.stall_count += 1
+            else:
+                user.stall_count = 0
+            user.last_client_time = client_time
 
             drift = client_time - server_time
 
-            # Sadece oynatılıyorsa drift düzeltmesi yap
-            if not room.is_playing:
+            # Sadece stall veya büyük drift -> hard sync
+            need_sync = (
+                (user.stall_count >= 2 and (now - user.last_sync_time) > 3.0) or
+                (abs(drift) > 2.0 and (now - user.last_sync_time) > 3.0)
+            )
+            
+            if not need_sync:
                 return
-            
-            # STALL DETECTION: Client donmuş mu?
-            time_diff = abs(client_time - user.last_client_time)
-            
-            if time_diff < 0.05:  # Client time artmamış (< 50ms)
-                user.stall_count += 1
-            else:
-                user.stall_count = 0  # Reset
-            
-            # Her durumda son client time'ı güncelle
-            user.last_client_time = client_time
-            
-            # Stall şüphesi: 2 ping için daha dengeli (jitter önleme)
-            stalled_suspected = user.stall_count >= 2
-            # Kesin stall: 2 ping üst üste + cooldown (ping 1s → 2s'de recovery)
-            stalled = user.stall_count >= 2 and now - user.last_sync_time > 3.0
 
-            # Seek sonrası drift hesaplama yapma (kullanıcılar henüz sync olmadı)
-            time_since_seek = now - room.last_seek_time
-            if time_since_seek < DEBOUNCE_WINDOW:
-                return  # Seek sonrası 1s içinde drift ignore
+            user.last_sync_time        = now
+            user.stall_count           = 0
+            room.last_recovery_time    = now
+            room.last_auto_resume_time = now
 
-            # Drift Analizi ve Düzeltme
-            correction = None
-            
-            # LIVE STREAM LOGIC
-            if room.is_live:
-                # Stall veya büyük drift (>3s) -> live edge'e çek
-                if stalled or (abs(drift) > 3.0 and not stalled_suspected and now - user.last_sync_time > 3.0):
-                    user.last_sync_time = now
-                    user.stall_count = 0
-                    correction = {
-                        "type"   : "sync_correction",
-                        "action" : "live_edge",
-                        "offset" : 2.0,  # live edge'den 2s geride dur (safe buffer)
-                        "drift"  : drift
-                    }
-                else:
-                    # Küçük driftler için rate correction (aşağıda) devam etsin
-                    pass
-
-            # NORMAL VOD LOGIC (veya live'da küçük drift)
-            if not correction:
-                # STALL RECOVERY: Client donmuşsa force sync
-                if stalled:
-                    user.last_sync_time = now
-                    user.stall_count = 0
-                    room.last_recovery_time = now
-                    room.last_auto_resume_time = now
-                    correction = {
-                        "type"         : "sync",
-                        "is_playing"   : True,
-                        "current_time" : server_time,
-                        "force_seek"   : True,
-                        "triggered_by" : "System (Stall Recovery)"
-                    }
-
-                # Büyük drift (> 3 saniye): Buffer correction
-                elif abs(drift) > 3.0 and not stalled_suspected:
-                    if now - user.last_sync_time > 3.0:
-                        user.last_sync_time = now
-                        correction = {
-                            "type"        : "sync_correction",
-                            "action"      : "buffer",
-                            "target_time" : server_time,
-                            "drift"       : drift
-                        }
-
-                # Orta drift (1.5-3.0 saniye): Rate correction
-                elif drift < -1.5:
-                    correction = {"type": "sync_correction", "action": "rate", "rate": 1.05, "drift": drift}
-                elif drift > 1.5:
-                    correction = {"type": "sync_correction", "action": "rate", "rate": 0.95, "drift": drift}
-                
-                # Minimal drift (< 0.5): Sadece gerekirse 1.0'a çek (spam önleme)
-                elif abs(drift) < 0.5:
-                    if user.last_rate_sent != 1.0:
-                        correction = {"type": "sync_correction", "action": "rate", "rate": 1.0, "drift": drift}
-                    else:
-                        correction = None
-                
-                # Küçük drift (0.5-1.5): Hafif ayar
-                elif drift < -0.5:
-                    correction = {"type": "sync_correction", "action": "rate", "rate": 1.02, "drift": drift}
-                elif drift > 0.5:
-                    correction = {"type": "sync_correction", "action": "rate", "rate": 0.98, "drift": drift}
-
-            # Correction varsa gönder + last_rate_sent güncelle
-            if correction:
-                if correction.get("action") == "rate":
-                    user.last_rate_sent = correction["rate"]
-                else:
-                    user.last_rate_sent = 1.0
-                
-                # Payload'ı lock içinde hazırla
-                ws = user.websocket
-                payload = json.dumps(correction, ensure_ascii=False)
+            ws = user.websocket
+            payload = json.dumps({
+                "type"         : "sync",
+                "is_playing"   : True,
+                "current_time" : server_time,
+                "force_seek"   : True,
+                "triggered_by" : "System (Heartbeat Sync)"
+            }, ensure_ascii=False)
         
-        # Lock dışı gönderim (Critical Performance Fix)
+        # Lock dışı gönderim
         if ws and payload:
             try:
                 await ws.send_text(payload)
@@ -952,9 +900,10 @@ class WatchPartyManager:
             elapsed = time.perf_counter() - room_snapshot["updated_at"]
             live_time += elapsed
         
-        # VIDEO DURATION CAP (Fix #5)
+        # VIDEO DURATION CAP + epsilon (standardization)
         if room_snapshot["video_duration"] > 0:
-            live_time = min(live_time, room_snapshot["video_duration"])
+            safe_end = max(0.0, room_snapshot["video_duration"] - 0.25)
+            live_time = min(live_time, safe_end)
 
         return {
             "room_id"       : room_snapshot["room_id"],

@@ -36,8 +36,7 @@ class Room:
     video_url       : str = ""
     video_title     : str = ""
     video_format    : str = "hls"  # "hls" | "mp4" | "webm" | "youtube"
-    video_duration  : float = 0.0  # Video süresi (saniye) - 0 = live/unknown
-    is_live         : bool = False # Canlı yayın modu (duration=0 + hls)
+    video_duration  : float = 0.0  # Video süresi (saniye) - 0 = unknown
     subtitle_url    : str = ""     # Altyazı dosyası URL'si
     current_time    : float = 0.0
     is_playing      : bool = False

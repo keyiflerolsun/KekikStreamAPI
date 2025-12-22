@@ -74,56 +74,13 @@ class MessageHandler:
         })
 
     async def handle_pause(self, message: dict):
-        """PAUSE mesajını işle - server-otoriteli zaman (seek fallback destekli)"""
+        """PAUSE mesajını işle - server-otoriteli zaman (sadece pause)"""
         now = time.perf_counter()
 
-        # 1) Eğer client pause içinde "time" yolluyorsa ve fark büyükse -> SEEK gibi davran
-        req_time = message.get("time")
-        if req_time is not None:
-            try:
-                req_time = float(req_time)
-            except (TypeError, ValueError):
-                req_time = None
+        # Seek-via-pause fallback kaldırıldı
+        # (Sürpriz davranış üretiyordu, seek için seek mesajı kullanılsın)
 
-        if req_time is not None:
-            snap = await watch_party_manager.get_playback_snapshot(self.room_id)
-            if snap:
-                live_time = snap["current_time"]
-                if snap["is_playing"]:
-                    live_time += (now - snap["updated_at"])
-
-                # fark büyükse bu bir seek niyeti
-                if abs(req_time - live_time) > 1.0:
-                    # heartbeat drift debounce için last_seek_time güncelle
-                    await watch_party_manager.mark_seek_time(self.room_id, now)
-
-                    was_playing = snap["is_playing"]
-
-                    epoch, final_time = await watch_party_manager.begin_seek_sync(
-                        self.room_id,
-                        target_time=req_time,
-                        was_playing=was_playing,   # seek davranışıyla aynı olsun
-                        now=now,
-                        timeout=8.0
-                    )
-                    
-                    if epoch <= 0:
-                        return
-                        
-                    await watch_party_manager.cancel_delayed_buffer_pause(self.room_id)  # ALL
-
-                    await watch_party_manager.broadcast_to_room(self.room_id, {
-                        "type": "sync",
-                        "is_playing": False,
-                        "current_time": final_time,
-                        "force_seek": True,
-                        "seek_sync": True,
-                        "seek_epoch": epoch,
-                        "triggered_by": f"{self.user.username} (Seek via Pause)"
-                    })
-                    return
-
-        # 2) Normal pause akışı
+        # Normal pause akışı
         decision = await watch_party_manager.should_accept_pause(self.room_id, now)
         if not decision["accept"]:
             return
@@ -153,7 +110,12 @@ class MessageHandler:
 
     async def handle_seek(self, message: dict):
         """SEEK mesajını işle - tüm client'ları senkronize seek yap"""
-        current_time = message.get("time", 0.0)
+        # safe: float parse hatası önleme
+        raw = message.get("time", 0.0)
+        try:
+            current_time = float(raw or 0.0)
+        except (TypeError, ValueError):
+            return
         
         # Playback snapshot'i atomic olarak al
         snapshot = await watch_party_manager.get_playback_snapshot(self.room_id)
@@ -323,8 +285,12 @@ class MessageHandler:
 
         # Her zaman current_time gönderilir (video durmuşsa bile)
         if self.user:
-            client_time = message.get("current_time", 0.0)
-            await watch_party_manager.handle_heartbeat(self.room_id, self.user.user_id, float(client_time))
+            # safe: float parse hatası önleme
+            try:
+                client_time = float(message.get("current_time", 0.0) or 0.0)
+            except (TypeError, ValueError):
+                client_time = 0.0
+            await watch_party_manager.handle_heartbeat(self.room_id, self.user.user_id, client_time)
 
     async def handle_buffer_start(self):
         """BUFFER_START mesajını işle"""

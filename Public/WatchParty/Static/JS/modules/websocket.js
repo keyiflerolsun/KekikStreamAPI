@@ -2,7 +2,7 @@
 
 import { sleep } from './utils.min.js';
 import { showToast, updateSyncStatus, showConnectionModal, hideConnectionModal, updatePing } from './ui.min.js';
-import { setWebSocketRef } from './player-core.min.js';
+import { setWebSocketRef, getCurrentTime } from './player-core.min.js';
 
 // ============== Config ==============
 const config = {
@@ -36,7 +36,8 @@ export const setHeartbeatDataProvider = (fn) => {
 };
 
 export const connect = async (url) => {
-    if (state.ws?.readyState === WebSocket.OPEN) return;
+    // CONNECTING state'inde de guard'la (race condition önleme)
+    if (state.ws && (state.ws.readyState === WebSocket.OPEN || state.ws.readyState === WebSocket.CONNECTING)) return;
 
     updateSyncStatus('connecting');
 
@@ -47,6 +48,9 @@ export const connect = async (url) => {
         state.ws.onopen = () => {
             state.isConnected = true;
             state.reconnectAttempts = 0;
+            // Eski ping kayıtlarını temizle
+            state.pendingPings.clear();
+            state.pingCounter = 0;
             updateSyncStatus('connected');
             hideConnectionModal();
             startHeartbeat();
@@ -65,6 +69,8 @@ export const connect = async (url) => {
         state.ws.onclose = async () => {
             state.isConnected = false;
             stopHeartbeat();
+            // Eski ping kayıtlarını temizle (reconnect sonrası yanlış RTT önleme)
+            state.pendingPings.clear();
             updateSyncStatus('disconnected');
 
             if (state.reconnectAttempts < config.maxReconnectAttempts) {
@@ -132,7 +138,15 @@ const startHeartbeat = () => {
     state.heartbeatInterval = setInterval(() => {
         if (state.ws?.readyState === WebSocket.OPEN) {
             const payload = state.getHeartbeatData?.() || {};
+            
+            // Payload'da current_time yoksa player'dan al (sync spam önleme)
+            if (payload.current_time == null) {
+                payload.current_time = getCurrentTime();
+            }
+            
             // create a ping id and record timestamp
+            // overflow prevention
+            if (state.pingCounter > 1e9) state.pingCounter = 0;
             const id = ++state.pingCounter;
             state.pendingPings.set(id, Date.now());
             send('ping', { ...payload, _ping_id: id });
