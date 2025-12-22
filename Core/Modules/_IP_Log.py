@@ -1,17 +1,21 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from curl_cffi import AsyncSession
-from functools import lru_cache
 
-@lru_cache(maxsize=128)
-async def ip_log(hedef_ip:str) -> dict[str, str]:
+_ip_cache: dict[str, dict[str, str]] = {}
+
+async def ip_log(hedef_ip: str) -> dict[str, str]:
+    # Manuel cache - lru_cache async ile çalışmaz
+    if hedef_ip in _ip_cache:
+        return _ip_cache[hedef_ip]
+
     try:
         async with AsyncSession(timeout=3) as oturum:
             istek = await oturum.get(f"http://ip-api.com/json/{hedef_ip}")
             veri  = istek.json()
 
             if veri["status"] != "fail":
-                return {
+                sonuc = {
                     "ulke"   : veri["country"] or "",
                     "il"     : veri["regionName"] or "",
                     "ilce"   : veri["city"] or "",
@@ -20,6 +24,13 @@ async def ip_log(hedef_ip:str) -> dict[str, str]:
                     "host"   : veri["as"] or ""
                 }
             else:
-                return {"hata": "Veri Bulunamadı.."}
+                sonuc = {"hata": "Veri Bulunamadı.."}
     except Exception as hata:
-        return {"hata": f"{type(hata).__name__} » {hata}"}
+        sonuc = {"hata": f"{type(hata).__name__} » {hata}"}
+
+    # Cache'e ekle (max 128)
+    if len(_ip_cache) >= 128:
+        _ip_cache.pop(next(iter(_ip_cache)))
+    _ip_cache[hedef_ip] = sonuc
+
+    return sonuc
