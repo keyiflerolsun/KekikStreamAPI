@@ -91,21 +91,24 @@ const applyPlayPause = async (shouldPlay) => {
 const EPS = 0.25;
 
 const clampTime = (t) => {
-    const { videoPlayer } = state;
+    const { videoPlayer, hls } = state;
     if (!videoPlayer) return t;
 
-    // VOD / MP4: duration biliniyorsa
-    if (Number.isFinite(videoPlayer.duration) && videoPlayer.duration > 0) {
-        const safeEnd = Math.max(0, videoPlayer.duration - EPS);
-        return Math.min(Math.max(t, 0), safeEnd);
-    }
-
-    // HLS: seekable window varsa
+    // 1) Seekable varsa her zaman onu kullan (HLS için en güvenlisi)
     if (videoPlayer.seekable && videoPlayer.seekable.length > 0) {
         const start = videoPlayer.seekable.start(0);
         const end = videoPlayer.seekable.end(videoPlayer.seekable.length - 1);
         const safeEnd = Math.max(start, end - EPS);
         return Math.min(Math.max(t, start), safeEnd);
+    }
+
+    // 2) HLS'de duration'a güvenme (yanlış olabilir)
+    if (hls) return Math.max(t, 0);
+
+    // 3) Non-HLS: duration biliniyorsa clamp et
+    if (Number.isFinite(videoPlayer.duration) && videoPlayer.duration > 0) {
+        const safeEnd = Math.max(0, videoPlayer.duration - EPS);
+        return Math.min(Math.max(t, 0), safeEnd);
     }
 
     return Math.max(t, 0);

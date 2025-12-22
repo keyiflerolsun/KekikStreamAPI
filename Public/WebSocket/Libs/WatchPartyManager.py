@@ -202,8 +202,8 @@ class WatchPartyManager:
         if room.is_playing:
             t += (now - room.updated_at)
 
-        # Epsilon margin: Sona zıplamayı önle
-        if room.video_duration > 0:
+        # Epsilon margin: Sona zıplamayı önle (sadece non-HLS, HLS duration güvenilmez)
+        if room.video_duration > 0 and room.video_format != "hls":
             safe_end = max(0.0, room.video_duration - 0.25)
             t = min(t, safe_end)
 
@@ -233,8 +233,8 @@ class WatchPartyManager:
                 return None
 
             t = room.current_time
-            # epsilon clamp (sona zıplama önleme)
-            if room.video_duration > 0:
+            # epsilon clamp (sona zıplama önleme, sadece non-HLS)
+            if room.video_duration > 0 and room.video_format != "hls":
                 safe_end = max(0.0, room.video_duration - 0.25)
                 t = min(t, safe_end)
 
@@ -513,13 +513,14 @@ class WatchPartyManager:
                 updated_at = room.updated_at
                 base_time = room.current_time
                 video_duration = room.video_duration  # Duration cap için
+                video_format = room.video_format
             
             # Lock dışında elapsed hesapla
             now = time.perf_counter()
             current_time = base_time + (now - updated_at)
             
-            # VIDEO DURATION CAP + epsilon (sona zıplama önleme)
-            if video_duration > 0:
+            # VIDEO DURATION CAP + epsilon (sona zıplama önleme, sadece non-HLS)
+            if video_duration > 0 and video_format != "hls":
                 safe_end = max(0.0, video_duration - 0.25)
                 current_time = min(current_time, safe_end)
             
@@ -592,8 +593,8 @@ class WatchPartyManager:
             room.seek_sync_epoch += 1
             epoch = room.seek_sync_epoch
 
-            # Duration clamp (epsilon margin: sona zıplamayı önle)
-            if room.video_duration > 0:
+            # Duration clamp (epsilon margin: sona zıplamayı önle, sadece non-HLS)
+            if room.video_duration > 0 and room.video_format != "hls":
                 safe_end = max(0.0, room.video_duration - 0.25)  # 250ms epsilon
                 target_time = max(0.0, min(target_time, safe_end))
 
@@ -747,8 +748,8 @@ class WatchPartyManager:
             # Server time hesapla
             server_time = room.current_time + (now - room.updated_at)
 
-            # VOD duration clamp (epsilon için standardize)
-            if room.video_duration > 0:
+            # VOD duration clamp (sadece non-HLS, HLS duration güvenilmez)
+            if room.video_duration > 0 and room.video_format != "hls":
                 safe_end = max(0.0, room.video_duration - 0.25)
                 server_time = min(server_time, safe_end)
                 
@@ -900,8 +901,8 @@ class WatchPartyManager:
             elapsed = time.perf_counter() - room_snapshot["updated_at"]
             live_time += elapsed
         
-        # VIDEO DURATION CAP + epsilon (standardization)
-        if room_snapshot["video_duration"] > 0:
+        # VIDEO DURATION CAP + epsilon (sadece non-HLS)
+        if room_snapshot["video_duration"] > 0 and room_snapshot["video_format"] != "hls":
             safe_end = max(0.0, room_snapshot["video_duration"] - 0.25)
             live_time = min(live_time, safe_end)
 

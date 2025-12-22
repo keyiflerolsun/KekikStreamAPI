@@ -74,11 +74,45 @@ class MessageHandler:
         })
 
     async def handle_pause(self, message: dict):
-        """PAUSE mesajını işle - server-otoriteli zaman (sadece pause)"""
+        """PAUSE mesajını işle - server-otoriteli zaman (seek-via-pause destekli)"""
         now = time.perf_counter()
 
-        # Seek-via-pause fallback kaldırıldı
-        # (Sürpriz davranış üretiyordu, seek için seek mesajı kullanılsın)
+        # Seek-via-pause fallback: Client pause mesajında time gönderiyorsa ve fark büyükse seek gibi davran
+        raw_time = message.get("time")
+        if raw_time is not None:
+            try:
+                req_time = float(raw_time or 0.0)
+            except (TypeError, ValueError):
+                req_time = None
+            
+            if req_time is not None and req_time >= 0:
+                snap = await watch_party_manager.get_playback_snapshot(self.room_id)
+                # Sadece oynatılırken seek-via-pause kabul et (paused iken time dalgalanmasın)
+                if snap and snap["is_playing"]:
+                    live_time = snap["current_time"]
+                    live_time += (now - snap["updated_at"])
+
+                    # Fark büyükse bu bir seek niyeti - seek olarak işle (eşik arttırıldı)
+                    if abs(req_time - live_time) > 2.0:
+                        await watch_party_manager.mark_seek_time(self.room_id, now)
+                        was_playing = snap["is_playing"]
+
+                        epoch, final_time = await watch_party_manager.begin_seek_sync(
+                            self.room_id, target_time=req_time, was_playing=was_playing, now=now, timeout=8.0
+                        )
+
+                        if epoch > 0:
+                            await watch_party_manager.cancel_delayed_buffer_pause(self.room_id)
+                            await watch_party_manager.broadcast_to_room(self.room_id, {
+                                "type"         : "sync",
+                                "is_playing"   : False,
+                                "current_time" : final_time,
+                                "force_seek"   : True,
+                                "seek_sync"    : True,
+                                "seek_epoch"   : epoch,
+                                "triggered_by" : f"{self.user.username} (Seek via Pause)"
+                            })
+                            return
 
         # Normal pause akışı
         decision = await watch_party_manager.should_accept_pause(self.room_id, now)
@@ -240,9 +274,19 @@ class MessageHandler:
 
         if info and info.get("stream_url"):
             stream_url = info["stream_url"]
-            fmt = info.get("format", fmt)
-            thumb = info.get("thumbnail")
-            duration = info.get("duration", 0) or 0
+            fmt        = info.get("format", fmt)
+            thumb      = info.get("thumbnail")
+            duration   = info.get("duration", 0) or 0
+
+            # HLS duration güvenilmez -> 0 (unknown) kabul et
+            # Bu, server'daki tüm clamp'lerin HLS'de devreye girmesini önler
+            if fmt == "hls":
+                duration = 0.0
+            else:
+                try:
+                    duration = float(duration)
+                except (TypeError, ValueError):
+                    duration = 0.0
 
             h = info.get("http_headers") or {}
             user_agent = h.get("user-agent") or user_agent
