@@ -43,13 +43,15 @@ func main() {
 	})
 
 	// Health check
-	r.GET("/health", func(c *gin.Context) {
+	healthHandler := func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status":      "healthy",
 			"service":     "kekik-proxy",
 			"cache_stats": cache.GlobalCache.Stats(),
 		})
-	})
+	}
+	r.GET("/health", healthHandler)
+	r.HEAD("/health", healthHandler)
 
 	// Proxy endpoints
 	proxy := r.Group("/proxy")
