@@ -1,0 +1,20 @@
+# Binaries
+proxy
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Dependency directories (tends to be automated by go mod)
+# vendor/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
