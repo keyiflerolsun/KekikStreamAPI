@@ -28,7 +28,6 @@ func main() {
 	r.Use(middleware.CustomGinLogger())
 
 	// Health check
-	// Health check
 	healthHandler := func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "healthy",

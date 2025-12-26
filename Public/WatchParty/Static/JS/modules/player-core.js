@@ -185,7 +185,7 @@ const buildProxyUrl = (url, userAgent = '', referer = '', endpoint = 'video') =>
     if (userAgent) params.append('user_agent', userAgent);
     if (referer) params.append('referer', referer);
     
-    return `http://127.0.0.1:3311/proxy/${endpoint}?${params.toString()}`;
+    return `${window.location.protocol}//${window.location.hostname}:3311/proxy/${endpoint}?${params.toString()}`;
 };
 
 // ============== Format Algılama ==============
