@@ -28,12 +28,15 @@ func main() {
 	r.Use(middleware.CustomGinLogger())
 
 	// Health check
-	r.GET("/health", func(c *gin.Context) {
+	// Health check
+	healthHandler := func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "healthy",
 			"service": "kekik-websocket",
 		})
-	})
+	}
+	r.GET("/health", healthHandler)
+	r.HEAD("/health", healthHandler)
 
 	// WebSocket endpoint
 	r.GET("/wss/watch_party/:room_id", handlers.WatchPartyHandler)
@@ -41,7 +44,7 @@ func main() {
 	// Server başlat
 	addr := fmt.Sprintf(":%s", cfg.Port)
 
-	// Boxed Service Configuration with Top-Left Title
+	// Boxed Service Configuration with Title
 	pterm.DefaultBox.WithTitle(pterm.LightMagenta("KEKIK WEBSOCKET")).WithTitleBottomRight().Printf(
 		"🚀 %s: %s\n📦 %s: %s\n🔧 %s: %s",
 		pterm.LightCyan("Address"), pterm.White(addr),
