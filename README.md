@@ -83,18 +83,21 @@ python basla.py
 graph TB
     Client[🌐 Client]
     
-    subgraph GoServices[🚀 Go Services]
-        GoProxy[🛡️ Go Proxy :3311]
-        GoWS[📡 Go WebSocket :3312]
+    subgraph Core[⚡ FastAPI Core :3310]
+        Home[🏠 Web UI]
+        API[🔌 REST API]
+        WatchParty[🎭 Watch Party]
+        YtDlp[🎬 yt-dlp]
     end
     
-    subgraph PythonAPI[🐍 Python API :3310]
-        FastAPI[⚡ FastAPI Core]
-        Home[🏠 Web UI]
-        API[🔌 API]
-        WatchParty[🎭 Watch Party]
-        Proxy[🛡️ Python Proxy]
-        YtDlp[🎬 yt-dlp]
+    subgraph ProxyLayer[🛡️ Proxy Layer]
+        GoProxy[🚀 Go Proxy :3311]
+        PyProxy[🐍 Python Proxy]
+    end
+    
+    subgraph WebSocketLayer[📡 WebSocket Layer]
+        GoWS[🚀 Go WebSocket :3312]
+        PyWS[🐍 Python WebSocket]
     end
     
     subgraph External[🌍 External Sources]
@@ -102,26 +105,27 @@ graph TB
         MediaSources[🎥 Media Sources]
     end
     
+    Client --> Core
     Client -->|Video/HLS| GoProxy
-    Client -->|WebSocket| GoWS
-    Client -->|HTTP| FastAPI
+    Client -->|Realtime| GoWS
     
-    GoWS -->|yt-dlp API| FastAPI
-    GoProxy -->|Fallback| Proxy
+    GoProxy -.->|Fallback| PyProxy
+    GoWS -.->|Fallback| PyWS
+    GoWS -->|yt-dlp API| YtDlp
     
-    FastAPI --> Home
-    FastAPI --> API
-    FastAPI --> WatchParty
-    FastAPI --> Proxy
-    
-    Home --> KekikStream
-    API --> KekikStream
+    WatchParty --> PyWS
     WatchParty --> YtDlp
     
+    API --> KekikStream
+    Home --> KekikStream
     KekikStream --> MediaSources
+    
+    PyProxy --> MediaSources
+    GoProxy --> MediaSources
 
-    style GoServices fill:#00d4aa,stroke:#00a080,stroke-width:2px
-    style PythonAPI fill:#2b2a29,stroke:#ef7f1a,stroke-width:2px
+    style Core fill:#3776ab,stroke:#ffd43b,stroke-width:2px
+    style ProxyLayer fill:#00d4aa,stroke:#00a080,stroke-width:2px
+    style WebSocketLayer fill:#00d4aa,stroke:#00a080,stroke-width:2px
     style External fill:#0087a3,stroke:#00a0c2,stroke-width:2px
 ```
 
