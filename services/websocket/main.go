@@ -27,6 +27,20 @@ func main() {
 	r.Use(gin.Recovery())
 	r.Use(middleware.CustomGinLogger())
 
+	// CORS Middleware (health check için gerekli)
+	r.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Accept")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(http.StatusOK)
+			return
+		}
+
+		c.Next()
+	})
+
 	// Health check
 	healthHandler := func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
