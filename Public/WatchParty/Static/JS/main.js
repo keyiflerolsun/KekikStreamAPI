@@ -29,7 +29,7 @@ const state = {
 const getRoomConfig = () => {
     const roomId = window.ROOM_ID || document.getElementById('room-id')?.textContent || '';
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/wss/watch_party/${roomId}`;
+    const wsUrl = `${protocol}//${window.location.hostname}:3312/wss/watch_party/${roomId}`;
     return { roomId, wsUrl };
 };
 
