@@ -25,12 +25,9 @@ ENV TZ="Europe/Istanbul"
 WORKDIR /app
 COPY --from=builder /build/websocket .
 
-# * Ortam Değişkenleri
-ENV PORT=3312
-
 # * Sağlık Kontrolü
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:${PORT}/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3312/health || exit 1
 
 # * Uygulamanın Başlatılması
 CMD ["./websocket"]

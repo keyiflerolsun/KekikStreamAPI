@@ -33,7 +33,6 @@ services:
     ports:
       - 3311:3311
     environment:
-      - PORT=3311
       - CACHE_SIZE_MB=128
       - CACHE_TTL_SECONDS=900
 
@@ -47,5 +46,3 @@ services:
       - local
     ports:
       - 3312:3312
-    environment:
-      - PORT=3312

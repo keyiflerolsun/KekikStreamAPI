@@ -14,11 +14,6 @@ type Config struct {
 }
 
 func Load() *Config {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "3311"
-	}
-
 	cacheSizeMB := 128
 	if val := os.Getenv("CACHE_SIZE_MB"); val != "" {
 		if parsed, err := strconv.Atoi(val); err == nil {
@@ -34,7 +29,7 @@ func Load() *Config {
 	}
 
 	return &Config{
-		Port:            port,
+		Port:            "3311", // Sabit port
 		CacheSizeMB:     cacheSizeMB,
 		CacheTTLSeconds: cacheTTL,
 	}

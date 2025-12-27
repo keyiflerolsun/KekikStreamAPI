@@ -26,13 +26,12 @@ WORKDIR /app
 COPY --from=builder /build/proxy .
 
 # * Ortam Değişkenleri
-ENV PORT=3311 \
-    CACHE_SIZE_MB=128 \
+ENV CACHE_SIZE_MB=128 \
     CACHE_TTL_SECONDS=900
 
 # * Sağlık Kontrolü
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:${PORT}/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3311/health || exit 1
 
 # * Uygulamanın Başlatılması
 CMD ["./proxy"]
