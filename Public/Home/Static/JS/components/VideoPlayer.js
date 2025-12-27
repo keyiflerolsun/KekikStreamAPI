@@ -1,6 +1,7 @@
 // Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 import VideoLogger from './VideoLogger.min.js';
+import { detectGoServices, buildProxyUrl as buildServiceProxyUrl, getProxyBaseUrl } from '../utils/service-detector.min.js';
 
 export default class VideoPlayer {
     constructor() {
@@ -27,7 +28,15 @@ export default class VideoPlayer {
         this.init();
     }
 
-    init() {
+    // Proxy URL oluşturucu (Go/Python fallback destekli)
+    buildProxyUrl(url, userAgent = '', referer = '', endpoint = 'video') {
+        return buildServiceProxyUrl(url, userAgent, referer, endpoint);
+    }
+
+    async init() {
+        // Go servislerini tespit et (fallback için)
+        await detectGoServices();
+        
         this.setupDiagnostics();
         this.collectVideoLinks();
         this.renderVideoLinks();
@@ -296,14 +305,8 @@ export default class VideoPlayer {
         const referer = selectedVideo.referer || '';
         const userAgent = selectedVideo.userAgent || '';
 
-        // Proxy URL'i oluştur (sadece değer varsa ekle)
-        let proxyUrl = `${window.location.protocol}//${window.location.hostname}:3311/proxy/video?url=${encodeURIComponent(originalUrl)}`;
-        if (referer) {
-            proxyUrl += `&referer=${encodeURIComponent(referer)}`;
-        }
-        if (userAgent) {
-            proxyUrl += `&user_agent=${encodeURIComponent(userAgent)}`;
-        }
+        // Proxy URL'i oluştur (Go/Python fallback destekli)
+        let proxyUrl = this.buildProxyUrl(originalUrl, userAgent, referer, 'video');
 
         this.logger.info('Proxy URL oluşturuldu', proxyUrl);
 
@@ -360,10 +363,8 @@ export default class VideoPlayer {
 
             selectedVideo.subtitles.forEach(subtitle => {
                 try {
-                    // Altyazı proxy URL'ini oluştur
-                    let subtitleProxyUrl = `${window.location.protocol}//${window.location.hostname}:3311/proxy/subtitle?url=${encodeURIComponent(subtitle.url)}`;
-                    if (referer) subtitleProxyUrl += `&referer=${encodeURIComponent(referer)}`;
-                    if (userAgent) subtitleProxyUrl += `&user_agent=${encodeURIComponent(userAgent)}`;
+                    // Altyazı proxy URL'ini oluştur (Go/Python fallback destekli)
+                    let subtitleProxyUrl = this.buildProxyUrl(subtitle.url, userAgent, referer, 'subtitle');
 
                     // Altyazı track elementini oluştur
                     const track = document.createElement('track');
@@ -473,10 +474,7 @@ export default class VideoPlayer {
                                 const correctUrl = this.lastLoadedOrigin + path;
                                 this.logger.info('Corrected URL:', correctUrl);
                                 
-                                let proxyUrl = `${window.location.protocol}//${window.location.hostname}:3311/proxy/video?url=${encodeURIComponent(correctUrl)}`;
-                                if (referer) proxyUrl += `&referer=${encodeURIComponent(referer)}`;
-                                if (userAgent) proxyUrl += `&user_agent=${encodeURIComponent(userAgent)}`;
-                                
+                                const proxyUrl = buildServiceProxyUrl(correctUrl, userAgent, referer, 'video');
                                 xhr.open('GET', proxyUrl, true);
                                 return;
                             }
@@ -491,10 +489,7 @@ export default class VideoPlayer {
                                 // Doğru URL'i oluştur
                                 const correctUrl = this.lastLoadedBaseUrl + filename;
                                 
-                                let proxyUrl = `${window.location.protocol}//${window.location.hostname}:3311/proxy/video?url=${encodeURIComponent(correctUrl)}`;
-                                if (referer) proxyUrl += `&referer=${encodeURIComponent(referer)}`;
-                                if (userAgent) proxyUrl += `&user_agent=${encodeURIComponent(userAgent)}`;
-                                
+                                const proxyUrl = buildServiceProxyUrl(correctUrl, userAgent, referer, 'video');
                                 xhr.open('GET', proxyUrl, true);
                                 return;
                             }
@@ -502,9 +497,7 @@ export default class VideoPlayer {
 
                         // 4. Diğer tüm durumlar (Normal URL'ler) -> Proxy'ye sar
                         try {
-                            let proxyUrl = `${window.location.protocol}//${window.location.hostname}:3311/proxy/video?url=${encodeURIComponent(url)}`;
-                            if (referer) proxyUrl += `&referer=${encodeURIComponent(referer)}`;
-                            if (userAgent) proxyUrl += `&user_agent=${encodeURIComponent(userAgent)}`;
+                            const proxyUrl = buildServiceProxyUrl(url, userAgent, referer, 'video');
                             
                             // Base URL'i kaydet (eğer http ile başlıyorsa)
                             if (url.startsWith('http')) {
@@ -515,9 +508,7 @@ export default class VideoPlayer {
                         } catch (error) {
                             console.error('HLS Proxy Error:', error);
                             // Hata durumunda yine proxy üzerinden dene
-                            let fallbackUrl = `${window.location.protocol}//${window.location.hostname}:3311/proxy/video?url=${encodeURIComponent(url)}`;
-                            if (referer) fallbackUrl += `&referer=${encodeURIComponent(referer)}`;
-                            if (userAgent) fallbackUrl += `&user_agent=${encodeURIComponent(userAgent)}`;
+                            const fallbackUrl = buildServiceProxyUrl(url, userAgent, referer, 'video');
                             xhr.open('GET', fallbackUrl, true);
                         }
                     }
@@ -574,10 +565,8 @@ export default class VideoPlayer {
                     });
                 });
 
-                // Manifest için proxy URL oluştur
-                let manifestProxyUrl = `${window.location.protocol}//${window.location.hostname}:3311/proxy/video?url=${encodeURIComponent(originalUrl)}`;
-                if (referer) manifestProxyUrl += `&referer=${encodeURIComponent(referer)}`;
-                if (userAgent) manifestProxyUrl += `&user_agent=${encodeURIComponent(userAgent)}`;
+                // Manifest için proxy URL oluştur (Go/Python fallback destekli)
+                const manifestProxyUrl = buildServiceProxyUrl(originalUrl, userAgent, referer, 'video');
                 
                 this.logger.info('HLS manifest yükleniyor (proxy)', manifestProxyUrl);
                 
@@ -593,10 +582,8 @@ export default class VideoPlayer {
             this.logger.info('Native HLS desteği kullanılıyor');
 
             try {
-                // Native için proxy URL gerekli
-                let proxyUrl = `${window.location.protocol}//${window.location.hostname}:3311/proxy/video?url=${encodeURIComponent(originalUrl)}`;
-                if (referer) proxyUrl += `&referer=${encodeURIComponent(referer)}`;
-                if (userAgent) proxyUrl += `&user_agent=${encodeURIComponent(userAgent)}`;
+                // Native için proxy URL gerekli (Go/Python fallback destekli)
+                const proxyUrl = buildServiceProxyUrl(originalUrl, userAgent, referer, 'video');
                 this.videoPlayer.src = proxyUrl;
             } catch (error) {
                 this.logger.error('Native HLS yükleme hatası', error.message);

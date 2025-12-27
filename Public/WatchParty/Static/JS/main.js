@@ -25,11 +25,43 @@ const state = {
     currentUser: null
 };
 
+// ============== Go Service Detection ==============
+const GO_PROXY_PORT = 3311;
+const GO_WS_PORT = 3312;
+
+const detectGoServices = async () => {
+    // Proxy health check
+    try {
+        const proxyRes = await fetch(`${window.location.protocol}//${window.location.hostname}:${GO_PROXY_PORT}/health`, { method: 'HEAD', signal: AbortSignal.timeout(2000) });
+        window.GO_PROXY_AVAILABLE = proxyRes.ok;
+    } catch {
+        window.GO_PROXY_AVAILABLE = false;
+    }
+    
+    // WebSocket health check
+    try {
+        const wsRes = await fetch(`${window.location.protocol}//${window.location.hostname}:${GO_WS_PORT}/health`, { method: 'HEAD', signal: AbortSignal.timeout(2000) });
+        window.GO_WS_AVAILABLE = wsRes.ok;
+    } catch {
+        window.GO_WS_AVAILABLE = false;
+    }
+    
+    console.log(`[ServiceDetector] Proxy: ${window.GO_PROXY_AVAILABLE ? '✅ Go' : '⚠️ Python'}, WS: ${window.GO_WS_AVAILABLE ? '✅ Go' : '⚠️ Python'}`);
+};
+
 // ============== Config ==============
 const getRoomConfig = () => {
     const roomId = window.ROOM_ID || document.getElementById('room-id')?.textContent || '';
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.hostname}:3312/wss/watch_party/${roomId}`;
+    
+    // Go WS varsa Go portunu, yoksa Python (same origin) kullan
+    let wsUrl;
+    if (window.GO_WS_AVAILABLE === true) {
+        wsUrl = `${protocol}//${window.location.hostname}:${GO_WS_PORT}/wss/watch_party/${roomId}`;
+    } else {
+        wsUrl = `${protocol}//${window.location.host}/wss/watch_party/${roomId}`;
+    }
+    
     return { roomId, wsUrl };
 };
 
@@ -264,6 +296,9 @@ const init = async () => {
         "%ciletişim: https://t.me/keyiflerolsun",
         "background: #1c1c1c; color: #ccc; padding: 10px 15px; font-size: 14px; border-radius: 6px; margin-top: 4px; display: block;"
     );
+
+    // Go servislerini tespit et (fallback için)
+    await detectGoServices();
 
     // Init modules
     initUI();
