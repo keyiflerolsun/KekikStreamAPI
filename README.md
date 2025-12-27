@@ -113,10 +113,11 @@ graph TB
     FastAPI --> Home
     FastAPI --> API
     FastAPI --> WatchParty
+    FastAPI -.->|Hosts| PyServices
     
-    GoProxy -.->|Fallback| PyProxy
-    GoWS -.->|Fallback| PyWS
-    GoWS -->|yt-dlp API| YtDlp
+    GoProxy -.->|JS Fallback| PyProxy
+    GoWS -.->|JS Fallback| PyWS
+    GoWS -->|yt-dlp Çıkartıcı| YtDlp
     
     Home --> KekikStream
     API --> KekikStream
@@ -124,9 +125,9 @@ graph TB
     WatchParty <--> PyWS
     WatchParty --> YtDlp
     
-    GoProxy --> MediaSources
-    PyProxy --> MediaSources
-    KekikStream --> MediaSources
+    GoProxy <--> MediaSources
+    PyProxy <--> MediaSources
+    KekikStream <--> MediaSources
 
     style KekikStreamAPI fill:#2b2a29,stroke:#ef7f1a,stroke-width:2px
     style GoServices fill:#242322,stroke:#0087a3,stroke-width:2px
