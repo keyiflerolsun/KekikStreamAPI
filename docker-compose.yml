@@ -21,66 +21,31 @@ services:
     depends_on:
       - proxy
       - websocket
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3310/api/v1/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
 
   proxy:
-    build          : ./services/proxy
     container_name : kekik_proxy
-    restart        : unless-stopped
-    image          : kekik-proxy:local
-    ports:
-      - 3311:3311
+    image          : kekik_proxy:local
+    restart        : always
+    build          : ./services/proxy
+
     networks:
       - local
+    ports:
+      - 3311:3311
     environment:
       - PORT=3311
       - CACHE_SIZE_MB=128
       - CACHE_TTL_SECONDS=900
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3311/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
 
   websocket:
-    build          : ./services/websocket
     container_name : kekik_websocket
-    restart        : unless-stopped
-    image          : kekik-websocket:local
-    ports:
-      - 3312:3312
+    image          : kekik_websocket:local
+    restart        : always
+    build          : ./services/websocket
+
     networks:
       - local
+    ports:
+      - 3312:3312
     environment:
       - PORT=3312
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3312/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-networks:
-  local:
-    driver: bridge
