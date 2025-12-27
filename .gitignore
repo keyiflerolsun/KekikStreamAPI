@@ -167,6 +167,3 @@ youtubeCheck.py
 __data_dump/
 **/**.min.js
 **/**.min.css
-
-# Go
-go.sum
