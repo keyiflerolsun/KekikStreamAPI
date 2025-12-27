@@ -21,7 +21,7 @@ def basla():
     #     "--workers", "2",
     #     "--keep-alive", "5",
     #     "--worker-tmp-dir", "/dev/shm",
-    #     "--max-requests", "10000", "--max-requests-jitter", "1000",
+    #     "--max-requests", "10000", "--max-requests-jitter", "1000"
     # ]
 
     # subprocess.run(komut, check=True)

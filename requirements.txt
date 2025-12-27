@@ -1,5 +1,5 @@
 Kekik
-curl_cffi
+httpx[http2]
 fastapi
 uvicorn
 uvloop; platform_system != "Windows"

@@ -3,7 +3,7 @@
 from CLI        import konsol
 from fastapi    import FastAPI
 from contextlib import asynccontextmanager
-from curl_cffi  import AsyncSession
+from Libs       import global_request
 from Settings   import AVAILABILITY_CHECK
 from Public.API.v1.Libs import plugin_manager
 import asyncio
@@ -27,16 +27,15 @@ async def _check_plugin(name: str, sem: asyncio.Semaphore, lock: asyncio.Lock) -
     # Kapasite sınırı: aynı anda en fazla `MAX_CONCURRENT_CHECKS` oturum açılacak
     async with sem:
         try:
-            async with AsyncSession(impersonate="chrome", timeout=15) as oturum:
-                istek = await oturum.get(plugin.main_url)
-                if istek.status_code != 200:
-                    try:
-                        await plugin.close()
-                    except Exception:
-                        pass
-                    async with lock:
-                        plugin_manager.plugins.pop(name, None)
-                    konsol.log(f"[red]Eklentiye erişilemiyor : {plugin.name} | {plugin.main_url}")
+            istek = await global_request.fetch(plugin.main_url)
+            if istek.status_code != 200:
+                try:
+                    await plugin.close()
+                except Exception:
+                    pass
+                async with lock:
+                    plugin_manager.plugins.pop(name, None)
+                konsol.log(f"[red]Eklentiye erişilemiyor : {plugin.name} | {plugin.main_url}")
         except Exception:
             # Hata durumunda eklentiyi kapat ve kaldır
             try:
@@ -50,6 +49,7 @@ async def _check_plugin(name: str, sem: asyncio.Semaphore, lock: asyncio.Lock) -
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """FastAPI lifespan events - startup ve shutdown"""
+    await global_request.start()
 
     # ! Eğer eklenti ana sayfası erişilemiyorsa atla
     if AVAILABILITY_CHECK:
@@ -68,3 +68,5 @@ async def lifespan(app: FastAPI):
         konsol.log(f"[green]Eklenti erişim kontrolleri tamamlandı. (maks {MAX_CONCURRENT_CHECKS} eşzamanlı)")
 
     yield
+
+    await global_request.stop()
