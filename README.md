@@ -83,13 +83,17 @@ python basla.py
 graph TB
     Client[🌐 Client]
     
-    subgraph KekikStreamAPI[🎬 KekikStreamAPI]
+    subgraph GoServices[🚀 Go Services]
+        GoProxy[🛡️ Go Proxy :3311]
+        GoWS[📡 Go WebSocket :3312]
+    end
+    
+    subgraph PythonAPI[🐍 Python API :3310]
         FastAPI[⚡ FastAPI Core]
         Home[🏠 Web UI]
         API[🔌 API]
         WatchParty[🎭 Watch Party]
-        WSS[📡 WebSocket]
-        Proxy[🛡️ Proxy]
+        Proxy[🛡️ Python Proxy]
         YtDlp[🎬 yt-dlp]
     end
     
@@ -98,28 +102,30 @@ graph TB
         MediaSources[🎥 Media Sources]
     end
     
-    Client -->|HTTP/WS| FastAPI
+    Client -->|Video/HLS| GoProxy
+    Client -->|WebSocket| GoWS
+    Client -->|HTTP| FastAPI
+    
+    GoWS -->|yt-dlp API| FastAPI
+    GoProxy -->|Fallback| Proxy
+    
     FastAPI --> Home
     FastAPI --> API
     FastAPI --> WatchParty
-    FastAPI --> WSS
     FastAPI --> Proxy
     
     Home --> KekikStream
-    Home --> Proxy
-    
     API --> KekikStream
-
-    WatchParty <--> WSS
-    WatchParty --> Proxy
     WatchParty --> YtDlp
-
-    YtDlp --> Proxy
+    
     KekikStream --> MediaSources
 
-    style KekikStreamAPI fill:#2b2a29,stroke:#ef7f1a,stroke-width:2px
+    style GoServices fill:#00d4aa,stroke:#00a080,stroke-width:2px
+    style PythonAPI fill:#2b2a29,stroke:#ef7f1a,stroke-width:2px
     style External fill:#0087a3,stroke:#00a0c2,stroke-width:2px
 ```
+
+> **📌 Sabit Portlar:** API: 3310, Proxy: 3311, WebSocket: 3312 (değiştirilemez)
 
 ---
 
@@ -143,6 +149,7 @@ graph TB
 | `/api/v1/load_item`          | İçerik detayları    |
 | `/api/v1/load_links`         | Video bağlantıları  |
 | `/api/v1/extract`            | Link extraction     |
+| `/api/v1/ytdlp-extract`      | yt-dlp video bilgisi |
 
 ### 🎭 Watch Party
 
@@ -206,7 +213,8 @@ curl "http://127.0.0.1:3310/api/v1/load_links?plugin=Dizilla&encoded_url=..."
 
 ## 🧩 Teknoloji Yığını
 
-**Backend:** FastAPI • Uvicorn • WebSockets • httpx  
+**Python Backend:** FastAPI • Uvicorn • WebSockets • httpx  
+**Go Services:** Gin • Gorilla WebSocket • pterm  
 **Frontend:** Jinja2 • CSS/JS minification  
 **Medya:** yt-dlp • KekikStream  
 **Güvenlik:** CORS • HSTS • Security Headers
@@ -224,8 +232,11 @@ KekikStreamAPI/
 │   ├── Home/          # Web UI
 │   ├── API/v1/        # RESTful API
 │   ├── WatchParty/    # Watch Party
-│   ├── WebSocket/     # WebSocket
-│   └── Proxy/         # Proxy
+│   ├── WebSocket/     # Python WebSocket
+│   └── Proxy/         # Python Proxy
+├── services/
+│   ├── proxy/         # Go Proxy Service (:3311)
+│   └── websocket/     # Go WebSocket Service (:3312)
 ├── Settings/          # Konfigürasyon
 └── AYAR.yml           # Ana config
 ```
