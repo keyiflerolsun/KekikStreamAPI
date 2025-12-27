@@ -106,26 +106,24 @@ graph TB
         YtDlp[🎬 yt-dlp]
     end
 
+    KekikStream <--> MediaSources
+    KekikStream <--> YtDlp
+
     Client -->|HTTP| FastAPI
-    Client -->|Video/HLS| GoProxy
-    Client -->|WebSocket| GoWS
 
     FastAPI --> Home
     FastAPI --> API
     FastAPI --> WatchParty
     FastAPI -.->|Hosts| PyServices
 
-    KekikStream <--> MediaSources
-    KekikStream <--> YtDlp
+    Home <--> API
+    WatchParty <--> API
 
-    Home --> KekikStream
-    API --> KekikStream
+    API <--> KekikStream
 
-    WatchParty <--> PyWS
-    WatchParty <--> PyProxy
-
-    PyWS <--> KekikStream
-    PyProxy <--> KekikStream
+    API <--> GoServices
+    Home <--> GoServices
+    WatchParty <--> GoServices
 
     GoProxy -.->|JS Fallback| PyProxy
     GoWS -.->|JS Fallback| PyWS
