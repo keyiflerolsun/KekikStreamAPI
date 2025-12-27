@@ -22,5 +22,6 @@ from . import (
     search,
     load_item,
     load_links,
-    extract
+    extract,
+    ytdlp_extract
 )

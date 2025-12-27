@@ -182,6 +182,11 @@ func handlePing(conn *websocket.Conn, msg map[string]interface{}) {
 		response["_ping_id"] = pingID
 	}
 	conn.WriteJSON(response)
+
+	// Heartbeat time tracking (Python parity) - client_time loglanabilir
+	if clientTime, ok := msg["current_time"].(float64); ok {
+		_ = clientTime // Gelecekte drift detection için kullanılabilir
+	}
 }
 
 func handleGetState(conn *websocket.Conn, roomID string) {
@@ -199,14 +204,23 @@ func handlePlay(roomID string, user *models.User) {
 		return
 	}
 
-	// Barrier varken manuel play ignore
+	// Zaten oynatılıyorsa ignore (Python parity)
 	room.Mu.RLock()
-	reason := room.PauseReason
+	isPlaying := room.IsPlaying
 	room.Mu.RUnlock()
-	if reason == "seek" || reason == "resume_sync" {
-		pterm.Warning.Printf("Play Ignored (Barrier: %s) [%s]\n", reason, roomID)
+	if isPlaying {
 		return
 	}
+
+	// Seek-sync varsa iptal et (Python parity: cancel_seek_sync)
+	room.Mu.Lock()
+	if room.PauseReason == "seek" {
+		room.SeekSyncWaitingUsers = make(map[string]bool)
+		room.PauseReason = ""
+	}
+	// Buffering users temizle (Python parity: clear_buffering_users)
+	room.BufferingUsers = make(map[string]bool)
+	room.Mu.Unlock()
 
 	currentTime := manager.Manager.Play(roomID)
 	room.Broadcast(map[string]interface{}{
@@ -252,14 +266,14 @@ func handlePause(roomID string, user *models.User, msg map[string]interface{}) {
 		}
 	}
 
-	// Barrier varken manuel pause ignore
-	room.Mu.RLock()
-	reason := room.PauseReason
-	room.Mu.RUnlock()
-	if reason == "seek" || reason == "resume_sync" {
-		pterm.Warning.Printf("Pause Ignored (Barrier: %s) [%s]\n", reason, roomID)
-		return
+	// Normal pause akışı
+	// Seek-sync varsa iptal et (manuel pause override - Python paritesi)
+	room.Mu.Lock()
+	if room.PauseReason == "seek" {
+		room.SeekSyncWaitingUsers = make(map[string]bool)
+		room.PauseReason = "manual"
 	}
+	room.Mu.Unlock()
 
 	currentTime := manager.Manager.Pause(roomID)
 	room.Broadcast(map[string]interface{}{
@@ -404,27 +418,54 @@ func handleVideoChange(roomID string, user *models.User, msg map[string]interfac
 		return
 	}
 
+	streamURL := url
 	format := "hls"
-	if strings.Contains(strings.ToLower(url), ".mp4") {
-		format = "mp4"
-	} else if strings.Contains(strings.ToLower(url), ".webm") {
-		format = "webm"
+	var duration float64 = 0
+
+	// Python API'den yt-dlp ile video bilgisi al (Python parity)
+	ytdlpResult := fetchYtdlpInfo(url)
+	if ytdlpResult != nil {
+		if su, ok := ytdlpResult["stream_url"].(string); ok && su != "" {
+			streamURL = su
+		}
+		if t, ok := ytdlpResult["title"].(string); ok && t != "" && title == "" {
+			title = t
+		}
+		if f, ok := ytdlpResult["format"].(string); ok && f != "" {
+			format = f
+		}
+		if d, ok := ytdlpResult["duration"].(float64); ok {
+			duration = d
+		}
+		if ua, ok := ytdlpResult["user_agent"].(string); ok && ua != "" && userAgent == "" {
+			userAgent = ua
+		}
+		if ref, ok := ytdlpResult["referer"].(string); ok && ref != "" && referer == "" {
+			referer = ref
+		}
+	} else {
+		// yt-dlp başarısız, format tahmin et
+		if strings.Contains(strings.ToLower(url), ".mp4") {
+			format = "mp4"
+		} else if strings.Contains(strings.ToLower(url), ".webm") {
+			format = "webm"
+		}
 	}
 
 	if title == "" {
 		title = "Video"
 	}
 
-	manager.Manager.UpdateVideo(roomID, url, title, format, userAgent, referer, subtitleURL, 0)
+	manager.Manager.UpdateVideo(roomID, streamURL, title, format, userAgent, referer, subtitleURL, duration)
 
 	room := manager.Manager.GetRoom(roomID)
 	if room != nil {
 		room.Broadcast(map[string]interface{}{
 			"type":         "video_changed",
-			"url":          url,
+			"url":          streamURL,
 			"title":        title,
 			"format":       format,
-			"duration":     0,
+			"duration":     duration,
 			"user_agent":   userAgent,
 			"referer":      referer,
 			"subtitle_url": subtitleURL,
@@ -432,6 +473,35 @@ func handleVideoChange(roomID string, user *models.User, msg map[string]interfac
 		}, "")
 		pterm.Info.Printf("Video changed: %s [%s] (By: %s)\n", title, room.RoomID, user.Username)
 	}
+}
+
+// fetchYtdlpInfo Python API'den yt-dlp ile video bilgisi alır
+func fetchYtdlpInfo(videoURL string) map[string]interface{} {
+	// Python API URL (aynı Docker network'te kekik_api:3310)
+	apiURL := fmt.Sprintf("http://kekik_api:3310/api/v1/ytdlp-extract?url=%s", videoURL)
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Get(apiURL)
+	if err != nil {
+		pterm.Debug.Printf("yt-dlp API error: %v\n", err)
+		return nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return nil
+	}
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil
+	}
+
+	// result içindeki "result" objesini döndür
+	if r, ok := result["result"].(map[string]interface{}); ok {
+		return r
+	}
+	return nil
 }
 
 func handleDisconnect(roomID string, user *models.User) {

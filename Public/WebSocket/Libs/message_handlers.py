@@ -47,17 +47,16 @@ class MessageHandler:
             }, exclude_user_id=self.user.user_id)
 
     async def handle_play(self, message: dict):
-        """PLAY mesajını işle - soft resume (bariyer yok)"""
+        """PLAY mesajını işle - Go parity ile sadeleştirildi"""
         room = await watch_party_manager.get_room(self.room_id)
         if not room or room.is_playing:
             return
 
+        # Buffering users ve seek sync temizle (Go parity)
         await watch_party_manager.clear_buffering_users(self.room_id)
-        await watch_party_manager.cancel_delayed_buffer_pause(self.room_id)  # ALL
         await watch_party_manager.cancel_seek_sync(self.room_id)
 
         now = time.perf_counter()
-        await watch_party_manager.mark_play_time(self.room_id, now)
 
         # Soft resume: direkt "playing" yap
         current_time = await watch_party_manager.resume_soft(self.room_id, now)
@@ -74,7 +73,7 @@ class MessageHandler:
         })
 
     async def handle_pause(self, message: dict):
-        """PAUSE mesajını işle - server-otoriteli zaman (seek-via-pause destekli)"""
+        """PAUSE mesajını işle - Go parity ile sadeleştirildi"""
         now = time.perf_counter()
 
         # Seek-via-pause fallback: Client pause mesajında time gönderiyorsa ve fark büyükse seek gibi davran
@@ -92,9 +91,8 @@ class MessageHandler:
                     live_time = snap["current_time"]
                     live_time += (now - snap["updated_at"])
 
-                    # Fark büyükse bu bir seek niyeti - seek olarak işle (eşik arttırıldı)
+                    # Fark büyükse bu bir seek niyeti - seek olarak işle
                     if abs(req_time - live_time) > 2.0:
-                        await watch_party_manager.mark_seek_time(self.room_id, now)
                         was_playing = snap["is_playing"]
 
                         epoch, final_time = await watch_party_manager.begin_seek_sync(
@@ -102,7 +100,6 @@ class MessageHandler:
                         )
 
                         if epoch > 0:
-                            await watch_party_manager.cancel_delayed_buffer_pause(self.room_id)
                             await watch_party_manager.broadcast_to_room(self.room_id, {
                                 "type"         : "sync",
                                 "is_playing"   : False,
@@ -114,26 +111,16 @@ class MessageHandler:
                             })
                             return
 
-        # Normal pause akışı
-        decision = await watch_party_manager.should_accept_pause(self.room_id, now)
-        if not decision["accept"]:
-            return
-        
+        # Normal pause akışı (Go parity - debounce yok)
         # Seek-sync varsa iptal et (manuel pause override)
         await watch_party_manager.cancel_seek_sync(self.room_id)
 
-        # TAZE zaman al (await'ler gecikme yaratmış olabilir)
-        now2 = time.perf_counter()
-        
-        # Pause zamanını kaydet - tutarlı zaman
-        await watch_party_manager.mark_pause_time(self.room_id, now2)
-
         # Server-otoriteli pause
-        paused_time = await watch_party_manager.pause_now(self.room_id, now2, reason="manual")
+        paused_time = await watch_party_manager.pause_now(self.room_id, now, reason="manual")
         if paused_time is None:
             return
 
-        # Herkese (pauser dahil) force_seek ile gönder - tam senkron
+        # Herkese force_seek ile gönder - tam senkron
         await watch_party_manager.broadcast_to_room(self.room_id, {
             "type"         : "sync",
             "is_playing"   : False,
@@ -337,56 +324,12 @@ class MessageHandler:
             await watch_party_manager.handle_heartbeat(self.room_id, self.user.user_id, client_time)
 
     async def handle_buffer_start(self):
-        """BUFFER_START mesajını işle"""
-        now = time.perf_counter()
-
-        decision = await watch_party_manager.should_accept_buffer_start(
-            self.room_id, self.user.user_id, now, DEBOUNCE_WINDOW
-        )
-        
-        if not decision["accept"]:
-            return
-
-        # İlk veya seek sonrası buffer - sadece kaydol, pause etme
-        if decision["is_first"] or decision["is_post_seek"]:
-            await watch_party_manager.cancel_delayed_buffer_pause(self.room_id, self.user.user_id)
-            await watch_party_manager.mark_buffer_start_time(self.room_id, self.user.user_id, now)
-            await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, True)
-            return
-
-        # Normal buffer - kaydol ve delayed pause planla
-        await watch_party_manager.mark_buffer_start_time(self.room_id, self.user.user_id, now)
+        """BUFFER_START mesajını işle - Go parity ile sadeleştirildi"""
         await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, True)
 
-        if decision["should_pause"]:
-            await watch_party_manager.schedule_delayed_buffer_pause(
-                self.room_id, self.user.user_id, self.user.username, delay=MIN_BUFFER_DURATION
-            )
-
     async def handle_buffer_end(self):
-        """BUFFER_END mesajını işle"""
-        now = time.perf_counter()
-        
-        # Delayed pause task'ını iptal et (kısa buffer olduğu için pause gerekmez)
-        await watch_party_manager.cancel_delayed_buffer_pause(self.room_id, self.user.user_id)
-        
-        # Atomic buffer_end + auto-resume check
-        result = await watch_party_manager.buffer_end_and_check_resume(
-            self.room_id, self.user.user_id, now, MIN_BUFFER_DURATION, DEBOUNCE_WINDOW
-        )
-        
-        if not result:
-            return
-        
-        # Auto-resume gerekiyorsa broadcast
-        if result["should_resume"]:
-            await watch_party_manager.broadcast_to_room(self.room_id, {
-                "type"         : "sync",
-                "is_playing"   : True,
-                "current_time" : result["current_time"],
-                "force_seek"   : True,
-                "triggered_by" : "System (Buffering Complete)"
-            })
+        """BUFFER_END mesajını işle - Go parity ile sadeleştirildi"""
+        await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, False)
 
     async def handle_get_state(self):
         """GET_STATE mesajını işle"""
