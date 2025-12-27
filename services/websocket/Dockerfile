@@ -8,7 +8,7 @@ WORKDIR /build
 COPY . .
 
 # * Bağımlılıklar
-RUN go mod download
+RUN go mod tidy && go mod download
 
 # * Derleme
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o websocket .
