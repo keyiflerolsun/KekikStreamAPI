@@ -82,52 +82,53 @@ python basla.py
 ```mermaid
 graph TB
     Client[🌐 Client]
-    
+
     subgraph KekikStreamAPI[🎬 KekikStreamAPI]
         FastAPI[⚡ FastAPI Core :3310]
         Home[🏠 Web UI]
         API[🔌 API]
         WatchParty[🎭 Watch Party]
-        YtDlp[🎬 yt-dlp]
-        
+
         subgraph GoServices[🚀 Go Services]
             GoProxy[🛡️ Go Proxy :3311]
             GoWS[📡 Go WebSocket :3312]
         end
-        
+
         subgraph PyServices[🐍 Python Fallback]
             PyProxy[🛡️ Python Proxy]
             PyWS[📡 Python WebSocket]
         end
     end
-    
+
     subgraph External[🌍 External Sources]
         KekikStream[📚 KekikStream]
         MediaSources[🎥 Media Sources]
+        YtDlp[🎬 yt-dlp]
     end
-    
+
     Client -->|HTTP| FastAPI
     Client -->|Video/HLS| GoProxy
     Client -->|WebSocket| GoWS
-    
+
     FastAPI --> Home
     FastAPI --> API
     FastAPI --> WatchParty
     FastAPI -.->|Hosts| PyServices
-    
-    GoProxy -.->|JS Fallback| PyProxy
-    GoWS -.->|JS Fallback| PyWS
-    GoWS -->|yt-dlp Çıkartıcı| YtDlp
-    
+
+    KekikStream <--> MediaSources
+    KekikStream <--> YtDlp
+
     Home --> KekikStream
     API --> KekikStream
-    
+
     WatchParty <--> PyWS
-    WatchParty --> YtDlp
-    
-    GoProxy <--> MediaSources
-    PyProxy <--> MediaSources
-    KekikStream <--> MediaSources
+    WatchParty <--> PyProxy
+
+    PyWS <--> KekikStream
+    PyProxy <--> KekikStream
+
+    GoProxy -.->|JS Fallback| PyProxy
+    GoWS -.->|JS Fallback| PyWS
 
     style KekikStreamAPI fill:#2b2a29,stroke:#ef7f1a,stroke-width:2px
     style GoServices fill:#242322,stroke:#0087a3,stroke-width:2px
