@@ -83,21 +83,22 @@ python basla.py
 graph TB
     Client[🌐 Client]
     
-    subgraph Core[⚡ FastAPI Core :3310]
+    subgraph KekikStreamAPI[🎬 KekikStreamAPI]
+        FastAPI[⚡ FastAPI Core :3310]
         Home[🏠 Web UI]
-        API[🔌 REST API]
+        API[🔌 API]
         WatchParty[🎭 Watch Party]
         YtDlp[🎬 yt-dlp]
-    end
-    
-    subgraph ProxyLayer[🛡️ Proxy Layer]
-        GoProxy[🚀 Go Proxy :3311]
-        PyProxy[🐍 Python Proxy]
-    end
-    
-    subgraph WebSocketLayer[📡 WebSocket Layer]
-        GoWS[🚀 Go WebSocket :3312]
-        PyWS[🐍 Python WebSocket]
+        
+        subgraph GoServices[🚀 Go Services]
+            GoProxy[🛡️ Go Proxy :3311]
+            GoWS[📡 Go WebSocket :3312]
+        end
+        
+        subgraph PyServices[🐍 Python Fallback]
+            PyProxy[🛡️ Python Proxy]
+            PyWS[📡 Python WebSocket]
+        end
     end
     
     subgraph External[🌍 External Sources]
@@ -105,31 +106,33 @@ graph TB
         MediaSources[🎥 Media Sources]
     end
     
-    Client --> Core
+    Client -->|HTTP| FastAPI
     Client -->|Video/HLS| GoProxy
-    Client -->|Realtime| GoWS
+    Client -->|WebSocket| GoWS
+    
+    FastAPI --> Home
+    FastAPI --> API
+    FastAPI --> WatchParty
     
     GoProxy -.->|Fallback| PyProxy
     GoWS -.->|Fallback| PyWS
     GoWS -->|yt-dlp API| YtDlp
     
-    WatchParty --> PyWS
+    Home --> KekikStream
+    API --> KekikStream
+    
+    WatchParty <--> PyWS
     WatchParty --> YtDlp
     
-    API --> KekikStream
-    Home --> KekikStream
-    KekikStream --> MediaSources
-    
-    PyProxy --> MediaSources
     GoProxy --> MediaSources
+    PyProxy --> MediaSources
+    KekikStream --> MediaSources
 
-    style Core fill:#3776ab,stroke:#ffd43b,stroke-width:2px
-    style ProxyLayer fill:#00d4aa,stroke:#00a080,stroke-width:2px
-    style WebSocketLayer fill:#00d4aa,stroke:#00a080,stroke-width:2px
-    style External fill:#0087a3,stroke:#00a0c2,stroke-width:2px
+    style KekikStreamAPI fill:#2b2a29,stroke:#ef7f1a,stroke-width:2px
+    style GoServices fill:#242322,stroke:#0087a3,stroke-width:2px
+    style PyServices fill:#242322,stroke:#5a7c8c,stroke-width:2px
+    style External fill:#242322,stroke:#0087a3,stroke-width:2px
 ```
-
-> **📌 Sabit Portlar:** API: 3310, Proxy: 3311, WebSocket: 3312 (değiştirilemez)
 
 ---
 
