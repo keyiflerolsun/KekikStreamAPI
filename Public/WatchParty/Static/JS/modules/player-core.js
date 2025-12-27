@@ -177,7 +177,18 @@ export const safePlay = async (timeout = 3000) => {
     }
 };
 
-// ============== Proxy URL Oluşturucu ==============
+// ============== Proxy URL Oluşturucu (Go/Python Fallback) ==============
+// Go servisi yoksa Python'a fallback yapar
+const getProxyBaseUrl = () => {
+    // window.GO_PROXY_AVAILABLE global değişkeni sayfa yüklendiğinde ayarlanır
+    // Eğer ayarlanmadıysa veya false ise Python'a fallback yap
+    if (window.GO_PROXY_AVAILABLE === true) {
+        return `${window.location.protocol}//${window.location.hostname}:3311`;
+    }
+    // Fallback: Python (same origin)
+    return window.location.origin;
+};
+
 const buildProxyUrl = (url, userAgent = '', referer = '', endpoint = 'video') => {
     const params = new URLSearchParams();
     params.append('url', url);
@@ -185,7 +196,7 @@ const buildProxyUrl = (url, userAgent = '', referer = '', endpoint = 'video') =>
     if (userAgent) params.append('user_agent', userAgent);
     if (referer) params.append('referer', referer);
     
-    return `/proxy/${endpoint}?${params.toString()}`;
+    return `${getProxyBaseUrl()}/proxy/${endpoint}?${params.toString()}`;
 };
 
 // ============== Format Algılama ==============

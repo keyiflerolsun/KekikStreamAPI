@@ -43,6 +43,40 @@ python basla.py
 
 ---
 
+## 🐳 Deployment Modları
+
+KekikStreamAPI iki farklı modda çalışabilir:
+
+### 🚀 Docker Compose (Go Servisleri + Python)
+
+```bash
+docker-compose up -d
+```
+
+| Servis | Port | Açıklama |
+|--------|------|----------|
+| **kekik_api** | 3310 | Python FastAPI (Ana uygulama) |
+| **kekik_proxy** | 3311 | Go Proxy (Yüksek performans) |
+| **kekik_websocket** | 3312 | Go WebSocket (Düşük latency) |
+
+✅ **Avantajlar:** Daha hızlı proxy, daha düşük WebSocket latency, segment caching
+
+### 🐍 Sadece Python
+
+```bash
+python basla.py
+```
+
+| Servis | Port | Açıklama |
+|--------|------|----------|
+| **kekik_api** | 3310 | Python FastAPI (Tüm özellikler) |
+
+✅ **Avantajlar:** Tek process, basit deployment, Docker gerektirmez
+
+> **🔄 Otomatik Fallback:** JavaScript, sayfa yüklendiğinde Go servislerini kontrol eder. Go servisleri yoksa otomatik olarak Python endpoint'lerine fallback yapar.
+
+---
+
 ## 🧭 Mimari ve Akış
 
 ```mermaid

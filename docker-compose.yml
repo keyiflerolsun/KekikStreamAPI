@@ -18,3 +18,34 @@ services:
       - local
     ports:
       - 3310:3310
+    depends_on:
+      - proxy
+      - websocket
+
+  proxy:
+    container_name : kekik_proxy
+    image          : kekik_proxy:local
+    restart        : always
+    build          : ./services/proxy
+
+    networks:
+      - local
+    ports:
+      - 3311:3311
+    environment:
+      - PORT=3311
+      - CACHE_SIZE_MB=128
+      - CACHE_TTL_SECONDS=900
+
+  websocket:
+    container_name : kekik_websocket
+    image          : kekik_websocket:local
+    restart        : always
+    build          : ./services/websocket
+
+    networks:
+      - local
+    ports:
+      - 3312:3312
+    environment:
+      - PORT=3312

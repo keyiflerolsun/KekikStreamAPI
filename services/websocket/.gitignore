@@ -1,0 +1,23 @@
+# Binaries
+websocket
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Dependency directories
+# vendor/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Go modules
+go.sum
