@@ -46,7 +46,14 @@ const detectGoServices = async () => {
         window.GO_WS_AVAILABLE = false;
     }
     
-    console.log(`[ServiceDetector] Proxy: ${window.GO_PROXY_AVAILABLE ? '✅ Go' : '⚠️ Python'}, WS: ${window.GO_WS_AVAILABLE ? '✅ Go' : '⚠️ Python'}`);
+    const proxyStatus = window.GO_PROXY_AVAILABLE ? '✅ Go' : '⚠️ Python';
+    const wsStatus = window.GO_WS_AVAILABLE ? '✅ Go' : '⚠️ Python';
+    
+    console.log(
+        `%c[🔌 SERVICE]%c Proxy: ${proxyStatus}, WS: ${wsStatus}`,
+        'color: #a855f7; font-weight: bold;',
+        ''
+    );
 };
 
 // ============== Config ==============

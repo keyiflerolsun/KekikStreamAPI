@@ -44,7 +44,14 @@ export const detectGoServices = async () => {
         state.proxyAvailable = proxyOk;
         state.wsAvailable = wsOk;
         
-        console.log(`[ServiceDetector] Proxy: ${proxyOk ? '✅ Go' : '⚠️ Python'}, WS: ${wsOk ? '✅ Go' : '⚠️ Python'}`);
+    const proxyStatus = proxyOk ? '✅ Go' : '⚠️ Python';
+        const wsStatus = wsOk ? '✅ Go' : '⚠️ Python';
+        
+        console.log(
+            `%c[🔌 SERVICE]%c Proxy: ${proxyStatus}, WS: ${wsStatus}`,
+            'color: #a855f7; font-weight: bold;',
+            ''
+        );
     } finally {
         state.checking = false;
     }
