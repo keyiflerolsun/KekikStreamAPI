@@ -297,7 +297,7 @@ export default class VideoPlayer {
         const userAgent = selectedVideo.userAgent || '';
 
         // Proxy URL'i oluştur (sadece değer varsa ekle)
-        let proxyUrl = `/proxy/video?url=${encodeURIComponent(originalUrl)}`;
+        let proxyUrl = `${window.location.protocol}//${window.location.hostname}:3311/proxy/video?url=${encodeURIComponent(originalUrl)}`;
         if (referer) {
             proxyUrl += `&referer=${encodeURIComponent(referer)}`;
         }
@@ -361,7 +361,7 @@ export default class VideoPlayer {
             selectedVideo.subtitles.forEach(subtitle => {
                 try {
                     // Altyazı proxy URL'ini oluştur
-                    let subtitleProxyUrl = `/proxy/subtitle?url=${encodeURIComponent(subtitle.url)}`;
+                    let subtitleProxyUrl = `${window.location.protocol}//${window.location.hostname}:3311/proxy/subtitle?url=${encodeURIComponent(subtitle.url)}`;
                     if (referer) subtitleProxyUrl += `&referer=${encodeURIComponent(referer)}`;
                     if (userAgent) subtitleProxyUrl += `&user_agent=${encodeURIComponent(userAgent)}`;
 
@@ -473,7 +473,7 @@ export default class VideoPlayer {
                                 const correctUrl = this.lastLoadedOrigin + path;
                                 this.logger.info('Corrected URL:', correctUrl);
                                 
-                                let proxyUrl = `/proxy/video?url=${encodeURIComponent(correctUrl)}`;
+                                let proxyUrl = `${window.location.protocol}//${window.location.hostname}:3311/proxy/video?url=${encodeURIComponent(correctUrl)}`;
                                 if (referer) proxyUrl += `&referer=${encodeURIComponent(referer)}`;
                                 if (userAgent) proxyUrl += `&user_agent=${encodeURIComponent(userAgent)}`;
                                 
@@ -491,7 +491,7 @@ export default class VideoPlayer {
                                 // Doğru URL'i oluştur
                                 const correctUrl = this.lastLoadedBaseUrl + filename;
                                 
-                                let proxyUrl = `/proxy/video?url=${encodeURIComponent(correctUrl)}`;
+                                let proxyUrl = `${window.location.protocol}//${window.location.hostname}:3311/proxy/video?url=${encodeURIComponent(correctUrl)}`;
                                 if (referer) proxyUrl += `&referer=${encodeURIComponent(referer)}`;
                                 if (userAgent) proxyUrl += `&user_agent=${encodeURIComponent(userAgent)}`;
                                 
@@ -502,7 +502,7 @@ export default class VideoPlayer {
 
                         // 4. Diğer tüm durumlar (Normal URL'ler) -> Proxy'ye sar
                         try {
-                            let proxyUrl = `/proxy/video?url=${encodeURIComponent(url)}`;
+                            let proxyUrl = `${window.location.protocol}//${window.location.hostname}:3311/proxy/video?url=${encodeURIComponent(url)}`;
                             if (referer) proxyUrl += `&referer=${encodeURIComponent(referer)}`;
                             if (userAgent) proxyUrl += `&user_agent=${encodeURIComponent(userAgent)}`;
                             
@@ -515,7 +515,7 @@ export default class VideoPlayer {
                         } catch (error) {
                             console.error('HLS Proxy Error:', error);
                             // Hata durumunda yine proxy üzerinden dene
-                            let fallbackUrl = `/proxy/video?url=${encodeURIComponent(url)}`;
+                            let fallbackUrl = `${window.location.protocol}//${window.location.hostname}:3311/proxy/video?url=${encodeURIComponent(url)}`;
                             if (referer) fallbackUrl += `&referer=${encodeURIComponent(referer)}`;
                             if (userAgent) fallbackUrl += `&user_agent=${encodeURIComponent(userAgent)}`;
                             xhr.open('GET', fallbackUrl, true);
@@ -575,7 +575,7 @@ export default class VideoPlayer {
                 });
 
                 // Manifest için proxy URL oluştur
-                let manifestProxyUrl = `/proxy/video?url=${encodeURIComponent(originalUrl)}`;
+                let manifestProxyUrl = `${window.location.protocol}//${window.location.hostname}:3311/proxy/video?url=${encodeURIComponent(originalUrl)}`;
                 if (referer) manifestProxyUrl += `&referer=${encodeURIComponent(referer)}`;
                 if (userAgent) manifestProxyUrl += `&user_agent=${encodeURIComponent(userAgent)}`;
                 
@@ -594,7 +594,7 @@ export default class VideoPlayer {
 
             try {
                 // Native için proxy URL gerekli
-                let proxyUrl = `/proxy/video?url=${encodeURIComponent(originalUrl)}`;
+                let proxyUrl = `${window.location.protocol}//${window.location.hostname}:3311/proxy/video?url=${encodeURIComponent(originalUrl)}`;
                 if (referer) proxyUrl += `&referer=${encodeURIComponent(referer)}`;
                 if (userAgent) proxyUrl += `&user_agent=${encodeURIComponent(userAgent)}`;
                 this.videoPlayer.src = proxyUrl;
