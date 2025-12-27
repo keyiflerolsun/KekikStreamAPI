@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from curl_cffi import AsyncSession
+from Libs import global_request
 
 _ip_cache: dict[str, dict[str, str]] = {}
 
@@ -10,21 +10,21 @@ async def ip_log(hedef_ip: str) -> dict[str, str]:
         return _ip_cache[hedef_ip]
 
     try:
-        async with AsyncSession(timeout=3) as oturum:
-            istek = await oturum.get(f"http://ip-api.com/json/{hedef_ip}")
-            veri  = istek.json()
+        # Paylaşımlı GlobalClient üzerinden istek at
+        response = await global_request.fetch(f"http://ip-api.com/json/{hedef_ip}", timeout=3)
+        veri = response.json()
 
-            if veri["status"] != "fail":
-                sonuc = {
-                    "ulke"   : veri["country"] or "",
-                    "il"     : veri["regionName"] or "",
-                    "ilce"   : veri["city"] or "",
-                    "isp"    : veri["isp"] or "",
-                    "sirket" : veri["org"] or "",
-                    "host"   : veri["as"] or ""
-                }
-            else:
-                sonuc = {"hata": "Veri Bulunamadı.."}
+        if veri.get("status") != "fail":
+            sonuc = {
+                "ulke"   : veri.get("country") or "",
+                "il"     : veri.get("regionName") or "",
+                "ilce"   : veri.get("city") or "",
+                "isp"    : veri.get("isp") or "",
+                "sirket" : veri.get("org") or "",
+                "host"   : veri.get("as") or ""
+            }
+        else:
+            sonuc = {"hata": "Veri Bulunamadı.."}
     except Exception as hata:
         sonuc = {"hata": f"{type(hata).__name__} » {hata}"}
 

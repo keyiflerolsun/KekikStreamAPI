@@ -53,7 +53,6 @@ async def main():
                     sonuc = sonuc.json().get("result")
                     konsol.log(sonuc)
 
-
                 break
             break
         break

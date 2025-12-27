@@ -1,18 +1,23 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
+networks:
+  local:
+    driver: bridge
+
 services:
   KekikStreamAPI:
-    build          : .
     container_name : KekikStreamAPI
-    restart        : unless-stopped
     image          : kekikstreamapi:local
     tty            : true
-    ports:
-      - 3310:3310
+    restart        : always
+    build          : .
+
     volumes:
       - .:/usr/src/KekikStreamAPI
     networks:
       - local
+    ports:
+      - 3310:3310
     depends_on:
       - proxy
       - websocket
