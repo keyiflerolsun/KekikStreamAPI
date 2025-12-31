@@ -180,10 +180,16 @@ export const safePlay = async (timeout = 3000) => {
 // ============== Proxy URL Oluşturucu (Go/Python Fallback) ==============
 // Go servisi yoksa Python'a fallback yapar
 const getProxyBaseUrl = () => {
-    // window.GO_PROXY_AVAILABLE global değişkeni sayfa yüklendiğinde ayarlanır
+    // 1. .env / Template üzerinden gelen URL varsa (Produksiyon)
+    const configUrl = window.CONFIG?.proxy_url || ':3311';
+    const goBaseUrl = configUrl.startsWith(':') 
+        ? `${window.location.protocol}//${window.location.hostname}${configUrl}`
+        : configUrl.replace(/\/$/, '');
+
+    // 2. window.GO_PROXY_AVAILABLE global değişkeni sayfa yüklendiğinde ayarlanır
     // Eğer ayarlanmadıysa veya false ise Python'a fallback yap
     if (window.GO_PROXY_AVAILABLE === true) {
-        return `${window.location.protocol}//${window.location.hostname}:3311`;
+        return goBaseUrl;
     }
     // Fallback: Python (same origin)
     return window.location.origin;

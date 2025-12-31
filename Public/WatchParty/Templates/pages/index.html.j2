@@ -20,6 +20,10 @@
         // Room configuration (global for ES6 modules)
         window.ROOM_ID = "{{ room_id }}";
         window.PROXY_ENABLED = {{ proxy_enabled | tojson }};
+        window.CONFIG = {
+            proxy_url: {{ proxy_url | tojson }},
+            ws_url: {{ ws_url | tojson }}
+        };
         {% if autoload %}
         window.AUTOLOAD = {{ autoload | tojson }};
         {% endif %}

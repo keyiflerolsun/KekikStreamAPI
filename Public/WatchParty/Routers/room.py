@@ -3,7 +3,7 @@
 from Core                  import Request, HTMLResponse
 from .                     import wp_router, wp_template
 from Public.WebSocket.Libs import watch_party_manager
-from Settings              import PROXY_ENABLED
+from Settings              import PROXY_ENABLED, PROXY_URL, WS_URL
 
 @wp_router.get("/{room_id}", response_class=HTMLResponse)
 async def watch_party_room(
@@ -40,6 +40,8 @@ async def watch_party_room(
         "room_id"       : room_id,
         "room"          : room,
         "proxy_enabled" : PROXY_ENABLED,
+        "proxy_url"     : PROXY_URL,
+        "ws_url"        : WS_URL,
         "autoload"      : autoload,
     }
 

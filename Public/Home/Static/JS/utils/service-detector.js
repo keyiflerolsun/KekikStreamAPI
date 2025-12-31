@@ -3,9 +3,6 @@
 // ============== Go Service Detector ==============
 // Detects if Go services are available, provides fallback to Python
 
-const GO_PROXY_PORT = 3311;
-const GO_WS_PORT = 3312;
-
 const state = {
     proxyAvailable: null,  // null = not checked, true/false = result
     wsAvailable: null,
@@ -15,7 +12,12 @@ const state = {
 // Check if Go Proxy service is available
 const checkProxyHealth = async () => {
     try {
-        const url = `${window.location.protocol}//${window.location.hostname}:${GO_PROXY_PORT}/health`;
+        const configUrl = window.CONFIG?.proxy_url || ':3311';
+        const baseUrl = configUrl.startsWith(':') 
+            ? `${window.location.protocol}//${window.location.hostname}${configUrl}`
+            : configUrl;
+        
+        const url = `${baseUrl.replace(/\/$/, '')}/health`;
         const response = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(2000) });
         return response.ok;
     } catch {
@@ -26,8 +28,14 @@ const checkProxyHealth = async () => {
 // Check if Go WebSocket service is available
 const checkWsHealth = async () => {
     try {
-        const url = `${window.location.protocol}//${window.location.hostname}:${GO_WS_PORT}/health`;
-        const response = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(2000) });
+        const configUrl = window.CONFIG?.ws_url || ':3312';
+        const baseUrl = configUrl.startsWith(':') 
+            ? `${window.location.protocol}//${window.location.hostname}${configUrl}`
+            : configUrl;
+
+        // WebSocket URL'i http/https'e çevir health check için
+        const checkUrl = baseUrl.replace(/^ws/, 'http').replace(/\/$/, '') + '/health';
+        const response = await fetch(checkUrl, { method: 'HEAD', signal: AbortSignal.timeout(2000) });
         return response.ok;
     } catch {
         return false;
@@ -59,8 +67,14 @@ export const detectGoServices = async () => {
 
 // Get Proxy base URL (Go or Python fallback)
 export const getProxyBaseUrl = () => {
+    const configUrl = window.CONFIG?.proxy_url || ':3311';
+    const goBaseUrl = configUrl.startsWith(':') 
+        ? `${window.location.protocol}//${window.location.hostname}${configUrl}`
+        : configUrl.replace(/\/$/, '');
+
+    // window.GO_PROXY_AVAILABLE global değişkeni sayfa yüklendiğinde ayarlanır
     if (state.proxyAvailable === true) {
-        return `${window.location.protocol}//${window.location.hostname}:${GO_PROXY_PORT}`;
+        return goBaseUrl;
     }
     // Fallback to Python (same origin)
     return window.location.origin;
@@ -78,10 +92,15 @@ export const buildProxyUrl = (url, userAgent = '', referer = '', endpoint = 'vid
 
 // Get WebSocket URL (Go or Python fallback)
 export const getWebSocketUrl = (roomId) => {
+    const configUrl = window.CONFIG?.ws_url || ':3312';
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     
+    const goWsUrl = configUrl.startsWith(':') 
+        ? `${protocol}//${window.location.hostname}${configUrl}/wss/watch_party/${roomId}`
+        : `${configUrl.replace(/\/$/, '')}/wss/watch_party/${roomId}`;
+
     if (state.wsAvailable === true) {
-        return `${protocol}//${window.location.hostname}:${GO_WS_PORT}/wss/watch_party/${roomId}`;
+        return goWsUrl;
     }
     // Fallback to Python (same origin)
     return `${protocol}//${window.location.host}/wss/watch_party/${roomId}`;

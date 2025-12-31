@@ -27,3 +27,8 @@ SESSION_MAX_AGE = int(os.getenv("SESSION_MAX_AGE", "86400"))
 
 PROXY_ENABLED = os.getenv("PROXY_ENABLED", "true").lower() == "true"
 AVAILABILITY_CHECK = os.getenv("AVAILABILITY_CHECK", "true").lower() == "true"
+
+# Servis URL'leri
+API_URL   = os.getenv("API_URL", "http://kekik_api:3310")
+PROXY_URL = os.getenv("PROXY_URL", ":3311")
+WS_URL    = os.getenv("WS_URL",    ":3312")

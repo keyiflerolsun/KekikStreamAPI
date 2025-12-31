@@ -4,6 +4,7 @@ from Core import Request, HTMLResponse
 from .    import home_router, home_template
 
 from Public.API.v1.Libs import plugin_manager
+from Settings           import PROXY_URL, WS_URL
 
 @home_router.get("/izle/{eklenti_adi}", response_class=HTMLResponse)
 async def izle(request: Request, eklenti_adi: str, url: str, baslik: str):
@@ -37,7 +38,9 @@ async def izle(request: Request, eklenti_adi: str, url: str, baslik: str):
             "description" : f"{baslik} izleme sayfası",
             "eklenti_adi" : f"{eklenti_adi}",
             "icerik_url"  : request.headers.get("referer").split("?url=")[1] if request.headers.get("referer") else None,
-            "links"       : links
+            "links"       : links,
+            "proxy_url"   : PROXY_URL,
+            "ws_url"      : WS_URL
         }
 
         return home_template.TemplateResponse("pages/player.html.j2", context)

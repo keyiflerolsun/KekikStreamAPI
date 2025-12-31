@@ -10,6 +10,7 @@ import (
 	"kekik-websocket/models"
 	"math"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -477,8 +478,12 @@ func handleVideoChange(roomID string, user *models.User, msg map[string]interfac
 
 // fetchYtdlpInfo Python API'den yt-dlp ile video bilgisi alır
 func fetchYtdlpInfo(videoURL string) map[string]interface{} {
-	// Python API URL (aynı Docker network'te kekik_api:3310)
-	apiURL := fmt.Sprintf("http://kekik_api:3310/api/v1/ytdlp-extract?url=%s", videoURL)
+	// Python API URL (Varsayılan: aynı Docker network'te kekik_api:3310)
+	baseURL := os.Getenv("API_URL")
+	if baseURL == "" {
+		baseURL = "http://kekik_api:3310"
+	}
+	apiURL := fmt.Sprintf("%s/api/v1/ytdlp-extract?url=%s", strings.TrimSuffix(baseURL, "/"), videoURL)
 
 	client := &http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Get(apiURL)

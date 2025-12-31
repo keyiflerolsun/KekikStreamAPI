@@ -84,5 +84,11 @@
 {% endblock %}
 
 {% block js %}
+    <script>
+        window.CONFIG = {
+            proxy_url: {{ proxy_url | tojson }},
+            ws_url: {{ ws_url | tojson }}
+        };
+    </script>
     <script type="module" src="{{ url_for('static_home', path='JS/player.min.js') }}" defer crossorigin="anonymous"></script>
 {% endblock %}
