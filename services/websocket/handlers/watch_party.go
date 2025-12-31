@@ -10,6 +10,7 @@ import (
 	"kekik-websocket/models"
 	"math"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -483,7 +484,7 @@ func fetchYtdlpInfo(videoURL string) map[string]interface{} {
 	if baseURL == "" {
 		baseURL = "http://kekik_api:3310"
 	}
-	apiURL := fmt.Sprintf("%s/api/v1/ytdlp-extract?url=%s", strings.TrimSuffix(baseURL, "/"), videoURL)
+	apiURL := fmt.Sprintf("%s/api/v1/ytdlp-extract?url=%s", strings.TrimSuffix(baseURL, "/"), url.QueryEscape(videoURL))
 
 	client := &http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Get(apiURL)
