@@ -16,7 +16,7 @@ async def watch_party_room(
     title: str      = None,
     user_agent: str = None,
     referer: str    = None,
-    subtitle: str   = None,
+    subtitle: str   = None
 ):
     """Watch Party odası sayfası"""
     room_id = room_id.upper()
