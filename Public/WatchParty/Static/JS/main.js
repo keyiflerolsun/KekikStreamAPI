@@ -19,76 +19,17 @@ import {
     updateVideoInfo
 } from './modules/player.min.js';
 import { connect, send, onMessage, setHeartbeatDataProvider } from './modules/websocket.min.js';
+import { detectGoServices, getWebSocketUrl } from '/static/shared/JS/service-detector.min.js';
 
 // ============== State ==============
 const state = {
     currentUser: null
 };
 
-// ============== Go Service Detection ==============
-
-const detectGoServices = async () => {
-    // Proxy health check
-    try {
-        const configUrl = window.CONFIG?.proxy_url || ':3311';
-        const baseUrl = configUrl.startsWith(':') 
-            ? `${window.location.protocol}//${window.location.hostname}${configUrl}`
-            : configUrl;
-            
-        const proxyRes = await fetch(`${baseUrl.replace(/\/$/, '')}/health`, { method: 'HEAD', signal: AbortSignal.timeout(2000) });
-        window.GO_PROXY_AVAILABLE = proxyRes.ok;
-    } catch {
-        window.GO_PROXY_AVAILABLE = false;
-    }
-    
-    // WebSocket health check
-    try {
-        const configUrl = window.CONFIG?.ws_url || ':3312';
-        const baseUrl = configUrl.startsWith(':') 
-            ? `${window.location.protocol}//${window.location.hostname}${configUrl}`
-            : configUrl;
-
-        const checkUrl = baseUrl.replace(/^ws/, 'http').replace(/\/$/, '') + '/health';
-        const wsRes = await fetch(checkUrl, { method: 'HEAD', signal: AbortSignal.timeout(2000) });
-        window.GO_WS_AVAILABLE = wsRes.ok;
-    } catch {
-        window.GO_WS_AVAILABLE = false;
-    }
-    
-    const proxyStatus = window.GO_PROXY_AVAILABLE ? '✅ Go' : '⚠️ Python';
-    const wsStatus = window.GO_WS_AVAILABLE ? '✅ Go' : '⚠️ Python';
-    
-    console.log(
-        `%c[🔌 SERVICE]%c Proxy: ${proxyStatus}, WS: ${wsStatus}`,
-        'color: #a855f7; font-weight: bold;',
-        ''
-    );
-};
-
 // ============== Config ==============
 const getRoomConfig = () => {
     const roomId = window.ROOM_ID || document.getElementById('room-id')?.textContent || '';
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    
-    // 1. .env / Template üzerinden gelen URL varsa (Produksiyon)
-    if (window.CONFIG?.ws_url) {
-        return { 
-            roomId, 
-            wsUrl: `${window.CONFIG.ws_url.replace(/\/$/, '')}/wss/watch_party/${roomId}` 
-        };
-    }
-
-    // 2. Go WS varsa Go portunu, yoksa Python (same origin) kullan
-    let wsUrl;
-    if (window.GO_WS_AVAILABLE === true) {
-        const configUrl = window.CONFIG?.ws_url || ':3312';
-        wsUrl = configUrl.startsWith(':')
-            ? `${protocol}//${window.location.hostname}${configUrl}/wss/watch_party/${roomId}`
-            : `${configUrl.replace(/\/$/, '')}/wss/watch_party/${roomId}`;
-    } else {
-        wsUrl = `${protocol}//${window.location.host}/wss/watch_party/${roomId}`;
-    }
-    
+    const wsUrl = getWebSocketUrl(roomId);
     return { roomId, wsUrl };
 };
 

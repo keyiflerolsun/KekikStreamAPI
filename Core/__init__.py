@@ -32,6 +32,7 @@ from Public.WebSocket.Routers  import wss_router
 from Public.WatchParty.Routers import wp_router
 
 kekik_FastAPI.include_router(home_router)
+kekik_FastAPI.mount("/static/shared", StaticFiles(directory="Public/Shared"), name="static_shared")
 kekik_FastAPI.mount("/static/home", StaticFiles(directory="Public/Home/Static"), name="static_home")
 
 kekik_FastAPI.include_router(api_v1_router)

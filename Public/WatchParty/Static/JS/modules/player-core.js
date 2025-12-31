@@ -2,6 +2,7 @@
 
 import { formatDuration, logger } from './utils.min.js';
 import { showToast, showLoadingOverlay, hideLoadingOverlay } from './ui.min.js';
+import { getProxyBaseUrl, buildProxyUrl } from '/static/shared/JS/service-detector.min.js';
 
 // ============== Oynatıcı Durumları ==============
 export const PlayerState = {
@@ -175,34 +176,6 @@ export const safePlay = async (timeout = 3000) => {
     } catch (e) {
         return { success: false, error: e };
     }
-};
-
-// ============== Proxy URL Oluşturucu (Go/Python Fallback) ==============
-// Go servisi yoksa Python'a fallback yapar
-const getProxyBaseUrl = () => {
-    // 1. .env / Template üzerinden gelen URL varsa (Produksiyon)
-    const configUrl = window.CONFIG?.proxy_url || ':3311';
-    const goBaseUrl = configUrl.startsWith(':') 
-        ? `${window.location.protocol}//${window.location.hostname}${configUrl}`
-        : configUrl.replace(/\/$/, '');
-
-    // 2. window.GO_PROXY_AVAILABLE global değişkeni sayfa yüklendiğinde ayarlanır
-    // Eğer ayarlanmadıysa veya false ise Python'a fallback yap
-    if (window.GO_PROXY_AVAILABLE === true) {
-        return goBaseUrl;
-    }
-    // Fallback: Python (same origin)
-    return window.location.origin;
-};
-
-const buildProxyUrl = (url, userAgent = '', referer = '', endpoint = 'video') => {
-    const params = new URLSearchParams();
-    params.append('url', url);
-
-    if (userAgent) params.append('user_agent', userAgent);
-    if (referer) params.append('referer', referer);
-    
-    return `${getProxyBaseUrl()}/proxy/${endpoint}?${params.toString()}`;
 };
 
 // ============== Format Algılama ==============

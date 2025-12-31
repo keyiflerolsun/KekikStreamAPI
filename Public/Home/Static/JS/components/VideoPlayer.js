@@ -1,7 +1,7 @@
 // Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 import VideoLogger from './VideoLogger.min.js';
-import { detectGoServices, buildProxyUrl as buildServiceProxyUrl, getProxyBaseUrl } from '../utils/service-detector.min.js';
+import { detectGoServices, buildProxyUrl as buildServiceProxyUrl, getProxyBaseUrl } from '/static/shared/JS/service-detector.min.js';
 
 export default class VideoPlayer {
     constructor() {
