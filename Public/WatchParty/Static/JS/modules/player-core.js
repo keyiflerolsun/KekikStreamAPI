@@ -233,43 +233,57 @@ const loadHls = (url, userAgent = '', referer = '', useProxy = false) => {
             maxLoadingDelay: 4,
             minAutoBitrate: 0,
             xhrSetup: (!useProxy && !isProxyEnabled) ? undefined : (xhr, requestUrl) => {
-                // 1. Zaten tam proxy URL ise, base URL'i kaydet ve dokunma
+                // 1. Zaten tam proxy URL ise, base URL'i kaydet ve devam et
+                // HLS.js bazen relative pathleri proxy base url'ine ekler, bunu temizleyip asıl remote url'i almalıyı
                 if (requestUrl.includes('/proxy/video?url=')) {
-                    // Base URL'i çıkar ve kaydet (segment URL'leri için kullanılacak)
                     const match = requestUrl.match(/url=([^&]+)/);
                     if (match) {
                         try {
                             const decodedUrl = decodeURIComponent(match[1]);
-                            state.lastLoadedBaseUrl = decodedUrl.substring(0, decodedUrl.lastIndexOf('/') + 1);
+                            // Eğer decodedUrl zaten bizim proxy originimizi içeriyorsa (hata durumu), onu temizle
+                            const proxyBase = getProxyBaseUrl();
+                            let finalRemoteUrl = decodedUrl;
+                            if (decodedUrl.startsWith(proxyBase)) {
+                                // This case means HLS.js tried to proxy an already proxied URL.
+                                // We need to extract the *original* URL from the nested proxy.
+                                const innerMatch = decodedUrl.match(/\/proxy\/video\?url=([^&]+)/);
+                                if (innerMatch) {
+                                    finalRemoteUrl = decodeURIComponent(innerMatch[1]);
+                                }
+                            }
+
+                            if (finalRemoteUrl.startsWith('http')) {
+                                state.lastLoadedBaseUrl = finalRemoteUrl.substring(0, finalRemoteUrl.lastIndexOf('/') + 1);
+                                state.lastLoadedOrigin = new URL(finalRemoteUrl).origin;
+                            }
                         } catch (e) { /* ignore */ }
                     }
-                    return;
+                    return; // Don't re-proxy an already proxied URL
                 }
                 
-                // 2. Browser tarafından yanlış çözümlenmiş yerel URL'ler (Manifest'te / ile başlayan path'ler)
-                if (requestUrl.startsWith(window.location.origin) && !requestUrl.includes('/proxy/')) {
-                    // Local origin'i kaldır, path'i al
-                    const path = requestUrl.substring(window.location.origin.length);
-                    
-                    // Remote origin ile birleştir
+                const proxyOrigin = getProxyBaseUrl();
+
+                // 2. Browser tarafından yanlış çözümlenmiş mutlak yollar (Manifest'te / ile başlayan path'ler)
+                // Örn: HLS.js proxy originine göre /path çözerse: https://proxy.kekikakademi.org/path
+                if (requestUrl.startsWith(proxyOrigin) && !requestUrl.includes('/proxy/')) {
+                    const path = requestUrl.substring(proxyOrigin.length);
                     if (state.lastLoadedOrigin) {
-                        const correctUrl = state.lastLoadedOrigin + path;
-                        const proxyUrl = buildProxyUrl(correctUrl, userAgent, referer, 'video');
-                        xhr.open('GET', proxyUrl, true);
+                        const correctUrl = state.lastLoadedOrigin.replace(/\/$/, '') + '/' + path.replace(/^\//, '');
+                        xhr.open('GET', buildProxyUrl(correctUrl, userAgent, referer, 'video'), true);
                         return;
                     }
                 }
-                
-                // 3. Yanlış çözümlenmiş relative URL (örn: /proxy/image2_0.jpg)
+
+                // 3. Yanlış çözümlenmiş göreli yollar (Manifest'teki relative path'ler proxy adresine eklenirse)
+                // Örn: https://proxy.domain.com/proxy/sub/segment.ts -> asıl remote sub klasörünün altında olmalı
                 if (requestUrl.includes('/proxy/') && !requestUrl.includes('/proxy/video?url=')) {
+                    // /proxy/ den sonraki kısmı al
+                    const parts = requestUrl.split('/proxy/');
+                    const relativePath = parts[parts.length - 1]; // segment.ts veya sub/segment.ts
+
                     if (state.lastLoadedBaseUrl) {
-                        // Dosya adını çıkar
-                        const filename = requestUrl.split('/').pop();
-                        // Doğru URL'i oluştur
-                        const correctUrl = state.lastLoadedBaseUrl + filename;
-                        
-                        const proxyUrl = buildProxyUrl(correctUrl, userAgent, referer, 'video');
-                        xhr.open('GET', proxyUrl, true);
+                        const correctUrl = state.lastLoadedBaseUrl.replace(/\/$/, '') + '/' + relativePath.replace(/^\//, '');
+                        xhr.open('GET', buildProxyUrl(correctUrl, userAgent, referer, 'video'), true);
                         return;
                     }
                 }
@@ -408,11 +422,24 @@ export const loadVideo = async (url, format = 'hls', userAgent = '', referer = '
     }
     videoPlayer.querySelectorAll('track').forEach(t => t.remove());
 
-    // Origin'i kaydet
+    // Origin'i kaydet (Proxy URL ise içindeki asıl URL'i ayıkla)
     try {
-        state.lastLoadedOrigin = new URL(url).origin;
+        let remoteUrl = url;
+        if (url.includes('/proxy/video?url=')) {
+            const match = url.match(/url=([^&]+)/);
+            if (match) {
+                remoteUrl = decodeURIComponent(match[1]);
+            }
+        }
+        
+        if (remoteUrl.startsWith('http')) {
+            const urlObj = new URL(remoteUrl);
+            state.lastLoadedOrigin = urlObj.origin;
+            state.lastLoadedBaseUrl = remoteUrl.substring(0, remoteUrl.lastIndexOf('/') + 1);
+        }
     } catch (e) {
         state.lastLoadedOrigin = null;
+        state.lastLoadedBaseUrl = null;
     }
 
     // Content-Type Pre-check
