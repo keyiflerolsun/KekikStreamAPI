@@ -35,16 +35,15 @@ jobs:
           command: c
           cwd    : "./"
           files  : ./
-          outPath: stream_deploy.tar
+          outPath: deploy.tar
 
       - name: Stream APP Deploy
         if  : steps.guncelleme_var_mi.outputs.degisiklik == 'true'
         uses: caprover/deploy-from-github@v1.1.2
         with:
-          tarFile: stream_deploy.tar
-          server : ${{ secrets.CAPROVER_SERVER }}
-          app    : ${{ secrets.STREAM_APP_NAME }}
-          token  : ${{ secrets.STREAM_APP_TOKEN }}
+          server: ${{ secrets.CAPROVER_SERVER }}
+          app   : ${{ secrets.STREAM_APP_NAME }}
+          token : ${{ secrets.STREAM_APP_TOKEN }}
 
       # Proxy APP
       - name: Proxy TarBall Oluştur
@@ -54,16 +53,15 @@ jobs:
           command: c
           cwd    : "./services/proxy"
           files  : ./
-          outPath: proxy_deploy.tar
+          outPath: deploy.tar
 
       - name: Proxy APP Deploy
         if  : steps.guncelleme_var_mi.outputs.degisiklik == 'true'
         uses: caprover/deploy-from-github@v1.1.2
         with:
-          tarFile: proxy_deploy.tar
-          server : ${{ secrets.CAPROVER_SERVER }}
-          app    : ${{ secrets.PROXY_APP_NAME }}
-          token  : ${{ secrets.PROXY_APP_TOKEN }}
+          server: ${{ secrets.CAPROVER_SERVER }}
+          app   : ${{ secrets.PROXY_APP_NAME }}
+          token : ${{ secrets.PROXY_APP_TOKEN }}
 
       # WebSocket APP
       - name: Socket TarBall Oluştur
@@ -73,13 +71,12 @@ jobs:
           command: c
           cwd    : "./services/websocket"
           files  : ./
-          outPath: socket_deploy.tar
+          outPath: deploy.tar
 
       - name: Socket APP Deploy
         if  : steps.guncelleme_var_mi.outputs.degisiklik == 'true'
         uses: caprover/deploy-from-github@v1.1.2
         with:
-          tarFile: socket_deploy.tar
-          server : ${{ secrets.CAPROVER_SERVER }}
-          app    : ${{ secrets.SOCKET_APP_NAME }}
-          token  : ${{ secrets.SOCKET_APP_TOKEN }}
+          server: ${{ secrets.CAPROVER_SERVER }}
+          app   : ${{ secrets.SOCKET_APP_NAME }}
+          token : ${{ secrets.SOCKET_APP_TOKEN }}
