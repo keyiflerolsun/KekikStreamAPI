@@ -203,6 +203,12 @@
   box-shadow: 0 4px 8px var(--shadow-color);
 }
 
+.filter-button:focus-visible {
+  outline: 3px solid var(--primary-color);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.4);
+}
+
 .filter-button.active {
   background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
   color: var(--background-color);

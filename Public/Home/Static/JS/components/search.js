@@ -46,7 +46,10 @@ export class GlobalSearch {
         
         this.searchButton.addEventListener('click', () => this.performSearch());
         this.clearSearchButton.addEventListener('click', () => this.clearSearch());
-        this.clearFiltersButton.addEventListener('click', () => this.clearFilters());
+        
+        if (this.clearFiltersButton) {
+            this.clearFiltersButton.addEventListener('click', () => this.clearFilters());
+        }
         
         // Auto-focus
         this.searchInput.focus();
@@ -120,8 +123,8 @@ export class GlobalSearch {
         
         await Promise.all(searchPromises);
         
-        // Show filters if we have results
-        if (totalResults > 0) {
+        // Show filters only if this search is still the current one and we have results
+        if (this.currentSearch === query && totalResults > 0) {
             this.renderFilters();
         }
     }
@@ -303,8 +306,11 @@ export class GlobalSearch {
         // Create filter buttons for plugins with results
         this.searchResultsByPlugin.forEach((results, pluginName) => {
             const filterButton = document.createElement('button');
+            filterButton.type = 'button';
             filterButton.className = 'filter-button';
             filterButton.dataset.plugin = pluginName;
+            filterButton.setAttribute('aria-pressed', 'false');
+            filterButton.setAttribute('aria-label', `${pluginName} filtresi (${results.length} sonuç)`);
             
             filterButton.innerHTML = `
                 <span>${escapeHtml(pluginName)}</span>
@@ -352,8 +358,10 @@ export class GlobalSearch {
             const pluginName = button.dataset.plugin;
             if (this.activeFilters.has(pluginName)) {
                 addClass(button, 'active');
+                button.setAttribute('aria-pressed', 'true');
             } else {
                 removeClass(button, 'active');
+                button.setAttribute('aria-pressed', 'false');
             }
         });
     }
