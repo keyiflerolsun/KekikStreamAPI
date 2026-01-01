@@ -41,9 +41,10 @@ jobs:
         if  : steps.guncelleme_var_mi.outputs.degisiklik == 'true'
         uses: caprover/deploy-from-github@v1.1.2
         with:
-          server: ${{ secrets.CAPROVER_SERVER }}
-          app   : ${{ secrets.STREAM_APP_NAME }}
-          token : ${{ secrets.STREAM_APP_TOKEN }}
+          tarFile: stream_deploy.tar
+          server : ${{ secrets.CAPROVER_SERVER }}
+          app    : ${{ secrets.STREAM_APP_NAME }}
+          token  : ${{ secrets.STREAM_APP_TOKEN }}
 
       # Proxy APP
       - name: Proxy TarBall Oluştur
@@ -59,9 +60,10 @@ jobs:
         if  : steps.guncelleme_var_mi.outputs.degisiklik == 'true'
         uses: caprover/deploy-from-github@v1.1.2
         with:
-          server: ${{ secrets.CAPROVER_SERVER }}
-          app   : ${{ secrets.PROXY_APP_NAME }}
-          token : ${{ secrets.PROXY_APP_TOKEN }}
+          tarFile: proxy_deploy.tar
+          server : ${{ secrets.CAPROVER_SERVER }}
+          app    : ${{ secrets.PROXY_APP_NAME }}
+          token  : ${{ secrets.PROXY_APP_TOKEN }}
 
       # WebSocket APP
       - name: Socket TarBall Oluştur
@@ -77,6 +79,7 @@ jobs:
         if  : steps.guncelleme_var_mi.outputs.degisiklik == 'true'
         uses: caprover/deploy-from-github@v1.1.2
         with:
-          server: ${{ secrets.CAPROVER_SERVER }}
-          app   : ${{ secrets.SOCKET_APP_NAME }}
-          token : ${{ secrets.SOCKET_APP_TOKEN }}
+          tarFile: socket_deploy.tar
+          server : ${{ secrets.CAPROVER_SERVER }}
+          app    : ${{ secrets.SOCKET_APP_NAME }}
+          token  : ${{ secrets.SOCKET_APP_TOKEN }}
