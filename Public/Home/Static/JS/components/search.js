@@ -18,10 +18,17 @@ export class GlobalSearch {
         this.searchQueryDisplay = $('#search-query-display');
         this.clearSearchButton = $('#clear-search');
         this.pluginsList = $('#plugins-list');
+        this.pluginFilters = $('#plugin-filters');
+        this.filtersContainer = $('#filters-container');
+        this.clearFiltersButton = $('#clear-filters');
         
         this.currentSearch = null;
         this.fetchHelper = new AbortableFetch();
         this.plugins = window.availablePlugins || [];
+        
+        // Filter state
+        this.searchResultsByPlugin = new Map(); // { pluginName: [results] }
+        this.activeFilters = new Set();
     }
     
     /**
@@ -39,6 +46,7 @@ export class GlobalSearch {
         
         this.searchButton.addEventListener('click', () => this.performSearch());
         this.clearSearchButton.addEventListener('click', () => this.clearSearch());
+        this.clearFiltersButton.addEventListener('click', () => this.clearFilters());
         
         // Auto-focus
         this.searchInput.focus();
@@ -60,11 +68,17 @@ export class GlobalSearch {
         
         this.currentSearch = query;
         
+        // Reset filter state
+        this.searchResultsByPlugin.clear();
+        this.activeFilters.clear();
+        
         // UI setup
         this.searchQueryDisplay.textContent = `"${query}"`;
         this.searchResults.style.display = 'block';
         this.pluginsList.style.display = 'none';
         this.resultsGrid.innerHTML = '';
+        this.pluginFilters.style.display = 'none';
+        this.filtersContainer.innerHTML = '';
         
         // Scroll to results
         scrollTo(this.searchResults);
@@ -86,6 +100,7 @@ export class GlobalSearch {
                     
                     if (results && results.length > 0) {
                         totalResults += results.length;
+                        this.searchResultsByPlugin.set(plugin.name, results);
                         this.replaceLoadingWithResults(plugin.name, results);
                     } else {
                         this.removeLoadingCard(plugin.name);
@@ -104,6 +119,11 @@ export class GlobalSearch {
         );
         
         await Promise.all(searchPromises);
+        
+        // Show filters if we have results
+        if (totalResults > 0) {
+            this.renderFilters();
+        }
     }
     
     /**
@@ -259,8 +279,113 @@ export class GlobalSearch {
         this.showStatus('');
         this.searchInput.focus();
         
+        // Reset filter state
+        this.searchResultsByPlugin.clear();
+        this.activeFilters.clear();
+        this.pluginFilters.style.display = 'none';
+        this.filtersContainer.innerHTML = '';
+        
         // Abort ongoing searches
         this.fetchHelper.abort();
+    }
+    
+    /**
+     * Render plugin filters
+     */
+    renderFilters() {
+        if (this.searchResultsByPlugin.size === 0) {
+            this.pluginFilters.style.display = 'none';
+            return;
+        }
+        
+        this.filtersContainer.innerHTML = '';
+        
+        // Create filter buttons for plugins with results
+        this.searchResultsByPlugin.forEach((results, pluginName) => {
+            const filterButton = document.createElement('button');
+            filterButton.className = 'filter-button';
+            filterButton.dataset.plugin = pluginName;
+            
+            filterButton.innerHTML = `
+                <span>${escapeHtml(pluginName)}</span>
+                <span class="filter-count">${results.length}</span>
+            `;
+            
+            filterButton.addEventListener('click', () => this.toggleFilter(pluginName));
+            
+            this.filtersContainer.appendChild(filterButton);
+        });
+        
+        this.pluginFilters.style.display = 'block';
+    }
+    
+    /**
+     * Toggle plugin filter
+     * @param {string} pluginName - Plugin name to toggle
+     */
+    toggleFilter(pluginName) {
+        if (this.activeFilters.has(pluginName)) {
+            this.activeFilters.delete(pluginName);
+        } else {
+            this.activeFilters.add(pluginName);
+        }
+        
+        this.updateFilterButtons();
+        this.applyFilters();
+    }
+    
+    /**
+     * Clear all active filters
+     */
+    clearFilters() {
+        this.activeFilters.clear();
+        this.updateFilterButtons();
+        this.applyFilters();
+    }
+    
+    /**
+     * Update filter button states
+     */
+    updateFilterButtons() {
+        const buttons = $$('.filter-button', this.filtersContainer);
+        buttons.forEach(button => {
+            const pluginName = button.dataset.plugin;
+            if (this.activeFilters.has(pluginName)) {
+                addClass(button, 'active');
+            } else {
+                removeClass(button, 'active');
+            }
+        });
+    }
+    
+    /**
+     * Apply active filters to results
+     */
+    applyFilters() {
+        this.resultsGrid.innerHTML = '';
+        
+        let visibleResults = 0;
+        
+        this.searchResultsByPlugin.forEach((results, pluginName) => {
+            // Show results if no filters active or if plugin is in active filters
+            if (this.activeFilters.size === 0 || this.activeFilters.has(pluginName)) {
+                results.forEach(result => {
+                    const card = this.createResultCard(pluginName, result);
+                    this.resultsGrid.appendChild(card);
+                    visibleResults++;
+                });
+            }
+        });
+        
+        // Update status
+        const totalResults = Array.from(this.searchResultsByPlugin.values())
+            .reduce((sum, results) => sum + results.length, 0);
+        
+        if (this.activeFilters.size > 0) {
+            this.showStatus(`${visibleResults}/${totalResults} sonuç gösteriliyor (${this.activeFilters.size} filtre aktif)`, 'success');
+        } else {
+            this.showStatus(`${totalResults} sonuç bulundu`, 'success');
+        }
     }
     
     /**
