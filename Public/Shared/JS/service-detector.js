@@ -16,7 +16,7 @@ const checkProxyHealth = async () => {
         const baseUrl = configUrl.startsWith(':') 
             ? `${window.location.protocol}//${window.location.hostname}${configUrl}`
             : configUrl;
-        
+
         const url = `${baseUrl.replace(/\/$/, '')}/health`;
         const response = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(2000) });
         return response.ok;
