@@ -259,8 +259,8 @@ const setupViewportResizeHandler = () => {
                 document.body.classList.add('keyboard-open');
                 
                 const isVideoPlaying = document.body.classList.contains('video-playing');
-                const maxHeightPercent = isVideoPlaying ? 30 : 35;
-                const maxHeight = Math.max(100, currentHeight * (maxHeightPercent / 100));
+                const maxHeightPercent = isVideoPlaying ? 40 : 50;
+                const maxHeight = Math.max(120, currentHeight * (maxHeightPercent / 100));
                 playerWrapper.style.maxHeight = `${maxHeight}px`;
             } else {
                 mainContainer.style.height = '';
