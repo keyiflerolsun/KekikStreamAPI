@@ -5,6 +5,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 1rem;
     background: rgba(0, 0, 0, 0.90);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
@@ -14,74 +15,155 @@
 
 .wp-modal-content {
     text-align: center;
-    padding: 2.5rem 2rem;
-    min-width: 320px;
-    max-width: 420px;
-
-    /* Modern glassmorphism */
+    padding: 2rem 1.5rem;
+    width: 100%;
+    max-width: 380px;
     background: rgba(var(--wp-bg-card-rgb, 30, 30, 35), 0.95);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-
     border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.15);
-
-    /* Premium shadow */
     box-shadow: 
         0 20px 60px rgba(0, 0, 0, 0.5),
         0 8px 20px rgba(0, 0, 0, 0.3),
         inset 0 1px 0 rgba(255, 255, 255, 0.1);
-
     animation: modalSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.wp-modal-content i {
-    font-size: 3.5rem;
+.wp-modal-content > i {
+    font-size: 3rem;
     color: var(--wp-error);
-    margin-bottom: 1.25rem;
+    margin-bottom: 1rem;
     display: inline-block;
-
-    /* Pulsing glow effect */
     filter: drop-shadow(0 0 20px var(--wp-error));
     animation: iconPulse 2s ease-in-out infinite;
 }
 
 .wp-modal-content h3 {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 700;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
     color: rgba(255, 255, 255, 0.95);
-    letter-spacing: -0.025em;
 }
 
 .wp-modal-content p {
     color: var(--wp-text-muted);
-    margin-bottom: 1.5rem;
-    font-size: 0.9375rem;
-    line-height: 1.6;
+    margin-bottom: 1.25rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
 }
 
 .wp-spinner {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     border: 3px solid rgba(var(--wp-primary-rgb, 239, 127, 26), 0.2);
     border-top-color: var(--wp-primary);
     border-radius: 50%;
     margin: 0 auto;
     animation: spin 0.8s linear infinite;
-    
-    /* Glow effect */
-    filter: drop-shadow(0 0 10px rgba(239, 127, 26, 0.4));
+}
+
+/* Username Modal */
+.wp-modal-avatar {
+    font-size: 3.5rem;
+    margin-bottom: 0.75rem;
+    display: inline-block;
+    animation: avatarBounce 2s ease-in-out infinite;
+    filter: drop-shadow(0 4px 20px rgba(239, 127, 26, 0.3));
+}
+
+.wp-input-group {
+    margin-bottom: 1rem;
+}
+
+.wp-input-group input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.95);
+    background: rgba(255, 255, 255, 0.08);
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    outline: none;
+    transition: all 0.2s ease;
+    text-align: center;
+    font-weight: 500;
+    box-sizing: border-box;
+}
+
+.wp-input-group input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+    font-weight: 400;
+}
+
+.wp-input-group input:focus {
+    border-color: var(--wp-primary);
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 0 0 3px rgba(239, 127, 26, 0.15);
+}
+
+.wp-input-group input.shake {
+    animation: shake 0.5s ease;
+    border-color: var(--wp-error, #ef4444) !important;
+}
+
+.wp-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.wp-btn-primary {
+    background: linear-gradient(135deg, var(--wp-primary), var(--wp-primary-dark, #d66a10));
+    color: white;
+    box-shadow: 0 4px 15px rgba(239, 127, 26, 0.3);
+}
+
+.wp-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(239, 127, 26, 0.4);
+}
+
+.wp-btn-primary:active {
+    transform: translateY(0);
+}
+
+.wp-btn-block {
+    width: 100%;
+}
+
+.wp-modal-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.wp-modal-hint i {
+    font-size: 0.8125rem;
+    color: #fbbf24;
+    margin: 0;
+    filter: none;
+    animation: none;
 }
 
 /* Animations */
 @keyframes modalFadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 @keyframes modalSlideIn {
@@ -106,24 +188,13 @@
     }
 }
 
-/* Responsive */
-@media (max-width: 480px) {
-    .wp-modal-content {
-        padding: 2rem 1.5rem;
-        min-width: calc(100vw - 3rem);
-        max-width: calc(100vw - 3rem);
-        margin: 0 1.5rem;
-    }
-    
-    .wp-modal-content i {
-        font-size: 3rem;
-    }
-    
-    .wp-modal-content h3 {
-        font-size: 1.25rem;
-    }
-    
-    .wp-modal-content p {
-        font-size: 0.875rem;
-    }
+@keyframes avatarBounce {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-6px) scale(1.05); }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-4px); }
+    40%, 80% { transform: translateX(4px); }
 }

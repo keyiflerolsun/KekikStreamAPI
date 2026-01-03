@@ -1,8 +1,8 @@
 // Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 // Module Imports
-import { generateRandomUser } from './modules/utils.min.js';
-import { initUI, showToast, copyRoomLink, toggleElement, showLoadingOverlay } from './modules/ui.min.js';
+import { getRandomAvatar, getSavedUsername, saveUsername } from './modules/utils.min.js';
+import { initUI, showToast, copyRoomLink, toggleElement, showLoadingOverlay, showUsernameModal } from './modules/ui.min.js';
 import { initChat, addChatMessage, addSystemMessage, updateUsersList, loadChatHistory, setCurrentUsername, showTypingIndicator } from './modules/chat.min.js';
 import {
     initPlayer,
@@ -273,9 +273,11 @@ const init = async () => {
     initChat();
     initPlayer();
 
-    // Generate user
-    state.currentUser = generateRandomUser();
-    setCurrentUsername(state.currentUser.username);
+    // Random avatar oluştur
+    const avatar = getRandomAvatar();
+    
+    // Kaydedilmiş kullanıcı adını al
+    const savedUsername = getSavedUsername();
 
     // Setup
     setupMessageHandlers();
@@ -283,6 +285,14 @@ const init = async () => {
     setupVideoEventListeners();
     setupHeartbeat();
     setupGlobalActions();
+
+    // Username modal'ını göster ve kullanıcı girişi bekle
+    const username = await showUsernameModal(avatar, savedUsername);
+    
+    // Kullanıcı bilgilerini kaydet
+    state.currentUser = { username, avatar };
+    setCurrentUsername(username);
+    saveUsername(username);
 
     // Setup typing indicator
     const chatInput = document.getElementById('chat-input');

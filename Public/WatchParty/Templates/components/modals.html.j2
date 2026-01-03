@@ -1,3 +1,32 @@
+<!-- Username Input Modal -->
+<div class="wp-modal" id="username-modal">
+    <div class="wp-modal-content">
+        <div class="wp-modal-avatar" id="modal-avatar">🎬</div>
+        <h3>Watch Party'ye Hoşgeldin!</h3>
+        <p>Odaya katılmak için kullanıcı adını gir</p>
+        <form id="username-form" onsubmit="return false;">
+            <div class="wp-input-group">
+                <input 
+                    type="text" 
+                    id="username-input" 
+                    placeholder="Kullanıcı adın..." 
+                    maxlength="20"
+                    autocomplete="off"
+                    required
+                >
+            </div>
+            <button type="submit" class="wp-btn wp-btn-primary wp-btn-block" id="join-room-btn">
+                <i class="fa-solid fa-right-to-bracket"></i>
+                Odaya Katıl
+            </button>
+        </form>
+        <div class="wp-modal-hint">
+            <i class="fa-solid fa-lightbulb"></i>
+            <span>avatar değiştirmek için sayfayı yenileyebilirsin</span>
+        </div>
+    </div>
+</div>
+
 <!-- Connection Lost Modal -->
 <div class="wp-modal" id="connection-modal" style="display: none;">
     <div class="wp-modal-content">

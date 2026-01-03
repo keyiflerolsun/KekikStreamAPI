@@ -1,44 +1,39 @@
 // Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-export const generateRandomUser = () => {
-    const avatars = [
-        '🎬','🎥','🎞️','📽️','🍿','🎭','🎪',
-        '🌟','✨','🔥','💫','⚡','🌙','☄️','⭐',
-        '🎮','🎯','🎨','🎹','🎧','🎤','🎻',
-        '😎','🤩','😍','😈','🤓','🧐','🤠',
-        '🦄','🐱','🐺','🦊','🐼','🐸','🐒',
-        '🤖','👽','👻','💀','🎃','🐉','🦁'
-    ];
+// Avatar listesi
+const AVATARS = [
+    '🎬','🎥','🎞️','📽️','🍿','🎭','🎪',
+    '🌟','✨','🔥','💫','⚡','🌙','☄️','⭐',
+    '🎮','🎯','🎨','🎹','🎧','🎤','🎻',
+    '😎','🤩','😍','😈','🤓','🧐','🤠',
+    '🦄','🐱','🐺','🦊','🐼','🐸','🐒',
+    '🤖','👽','👻','💀','🎃','🐉','🦁'
+];
 
-    const adjectives = [
-        'Mutlu','Neşeli','Havalı','Süper','Efsane','Şirin','Tatlı',
-        'Kral','Pro','Gizemli','Çılgın','Uykusuz','Sessiz','Asil',
-        'Eğlenceli','Yıldız','Fenomen','Hızlı','Soğukkanlı',
-        'Meraklı','Tutkulu','Cesur','Karizmatik','Enerjik',
-        'Gececi','Sabahlayan','Dalgın','Hayalperest','Ateşli',
-        'Sakin','Cool','Derin','Parlak','Vahşi','Nazik',
-        'Kararlı','Özgür','Asi','Zeki','Gururlu'
-    ];
+// LocalStorage key
+const STORAGE_KEY = 'watchparty_username';
 
-    const nouns = [
-        'İzleyici','Misafir','Seyirci','Konuk','Fan','Dost','Arkadaş',
-        'SinemaSever','DiziKurdu','FilmAşığı','Takipçi','Maratoncu',
-        'Spoilerci','Eleştirmen','Yorumcu','Keşifçi','Finalci',
-        'Fragmancı','Ekrancı','Koltukçu','PatlamışMısırcı',
-        'Kahraman','AntiKahraman','Usta','Acemi','Efsane',
-        'Gezgin','Maceracı','Avcı','Koruyucu','Anlatıcı'
-    ];
+// Random avatar seç
+export const getRandomAvatar = () => {
+    return AVATARS[Math.floor(Math.random() * AVATARS.length)];
+};
 
+// Kullanıcı adını localStorage'dan al
+export const getSavedUsername = () => {
+    try {
+        return localStorage.getItem(STORAGE_KEY) || '';
+    } catch {
+        return '';
+    }
+};
 
-    const avatar = avatars[Math.floor(Math.random() * avatars.length)];
-    const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
-    const noun = nouns[Math.floor(Math.random() * nouns.length)];
-    // const number = Math.floor(Math.random() * 100);
-
-    return {
-        username: `${adjective}${noun}`,
-        avatar
-    };
+// Kullanıcı adını localStorage'a kaydet
+export const saveUsername = (username) => {
+    try {
+        localStorage.setItem(STORAGE_KEY, username);
+    } catch {
+        // localStorage kullanılamıyorsa sessizce geç
+    }
 };
 
 export const escapeHtml = (text) => {

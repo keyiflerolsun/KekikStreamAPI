@@ -473,3 +473,19 @@
 .wp-chat-header {
     position: relative; /* For unread badge positioning */
 }
+
+
+/* Mobile Video Playing Mode - Hide Controls */
+@media (max-width: 1024px) {
+    body.video-playing .wp-video-info {
+        display: none !important;
+    }
+
+    body.video-playing .wp-chat-header {
+        display: none !important;
+    }
+
+    body.video-playing .wp-users-list {
+        display: none !important;
+    }
+}

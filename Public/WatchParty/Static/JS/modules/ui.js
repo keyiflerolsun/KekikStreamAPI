@@ -5,12 +5,14 @@ import { escapeHtml } from './utils.min.js';
 // ============== State ==============
 const state = {
     toastContainer: null,
-    connectionModal: null
+    connectionModal: null,
+    usernameModal: null
 };
 
 export const initUI = () => {
     state.toastContainer = document.getElementById('toast-container');
     state.connectionModal = document.getElementById('connection-modal');
+    state.usernameModal = document.getElementById('username-modal');
     // Ping display (sağ üst)
     state.pingDisplay = document.getElementById('ping-display');
     if (!state.pingDisplay) {
@@ -170,4 +172,66 @@ export const hideLoadingOverlay = (containerId = null) => {
     if (containerId) {
         hideSkeleton(containerId);
     }
+};
+
+// ============== Username Modal ==============
+export const showUsernameModal = (avatar, savedUsername = '') => {
+    return new Promise((resolve) => {
+        const modal = state.usernameModal || document.getElementById('username-modal');
+        const avatarEl = document.getElementById('modal-avatar');
+        const input = document.getElementById('username-input');
+        const form = document.getElementById('username-form');
+        
+        if (!modal || !input || !form) {
+            // Fallback: modal yoksa random kullanıcı döndür
+            resolve(savedUsername || `Misafir${Math.floor(Math.random() * 1000)}`);
+            return;
+        }
+
+        // Avatar'ı ayarla
+        if (avatarEl) {
+            avatarEl.textContent = avatar;
+        }
+
+        // Kaydedilmiş kullanıcı adını doldur
+        if (savedUsername) {
+            input.value = savedUsername;
+        }
+
+        // Modal'ı göster
+        modal.style.display = 'flex';
+        
+        // Input'a focus
+        setTimeout(() => input.focus(), 100);
+
+        // Form submit handler
+        const handleSubmit = (e) => {
+            e.preventDefault();
+            const username = input.value.trim();
+            
+            if (!username) {
+                input.classList.add('shake');
+                setTimeout(() => input.classList.remove('shake'), 500);
+                return;
+            }
+
+            // Modal'ı gizle
+            modal.style.display = 'none';
+            
+            // Event listener'ı temizle
+            form.removeEventListener('submit', handleSubmit);
+            
+            resolve(username);
+        };
+
+        form.addEventListener('submit', handleSubmit);
+        
+        // Enter tuşu ile de submit
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                form.dispatchEvent(new Event('submit'));
+            }
+        });
+    });
 };
