@@ -17,10 +17,19 @@ export const applyState = async (serverState) => {
 
     state.isSyncing = true;
     
-    logger.sync(`State: ${serverState.current_time.toFixed(1)}s, playing=${serverState.is_playing}`);
+    const target = clampTime(serverState.current_time);
+    const diff = Math.abs(videoPlayer.currentTime - target);
     
-    // Önce zaman ayarla
-    videoPlayer.currentTime = clampTime(serverState.current_time);
+    // Playing iken daha toleranslı, paused iken daha hassas
+    const threshold = serverState.is_playing ? 0.6 : 0.3;
+    
+    logger.sync(`State: ${target.toFixed(1)}s (diff: ${diff.toFixed(2)}s, thr: ${threshold}), playing=${serverState.is_playing}`);
+    
+    // Sadece anlamlı fark varsa seek yap (micro-seek spam'ı önle)
+    if (diff > threshold) {
+        videoPlayer.currentTime = target;
+        await waitForSeek(3000); // HLS için daha uzun timeout
+    }
 
     // Sonra play/pause - ÖNCELİKLİ
     if (serverState.is_playing) {

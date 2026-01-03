@@ -256,7 +256,16 @@ export const setupVideoEventListeners = () => {
                state.playerState === PlayerState.LOADING;
     };
 
+    // Delayed pause timeout - play/seek geldiğinde iptal edilecek
+    let delayedPauseTimeout;
+
     videoPlayer.addEventListener('play', () => {
+        // Bekleyen pause timeout'u iptal et
+        if (delayedPauseTimeout) {
+            clearTimeout(delayedPauseTimeout);
+            delayedPauseTimeout = null;
+        }
+        
         // Önce callback'i çağır - senkronizasyon için kritik
         if (!shouldIgnoreEvent() && state.playerState === PlayerState.READY) {
             state.playerState = PlayerState.PLAYING;
@@ -281,7 +290,18 @@ export const setupVideoEventListeners = () => {
             const timeSinceSeek = Date.now() - state.lastSeekTime;
             const timeSinceBufferEnd = Date.now() - state.lastBufferEndTime;
             
-            if (timeSinceSeek >= 150 && timeSinceBufferEnd >= 50) {
+            // Seek'e çok yakınsa tamamen yutma, gecikmeyle gönder
+            if (timeSinceSeek < 250) {
+                if (delayedPauseTimeout) clearTimeout(delayedPauseTimeout);
+                delayedPauseTimeout = setTimeout(() => {
+                    delayedPauseTimeout = null;
+                    if (videoPlayer.paused && !videoPlayer.ended && !state.isSyncing) {
+                        state.playerState = PlayerState.READY;
+                        callbacks.onPause?.(videoPlayer.currentTime);
+                    }
+                }, 280);
+                // Aşağıya düşmesin - return
+            } else if (timeSinceBufferEnd >= 100) {
                 state.playerState = PlayerState.READY;
                 callbacks.onPause?.(videoPlayer.currentTime);
             }
@@ -295,29 +315,31 @@ export const setupVideoEventListeners = () => {
         }, 0);
     });
 
-    // Seek handling: seeking sırasında time'ı takip et, seeked'de gönder
+    // Seek handling: seeking sadece flag tutsun, seeked'de gönder
     let seekTimeout;
     let isSeeking = false;
-    let lastSeekTarget = null;
     
     videoPlayer.addEventListener('seeking', () => {
+        // Bekleyen pause timeout'u iptal et (seek yapılıyor)
+        if (delayedPauseTimeout) {
+            clearTimeout(delayedPauseTimeout);
+            delayedPauseTimeout = null;
+        }
+        
         if (shouldIgnoreEvent()) return;
         if (state.playerState === PlayerState.LOADING) return;
         if (state.playerState !== PlayerState.PLAYING && state.playerState !== PlayerState.READY) return;
         
         state.lastSeekTime = Date.now();
         isSeeking = true;
-        lastSeekTarget = videoPlayer.currentTime;
         
-        // Debounce: Sürekli seeking olursa (drag) bekle, durduğunda gönder
+        // Fallback: seeked gelmezse 300ms sonra mevcut pozisyonu gönder
         clearTimeout(seekTimeout);
         seekTimeout = setTimeout(() => {
-            if (isSeeking && lastSeekTarget !== null) {
-                callbacks.onSeek?.(lastSeekTarget);
-                isSeeking = false;
-                lastSeekTarget = null;
-            }
-        }, 150); // 150ms - drag bitene kadar bekle
+            if (!isSeeking) return;
+            isSeeking = false;
+            callbacks.onSeek?.(videoPlayer.currentTime);
+        }, 300);
     });
     
     // Seeked: Seek tamamlandığında (tap veya drag bitti)
@@ -329,13 +351,11 @@ export const setupVideoEventListeners = () => {
         clearTimeout(seekTimeout);
         
         if (isSeeking) {
-            const finalTime = videoPlayer.currentTime;
             isSeeking = false;
-            lastSeekTarget = null;
             
             // Sadece PLAYING veya READY durumundaysa callback'i çağır
             if (state.playerState === PlayerState.PLAYING || state.playerState === PlayerState.READY) {
-                callbacks.onSeek?.(finalTime);
+                callbacks.onSeek?.(videoPlayer.currentTime);
             }
         }
     });
@@ -365,7 +385,7 @@ export const setupVideoEventListeners = () => {
 };
 
 // ============== Yardımcı Fonksiyonlar ==============
-export const waitForSeek = async (timeout = 1500) => {
+export const waitForSeek = async (timeout = 3000) => {
     const { videoPlayer } = state;
     if (!videoPlayer) return true;
 
