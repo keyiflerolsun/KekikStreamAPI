@@ -75,6 +75,43 @@ export const initPlayer = () => {
     
     // Masaüstü klavye kontrolleri (ok tuşları, space)
     setupKeyboardControls();
+    
+    // Mobil input focus handling - klavye açılınca alan genişlesin
+    setupMobileInputFocusHandler();
+};
+
+// ============== Mobil Input Focus Handler ==============
+const setupMobileInputFocusHandler = () => {
+    const isMobile = () => window.innerWidth <= 1024;
+    
+    // Tüm wp-input alanlarını bul
+    const setupInputHandler = (input) => {
+        if (!input) return;
+        
+        input.addEventListener('focus', () => {
+            if (!isMobile()) return;
+            // Focus olunca video-playing class'ı ekle (alan genişlesin)
+            document.body.classList.add('video-playing');
+        });
+        
+        input.addEventListener('blur', () => {
+            if (!isMobile()) return;
+            // Blur olunca, video gerçekten oynamıyorsa class'ı kaldır
+            const { videoPlayer } = state;
+            const isActuallyPlaying = videoPlayer && !videoPlayer.paused;
+            if (!isActuallyPlaying) {
+                document.body.classList.remove('video-playing');
+            }
+        });
+    };
+    
+    // Chat input
+    const chatInput = document.getElementById('chat-input');
+    setupInputHandler(chatInput);
+    
+    // Video URL input (varsa)
+    const videoUrlInput = document.getElementById('video-url-input');
+    setupInputHandler(videoUrlInput);
 };
 
 // ============== Klavye Kontrolleri (Masaüstü) ==============
