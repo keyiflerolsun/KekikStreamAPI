@@ -97,9 +97,11 @@ const handleRoomState = async (roomState) => {
         }
     }
 
-    if (roomState.chat_messages) {
-        loadChatHistory(roomState.chat_messages);
-    }
+    // Not: Chat geçmişi yeni katılanlara gösterilmiyor
+    // Sadece katıldıktan sonraki mesajları görecekler
+    // if (roomState.chat_messages) {
+    //     loadChatHistory(roomState.chat_messages);
+    // }
 };
 
 const handleUserJoined = (msg) => {

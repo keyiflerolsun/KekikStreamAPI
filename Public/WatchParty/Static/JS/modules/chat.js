@@ -68,7 +68,13 @@ export const addChatMessage = (username, avatar, message, timestamp = null, isHi
         </div>
     `;
 
-    state.chatMessages.appendChild(msgElement);
+    // Typing indicator'ı bul - varsa onun önüne ekle, yoksa sona ekle
+    const typingIndicator = document.getElementById('typing-indicator');
+    if (typingIndicator) {
+        state.chatMessages.insertBefore(msgElement, typingIndicator);
+    } else {
+        state.chatMessages.appendChild(msgElement);
+    }
     
     // Track unread messages (only for others' messages AND not history load)
     if (!isSelf && !isHistoryLoad) incrementUnread();
@@ -93,7 +99,14 @@ export const addSystemMessage = (message) => {
     const msgElement = document.createElement('div');
     msgElement.className = 'wp-chat-system';
     msgElement.textContent = message;
-    state.chatMessages.appendChild(msgElement);
+    
+    // Typing indicator'ı bul - varsa onun önüne ekle, yoksa sona ekle
+    const typingIndicator = document.getElementById('typing-indicator');
+    if (typingIndicator) {
+        state.chatMessages.insertBefore(msgElement, typingIndicator);
+    } else {
+        state.chatMessages.appendChild(msgElement);
+    }
     
     // Sadece kullanıcı alttaysa scroll et
     if (wasNearBottom) {
@@ -236,6 +249,12 @@ const updateTypingIndicatorUI = () => {
         </div>
         <span>${text}...</span>
     `;
+    
+    // Indicator her zaman en altta olmalı
+    // Eğer indicator parent'in son child'ı değilse, en sona taşı
+    if (indicator.nextSibling) {
+        state.chatMessages.appendChild(indicator);
+    }
     
     // Sadece kullanıcı alttaysa scroll et
     if (wasNearBottom) {
