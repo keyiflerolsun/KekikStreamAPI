@@ -2,7 +2,7 @@
 
 // Module Imports
 import { getRandomAvatar, getSavedUsername, saveUsername } from './modules/utils.min.js';
-import { initUI, showToast, copyRoomLink, toggleElement, showLoadingOverlay, showUsernameModal } from './modules/ui.min.js';
+import { initUI, showToast, copyRoomLink, toggleElement, showLoadingOverlay, showUsernameModal, flashAllOverlayElements } from './modules/ui.min.js';
 import { initChat, addChatMessage, addSystemMessage, updateUsersList, loadChatHistory, setCurrentUsername, showTypingIndicator } from './modules/chat.min.js';
 import {
     initPlayer,
@@ -77,6 +77,9 @@ const handleRoomState = async (roomState) => {
                 roomState.video_title, 
                 roomState.subtitle_url
             );
+            
+            // İlk girişte overlay'i kısa süreliğine göster
+            setTimeout(() => flashAllOverlayElements(), 500);
         }
 
         await applyState(roomState);

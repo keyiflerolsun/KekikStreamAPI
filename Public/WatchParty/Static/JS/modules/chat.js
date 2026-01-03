@@ -134,26 +134,26 @@ export const updateUsersList = (users) => {
     if (onlineCount) onlineCount.textContent = users.length.toString();
     
     // Overlay viewer count güncelle ve geçici olarak göster
+    const overlayViewers = document.querySelector('.wp-overlay-viewers');
     const overlayViewerCount = document.getElementById('overlay-viewer-count');
     if (overlayViewerCount) {
         overlayViewerCount.textContent = users.length.toString();
-        flashOverlay();
+        flashOverlayElement(overlayViewers);
     }
 };
 
-// Overlay'i geçici olarak göster
-const flashOverlay = () => {
-    const overlay = document.getElementById('player-info-overlay');
-    if (!overlay) return;
+// Belirli bir overlay elementini geçici olarak göster
+const flashOverlayElement = (element) => {
+    if (!element) return;
     
-    overlay.classList.add('visible');
+    element.classList.add('flash-visible');
     
     // Önceki timeout'u temizle
-    if (overlay._hideTimeout) clearTimeout(overlay._hideTimeout);
+    if (element._hideTimeout) clearTimeout(element._hideTimeout);
     
     // 3 saniye sonra gizle
-    overlay._hideTimeout = setTimeout(() => {
-        overlay.classList.remove('visible');
+    element._hideTimeout = setTimeout(() => {
+        element.classList.remove('flash-visible');
     }, 3000);
 };
 

@@ -4,6 +4,21 @@ import { formatDuration, logger } from './utils.min.js';
 import { showToast, showLoadingOverlay, hideLoadingOverlay } from './ui.min.js';
 import { getProxyBaseUrl, buildProxyUrl } from '/static/shared/JS/service-detector.min.js';
 
+// ============== Overlay Element Flash ==============
+const flashOverlayElement = (element) => {
+    if (!element) return;
+    
+    element.classList.add('flash-visible');
+    
+    // Önceki timeout'u temizle
+    if (element._hideTimeout) clearTimeout(element._hideTimeout);
+    
+    // 3 saniye sonra gizle
+    element._hideTimeout = setTimeout(() => {
+        element.classList.remove('flash-visible');
+    }, 3000);
+};
+
 // ============== Oynatıcı Durumları ==============
 export const PlayerState = {
     IDLE: 'idle',
@@ -54,6 +69,40 @@ export const initPlayer = () => {
     // Mobil klavye açıldığında viewport resize için JS fallback
     // Brave ve bazı tarayıcılarda svh/dvh düzgün çalışmıyor
     setupViewportResizeHandler();
+    
+    // Player'a tıklanınca input focus'u kaldır (mobil klavye açılmasını engelle)
+    setupPlayerClickHandler();
+};
+
+// ============== Player Click Handler (Mobil Focus Engelleme) ==============
+const setupPlayerClickHandler = () => {
+    const playerWrapper = document.querySelector('.wp-player-wrapper');
+    const playerContainer = document.querySelector('.wp-player-container');
+    
+    const blurActiveInput = (e) => {
+        // Eğer tıklanan element video veya overlay değilse çık
+        const target = e.target;
+        const isVideoArea = target.closest('.wp-player-wrapper') || target.closest('.wp-player-container');
+        if (!isVideoArea) return;
+        
+        // Aktif element bir input ise blur yap
+        const activeElement = document.activeElement;
+        if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+            activeElement.blur();
+        }
+    };
+    
+    // Player container'a click listener
+    if (playerContainer) {
+        playerContainer.addEventListener('click', blurActiveInput);
+        playerContainer.addEventListener('touchstart', blurActiveInput, { passive: true });
+    }
+    
+    // Video element'e de ekle
+    if (state.videoPlayer) {
+        state.videoPlayer.addEventListener('click', blurActiveInput);
+        state.videoPlayer.addEventListener('touchstart', blurActiveInput, { passive: true });
+    }
 };
 
 // ============== Viewport Resize Handler (Mobil Klavye) ==============
@@ -553,9 +602,12 @@ export const loadVideo = async (url, format = 'hls', userAgent = '', referer = '
         titleEl.textContent = title;
         videoInfo.style.display = 'block';
         
-        // Overlay title güncelle
+        // Overlay title güncelle ve flash yap
         const overlayTitle = document.getElementById('overlay-video-title');
-        if (overlayTitle) overlayTitle.textContent = title;
+        if (overlayTitle) {
+            overlayTitle.textContent = title;
+            flashOverlayElement(overlayTitle);
+        }
     }
 
     state.lastLoadedUrl = url;
@@ -652,7 +704,10 @@ export const updateVideoInfo = (title, duration) => {
     if (state.videoDuration && duration) state.videoDuration.textContent = formatDuration(duration);
     if (state.videoInfo) state.videoInfo.style.display = 'block';
     
-    // Overlay video title güncelle
+    // Overlay video title güncelle ve flash yap
     const overlayTitle = document.getElementById('overlay-video-title');
-    if (overlayTitle && title) overlayTitle.textContent = title;
+    if (overlayTitle && title) {
+        overlayTitle.textContent = title;
+        flashOverlayElement(overlayTitle);
+    }
 };

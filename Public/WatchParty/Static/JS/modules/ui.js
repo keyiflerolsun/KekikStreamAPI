@@ -110,6 +110,7 @@ export const updatePing = (ms) => {
 export const updateSyncInfoText = (username, action) => {
     const syncInfoText = document.getElementById('sync-info-text');
     const overlaySyncText = document.getElementById('overlay-sync-text');
+    const overlaySync = document.querySelector('.wp-overlay-sync');
     const text = `${username} ${action}`;
     
     if (syncInfoText) {
@@ -120,25 +121,36 @@ export const updateSyncInfoText = (username, action) => {
     // Overlay sync text güncelle ve geçici olarak göster
     if (overlaySyncText) {
         overlaySyncText.textContent = text;
-        flashPlayerOverlay();
+        flashOverlayElement(overlaySync);
         setTimeout(() => { overlaySyncText.textContent = 'Senkronize'; }, 3000);
     }
 };
 
-// Player overlay'i geçici olarak göster
-const flashPlayerOverlay = () => {
-    const overlay = document.getElementById('player-info-overlay');
-    if (!overlay) return;
+// Belirli bir overlay elementini geçici olarak göster
+const flashOverlayElement = (element) => {
+    if (!element) return;
     
-    overlay.classList.add('visible');
+    element.classList.add('flash-visible');
     
     // Önceki timeout'u temizle
-    if (overlay._hideTimeout) clearTimeout(overlay._hideTimeout);
+    if (element._hideTimeout) clearTimeout(element._hideTimeout);
     
     // 3 saniye sonra gizle
-    overlay._hideTimeout = setTimeout(() => {
-        overlay.classList.remove('visible');
+    element._hideTimeout = setTimeout(() => {
+        element.classList.remove('flash-visible');
     }, 3000);
+};
+
+// Tüm overlay elementlerini geçici olarak göster (ilk giriş için)
+export const flashAllOverlayElements = () => {
+    const overlayTitle = document.getElementById('overlay-video-title');
+    const overlayViewers = document.querySelector('.wp-overlay-viewers');
+    const overlaySync = document.querySelector('.wp-overlay-sync');
+    
+    // Her birini ayrı ayrı flash yap (kendi timeout'larıyla)
+    if (overlayTitle) flashOverlayElement(overlayTitle);
+    if (overlayViewers) flashOverlayElement(overlayViewers);
+    if (overlaySync) flashOverlayElement(overlaySync);
 };
 
 export const copyRoomLink = async () => {

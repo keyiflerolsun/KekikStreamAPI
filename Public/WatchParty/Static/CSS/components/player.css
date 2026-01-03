@@ -97,8 +97,6 @@
     background: linear-gradient(to bottom, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.4) 60%, transparent 100%);
     pointer-events: none;
     z-index: 10;
-    opacity: 0;
-    transition: opacity 0.3s ease;
 }
 
 .wp-overlay-title {
@@ -184,20 +182,31 @@
         min-height: 80px; /* Flexible for keyboard - allows chat messages to remain visible */
     }
     
-    /* Show info overlay when video is playing */
+    /* Show info overlay container when video is playing */
     body.video-playing .wp-player-info-overlay {
         display: flex;
+        pointer-events: none; /* Overlay click'leri engellemesin */
+    }
+    
+    /* Tüm overlay elementleri default olarak gizli */
+    body.video-playing .wp-overlay-title,
+    body.video-playing .wp-overlay-viewers,
+    body.video-playing .wp-overlay-sync {
         opacity: 0;
         transition: opacity 0.3s ease;
     }
     
-    /* Show on hover */
-    body.video-playing .wp-player-wrapper:hover .wp-player-info-overlay {
+    /* Show all on hover - hepsi görünsün */
+    body.video-playing .wp-player-wrapper:hover .wp-overlay-title,
+    body.video-playing .wp-player-wrapper:hover .wp-overlay-viewers,
+    body.video-playing .wp-player-wrapper:hover .wp-overlay-sync {
         opacity: 1;
     }
     
-    /* Show when data changes (via JS adding .visible class) */
-    body.video-playing .wp-player-info-overlay.visible {
+    /* Flash visible - sadece değişen element görünsün (JS tarafından eklenir) */
+    body.video-playing .wp-overlay-title.flash-visible,
+    body.video-playing .wp-overlay-viewers.flash-visible,
+    body.video-playing .wp-overlay-sync.flash-visible {
         opacity: 1;
     }
 }
