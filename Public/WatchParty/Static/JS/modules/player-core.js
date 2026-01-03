@@ -187,17 +187,20 @@ export const setupVideoEventListeners = () => {
         return state.isSyncing || 
                state.playerState === PlayerState.LOADING;
     };
-
-    videoPlayer.addEventListener('play', () => {
-        document.body.classList.add('video-playing');
-        
-        // Chat scroll'u güncelle (header/users gizlenince layout değişir)
-        requestAnimationFrame(() => {
+    
+    // Layout güncellemesi - asenkron, event'i engellemesin
+    const updateChatScroll = () => {
+        setTimeout(() => {
             const chatMessages = document.getElementById('chat-messages');
             if (chatMessages) {
                 chatMessages.scrollTop = chatMessages.scrollHeight;
             }
-        });
+        }, 0);
+    };
+
+    videoPlayer.addEventListener('play', () => {
+        document.body.classList.add('video-playing');
+        updateChatScroll();
         
         if (shouldIgnoreEvent()) return;
         if (state.playerState !== PlayerState.READY) return;
@@ -208,14 +211,7 @@ export const setupVideoEventListeners = () => {
 
     videoPlayer.addEventListener('pause', () => {
         document.body.classList.remove('video-playing');
-        
-        // Chat scroll'u güncelle (header/users görünür olunca layout değişir)
-        requestAnimationFrame(() => {
-            const chatMessages = document.getElementById('chat-messages');
-            if (chatMessages) {
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-            }
-        });
+        updateChatScroll();
         
         if (shouldIgnoreEvent()) return;
         if (state.playerState === PlayerState.LOADING) return;
@@ -223,12 +219,11 @@ export const setupVideoEventListeners = () => {
         if (videoPlayer.ended) return;
         
         const timeSinceSeek = Date.now() - state.lastSeekTime;
-        // Seek debounce'u biraz artırdık, çünkü seeking event'iyle çakışabilir
-        // 400ms debounce (1000ms çok geniş, "durduramıyorum" hissi yaratıyordu)
-        if (timeSinceSeek < 400) return;
+        // Seek debounce - 200ms (400ms çok uzundu)
+        if (timeSinceSeek < 200) return;
         
         const timeSinceBufferEnd = Date.now() - state.lastBufferEndTime;
-        if (timeSinceBufferEnd < 200) return;
+        if (timeSinceBufferEnd < 100) return;
 
         state.playerState = PlayerState.READY;
         callbacks.onPause?.(videoPlayer.currentTime);
@@ -245,7 +240,7 @@ export const setupVideoEventListeners = () => {
         clearTimeout(seekTimeout);
         seekTimeout = setTimeout(() => {
             callbacks.onSeek?.(videoPlayer.currentTime);
-        }, 150); // Debounce
+        }, 100); // Debounce - 100ms (150ms'den düşürdük)
     });
 
     videoPlayer.addEventListener('waiting', () => {
