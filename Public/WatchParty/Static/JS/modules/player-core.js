@@ -50,6 +50,79 @@ export const initPlayer = () => {
     state.videoInfo = document.getElementById('video-info');
     state.videoTitle = document.getElementById('video-title');
     state.videoDuration = document.getElementById('video-duration');
+    
+    // Mobil klavye açıldığında viewport resize için JS fallback
+    // Brave ve bazı tarayıcılarda svh/dvh düzgün çalışmıyor
+    setupViewportResizeHandler();
+};
+
+// ============== Viewport Resize Handler (Mobil Klavye) ==============
+const setupViewportResizeHandler = () => {
+    // visualViewport API kontrolü
+    if (!window.visualViewport) return;
+    
+    const playerWrapper = document.querySelector('.wp-player-wrapper');
+    const mainContainer = document.querySelector('.watch-party-container');
+    if (!playerWrapper || !mainContainer) return;
+    
+    // Sadece mobilde çalışsın
+    const isMobile = () => window.innerWidth <= 1024;
+    
+    // Başlangıç viewport height'ını kaydet
+    let initialHeight = window.visualViewport.height;
+    
+    const updateLayout = () => {
+        if (!isMobile()) {
+            // Masaüstünde CSS'e bırak
+            mainContainer.style.height = '';
+            playerWrapper.style.maxHeight = '';
+            return;
+        }
+        
+        const currentHeight = window.visualViewport.height;
+        const heightRatio = currentHeight / window.screen.height;
+        
+        // Klavye açık mı? (viewport, ekranın %75'inden küçükse)
+        const isKeyboardOpen = heightRatio < 0.75;
+        
+        if (isKeyboardOpen) {
+            // Klavye açıkken tüm container'ı viewport'a sığdır
+            mainContainer.style.height = `${currentHeight}px`;
+            document.body.classList.add('keyboard-open');
+            
+            // Player'ı büyüt (video daha büyük olsun)
+            const isVideoPlaying = document.body.classList.contains('video-playing');
+            const maxHeightPercent = isVideoPlaying ? 30 : 35;
+            const maxHeight = Math.max(100, currentHeight * (maxHeightPercent / 100));
+            playerWrapper.style.maxHeight = `${maxHeight}px`;
+        } else {
+            // Klavye kapalıyken CSS'e bırak
+            mainContainer.style.height = '';
+            playerWrapper.style.maxHeight = '';
+            document.body.classList.remove('keyboard-open');
+            initialHeight = currentHeight;
+        }
+        
+        // Chat scroll'u güncelle
+        requestAnimationFrame(() => {
+            const chatMessages = document.getElementById('chat-messages');
+            if (chatMessages) {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        });
+    };
+    
+    // visualViewport resize event'i - klavye açılıp kapanınca tetiklenir
+    window.visualViewport.addEventListener('resize', updateLayout);
+    
+    // Orientation değişikliğinde initial height'ı güncelle
+    window.addEventListener('orientationchange', () => {
+        setTimeout(() => {
+            initialHeight = window.visualViewport.height;
+            mainContainer.style.height = '';
+            playerWrapper.style.maxHeight = '';
+        }, 300);
+    });
 };
 
 export const setPlayerCallbacks = (cbs) => {
