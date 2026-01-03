@@ -653,6 +653,10 @@ class WatchPartyManager:
                 room.is_playing = True
                 room.updated_at = now
 
+            # Seek-sync state'i sıfırla (timeout'un tekrar tetiklenmesini önle)
+            room.seek_sync_was_playing = False
+            room.seek_sync_epoch += 1  # epoch artır, timeout epoch kontrolünde fail olsun
+
             room.pause_reason = ""
             result = {"should_resume": should_resume, "current_time": room.current_time}
 
@@ -682,6 +686,9 @@ class WatchPartyManager:
             if should_resume:
                 room.is_playing = True
                 room.updated_at = now
+            
+            # Seek-sync state'i sıfırla
+            room.seek_sync_was_playing = False
             room.pause_reason = ""
 
         if should_resume:

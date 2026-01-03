@@ -187,6 +187,10 @@ func (m *RoomManager) MarkSeekReady(roomID, userID string, epoch int) (bool, flo
 		room.IsPlaying = true
 		room.UpdatedAt = now
 		room.PauseReason = ""
+		// SeekSyncWasPlaying'i sıfırla (timeout'un tekrar tetiklenmesini önle)
+		room.SeekSyncWasPlaying = false
+		// Epoch'u artır (timeout goroutine epoch kontrolünde fail olsun)
+		room.SeekSyncEpoch++
 		return true, room.CurrentTime
 	}
 
