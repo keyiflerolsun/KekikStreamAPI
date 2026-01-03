@@ -72,6 +72,76 @@ export const initPlayer = () => {
     
     // Player'a tıklanınca input focus'u kaldır (mobil klavye açılmasını engelle)
     setupPlayerClickHandler();
+    
+    // Masaüstü klavye kontrolleri (ok tuşları, space)
+    setupKeyboardControls();
+};
+
+// ============== Klavye Kontrolleri (Masaüstü) ==============
+const setupKeyboardControls = () => {
+    const SEEK_STEP = 5; // 5 saniye ileri/geri
+    
+    document.addEventListener('keydown', (e) => {
+        const { videoPlayer } = state;
+        if (!videoPlayer) return;
+        
+        // Input/textarea içindeyse klavye kontrollerini devre dışı bırak
+        const activeEl = document.activeElement;
+        if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+            return;
+        }
+        
+        // Video yüklenmediyse çık
+        if (state.playerState === PlayerState.LOADING || state.playerState === PlayerState.IDLE) {
+            return;
+        }
+        
+        switch (e.code) {
+            case 'Space':
+                e.preventDefault();
+                if (videoPlayer.paused) {
+                    videoPlayer.play();
+                } else {
+                    videoPlayer.pause();
+                }
+                break;
+                
+            case 'ArrowLeft':
+                e.preventDefault();
+                videoPlayer.currentTime = Math.max(0, videoPlayer.currentTime - SEEK_STEP);
+                break;
+                
+            case 'ArrowRight':
+                e.preventDefault();
+                const duration = videoPlayer.duration || Infinity;
+                videoPlayer.currentTime = Math.min(duration - 0.5, videoPlayer.currentTime + SEEK_STEP);
+                break;
+                
+            case 'ArrowUp':
+                e.preventDefault();
+                videoPlayer.volume = Math.min(1, videoPlayer.volume + 0.1);
+                break;
+                
+            case 'ArrowDown':
+                e.preventDefault();
+                videoPlayer.volume = Math.max(0, videoPlayer.volume - 0.1);
+                break;
+                
+            case 'KeyM':
+                e.preventDefault();
+                videoPlayer.muted = !videoPlayer.muted;
+                break;
+                
+            case 'KeyF':
+                e.preventDefault();
+                if (document.fullscreenElement) {
+                    document.exitFullscreen();
+                } else {
+                    videoPlayer.requestFullscreen?.();
+                }
+                break;
+        }
+    });
 };
 
 // ============== Player Click Handler (Mobil Focus Engelleme) ==============
@@ -225,18 +295,49 @@ export const setupVideoEventListeners = () => {
         }, 0);
     });
 
+    // Seek handling: seeking sırasında time'ı takip et, seeked'de gönder
     let seekTimeout;
+    let isSeeking = false;
+    let lastSeekTarget = null;
+    
     videoPlayer.addEventListener('seeking', () => {
         if (shouldIgnoreEvent()) return;
         if (state.playerState === PlayerState.LOADING) return;
         if (state.playerState !== PlayerState.PLAYING && state.playerState !== PlayerState.READY) return;
         
         state.lastSeekTime = Date.now();
+        isSeeking = true;
+        lastSeekTarget = videoPlayer.currentTime;
         
+        // Debounce: Sürekli seeking olursa (drag) bekle, durduğunda gönder
         clearTimeout(seekTimeout);
         seekTimeout = setTimeout(() => {
-            callbacks.onSeek?.(videoPlayer.currentTime);
-        }, 80); // 80ms debounce
+            if (isSeeking && lastSeekTarget !== null) {
+                callbacks.onSeek?.(lastSeekTarget);
+                isSeeking = false;
+                lastSeekTarget = null;
+            }
+        }, 150); // 150ms - drag bitene kadar bekle
+    });
+    
+    // Seeked: Seek tamamlandığında (tap veya drag bitti)
+    videoPlayer.addEventListener('seeked', () => {
+        if (shouldIgnoreEvent()) return;
+        if (state.playerState === PlayerState.LOADING) return;
+        
+        // Timeout'u temizle ve hemen gönder
+        clearTimeout(seekTimeout);
+        
+        if (isSeeking) {
+            const finalTime = videoPlayer.currentTime;
+            isSeeking = false;
+            lastSeekTarget = null;
+            
+            // Sadece PLAYING veya READY durumundaysa callback'i çağır
+            if (state.playerState === PlayerState.PLAYING || state.playerState === PlayerState.READY) {
+                callbacks.onSeek?.(finalTime);
+            }
+        }
     });
 
     videoPlayer.addEventListener('waiting', () => {
