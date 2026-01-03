@@ -66,6 +66,11 @@ export const initPlayer = () => {
     state.videoTitle = document.getElementById('video-title');
     state.videoDuration = document.getElementById('video-duration');
     
+    // Video element'in focus almasını engelle (native keyboard handling devre dışı)
+    if (state.videoPlayer) {
+        state.videoPlayer.tabIndex = -1;
+    }
+    
     // Mobil klavye açıldığında viewport resize için JS fallback
     // Brave ve bazı tarayıcılarda svh/dvh düzgün çalışmıyor
     setupViewportResizeHandler();
@@ -126,6 +131,12 @@ const setupKeyboardControls = () => {
         const activeEl = document.activeElement;
         if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
             return;
+        }
+        
+        // Video element focus'taysa, native keyboard handling'i engelle
+        // (tarayıcı Space ile toggle yapmasın)
+        if (activeEl === videoPlayer) {
+            videoPlayer.blur();
         }
         
         // Video yüklenmediyse çık
