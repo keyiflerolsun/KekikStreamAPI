@@ -219,18 +219,27 @@ class MessageHandler:
         if not chat_message:
             return
 
+        # Reply bilgisini al (opsiyonel)
+        reply_to = message.get("reply_to")
+
         chat_msg = await watch_party_manager.add_chat_message(
-            self.room_id, self.user.username, self.user.avatar, chat_message
+            self.room_id, self.user.username, self.user.avatar, chat_message, reply_to
         )
 
         if chat_msg:
-            await watch_party_manager.broadcast_to_room(self.room_id, {
+            broadcast_data = {
                 "type"      : "chat",
                 "username"  : self.user.username,
                 "avatar"    : self.user.avatar,
                 "message"   : chat_message,
                 "timestamp" : chat_msg.timestamp
-            })
+            }
+            
+            # Reply bilgisi varsa ekle
+            if reply_to:
+                broadcast_data["reply_to"] = reply_to
+            
+            await watch_party_manager.broadcast_to_room(self.room_id, broadcast_data)
 
     async def handle_typing(self):
         """TYPING mesajını işle - kullanıcı yazıyor"""

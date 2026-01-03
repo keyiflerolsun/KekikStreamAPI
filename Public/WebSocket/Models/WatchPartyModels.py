@@ -28,6 +28,7 @@ class ChatMessage:
     avatar    : str
     message   : str
     timestamp : str = field(default_factory=lambda: datetime.now().isoformat())
+    reply_to  : dict | None = None  # {"username": str, "message": str, "avatar": str}
 
 @dataclass
 class Room:

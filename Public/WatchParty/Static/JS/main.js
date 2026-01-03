@@ -3,7 +3,7 @@
 // Module Imports
 import { getRandomAvatar, getSavedUsername, saveUsername } from './modules/utils.min.js';
 import { initUI, showToast, copyRoomLink, toggleElement, showLoadingOverlay, showUsernameModal, flashAllOverlayElements } from './modules/ui.min.js';
-import { initChat, addChatMessage, addSystemMessage, updateUsersList, loadChatHistory, setCurrentUsername, showTypingIndicator } from './modules/chat.min.js';
+import { initChat, addChatMessage, addSystemMessage, updateUsersList, loadChatHistory, setCurrentUsername, showTypingIndicator, setReplyingTo, clearReply, getReplyingTo, setRoomUsers, setNotificationCallback, scrollToReplyMessage } from './modules/chat.min.js';
 import {
     initPlayer,
     setPlayerCallbacks,
@@ -24,6 +24,64 @@ import { detectGoServices, getWebSocketUrl } from '/static/shared/JS/service-det
 // ============== State ==============
 const state = {
     currentUser: null
+};
+
+// ============== Notification ==============
+const showNotification = (data) => {
+    // data: { type: 'reply'|'mention', from: string, message: string, originalMessage: string }
+    
+    // Mevcut notification'ı kaldır
+    const existing = document.querySelector('.wp-notification-toast');
+    if (existing) existing.remove();
+    
+    const icon = data.type === 'reply' ? 'fa-reply' : 'fa-at';
+    const title = data.type === 'reply' ? 'Yanıt Aldınız!' : 'Etiketlendiniz!';
+    
+    const notification = document.createElement('div');
+    notification.className = 'wp-notification-toast';
+    notification.innerHTML = `
+        <div class="wp-notification-icon">
+            <i class="fas ${icon}"></i>
+        </div>
+        <div class="wp-notification-content">
+            <div class="wp-notification-title">${title}</div>
+            <div class="wp-notification-message">${data.from}: ${data.originalMessage.substring(0, 50)}${data.originalMessage.length > 50 ? '...' : ''}</div>
+        </div>
+    `;
+    
+    // Tıklayınca chat'e scroll
+    notification.addEventListener('click', () => {
+        const chatMessages = document.getElementById('chat-messages');
+        if (chatMessages) {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        notification.remove();
+    });
+    
+    // Chat section içine ekle (toast-container yanına)
+    const toastContainer = document.getElementById('toast-container');
+    if (toastContainer && toastContainer.parentNode) {
+        toastContainer.parentNode.insertBefore(notification, toastContainer.nextSibling);
+    } else {
+        const chatSection = document.querySelector('.wp-chat-section');
+        if (chatSection) {
+            chatSection.appendChild(notification);
+        } else {
+            document.body.appendChild(notification);
+        }
+    }
+    
+    // 5 saniye sonra kaldır
+    setTimeout(() => {
+        if (notification.parentNode) notification.remove();
+    }, 5000);
+    
+    // Ses efekti (opsiyonel - tarayıcı izin verirse)
+    try {
+        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2Onp2YkYmDgYOKkJifoJyVjoeCgIKHjZSan6GdlYyGgYCDiY+WnKGhnZSLhYCAg4mPl5yhoZ2Ui4WAgIOJj5ecn6GdlIuFgICDiY+XnKChnZSLhYCAg4mPl5yfop2Ui4WAgIOJj5ecn6GdlIuFgICDiY+XnKCgnZSLhYCAg4mPl5yfop2Ui4WAgA==');
+        audio.volume = 0.3;
+        audio.play().catch(() => {}); // Ignore errors
+    } catch (e) {}
 };
 
 // ============== Config ==============
@@ -49,6 +107,7 @@ const setupMessageHandlers = () => {
 
 const handleRoomState = async (roomState) => {
     updateUsersList(roomState.users);
+    setRoomUsers(roomState.users); // Mention için kullanıcı listesi
 
     if (roomState.video_url) {
         const shouldLoad = getLastLoadedUrl() !== roomState.video_url;
@@ -106,17 +165,19 @@ const handleRoomState = async (roomState) => {
 
 const handleUserJoined = (msg) => {
     updateUsersList(msg.users);
+    setRoomUsers(msg.users); // Mention için kullanıcı listesi
     addSystemMessage(`${msg.avatar} ${msg.username} odaya katıldı`);
     showToast(`${msg.username} odaya katıldı`, 'info');
 };
 
 const handleUserLeft = (msg) => {
     updateUsersList(msg.users);
+    setRoomUsers(msg.users); // Mention için kullanıcı listesi
     addSystemMessage(`${msg.username} odadan ayrıldı`);
 };
 
 const handleChatMessage = (msg) => {
-    addChatMessage(msg.username, msg.avatar, msg.message, msg.timestamp);
+    addChatMessage(msg.username, msg.avatar, msg.message, msg.timestamp, false, msg.reply_to || null);
 };
 
 // Typing indicator handler
@@ -204,8 +265,36 @@ const setupGlobalActions = () => {
         const message = input?.value.trim() || '';
         if (!message) return;
 
-        send('chat', { message });
+        // Reply bilgisini al
+        const replyTo = getReplyingTo();
+        
+        // Mesajı gönder (reply bilgisi ile birlikte)
+        send('chat', { 
+            message,
+            reply_to: replyTo ? {
+                username: replyTo.username,
+                message: replyTo.message,
+                avatar: replyTo.avatar
+            } : null
+        });
+        
         if (input) input.value = '';
+        clearReply(); // Reply preview'ı temizle
+    };
+
+    // Reply to message (msgId ile)
+    window.replyToMessage = (username, message, avatar, msgId = null) => {
+        setReplyingTo(username, message, avatar, msgId);
+    };
+
+    // Cancel reply
+    window.cancelReply = () => {
+        clearReply();
+    };
+    
+    // Scroll to reply message
+    window.scrollToReplyMessage = (element) => {
+        scrollToReplyMessage(element);
     };
 
     // Copy room link
@@ -277,6 +366,9 @@ const init = async () => {
     initUI();
     initChat();
     initPlayer();
+    
+    // Setup notification callback
+    setNotificationCallback(showNotification);
 
     // Random avatar oluştur
     const avatar = getRandomAvatar();

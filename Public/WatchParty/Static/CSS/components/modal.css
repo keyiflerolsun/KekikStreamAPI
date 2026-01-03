@@ -76,7 +76,43 @@
     margin-bottom: 1rem;
 }
 
-.wp-input-group input {
+/* Username Modal Input - Özel stil */
+.wp-username-input-group input {
+    width: 100%;
+    padding: 0.875rem 1.25rem;
+    font-size: 1.125rem;
+    color: rgba(255, 255, 255, 0.95);
+    background: rgba(255, 255, 255, 0.08);
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    outline: none;
+    transition: all 0.25s ease;
+    text-align: center;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    box-sizing: border-box;
+}
+
+.wp-username-input-group input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+    font-weight: 400;
+    letter-spacing: normal;
+}
+
+.wp-username-input-group input:focus {
+    border-color: var(--wp-primary);
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 0 0 4px rgba(239, 127, 26, 0.2);
+    transform: scale(1.02);
+}
+
+.wp-username-input-group input.shake {
+    animation: shake 0.5s ease;
+    border-color: var(--wp-error, #ef4444) !important;
+}
+
+/* Modal içindeki genel input (eski uyumluluk) */
+.wp-modal .wp-input-group input {
     width: 100%;
     padding: 0.75rem 1rem;
     font-size: 1rem;
@@ -91,18 +127,18 @@
     box-sizing: border-box;
 }
 
-.wp-input-group input::placeholder {
+.wp-modal .wp-input-group input::placeholder {
     color: rgba(255, 255, 255, 0.4);
     font-weight: 400;
 }
 
-.wp-input-group input:focus {
+.wp-modal .wp-input-group input:focus {
     border-color: var(--wp-primary);
     background: rgba(255, 255, 255, 0.12);
     box-shadow: 0 0 0 3px rgba(239, 127, 26, 0.15);
 }
 
-.wp-input-group input.shake {
+.wp-modal .wp-input-group input.shake {
     animation: shake 0.5s ease;
     border-color: var(--wp-error, #ef4444) !important;
 }

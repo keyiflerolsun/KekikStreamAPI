@@ -376,18 +376,33 @@ func handleChat(roomID string, user *models.User, msg map[string]interface{}) {
 		return
 	}
 
-	chatMsg := models.NewChatMessage(user.Username, user.Avatar, message)
+	// Reply bilgisini al (opsiyonel)
+	replyTo, _ := msg["reply_to"].(map[string]interface{})
+
+	var chatMsg *models.ChatMessage
+	if replyTo != nil {
+		chatMsg = models.NewChatMessageWithReply(user.Username, user.Avatar, message, replyTo)
+	} else {
+		chatMsg = models.NewChatMessage(user.Username, user.Avatar, message)
+	}
 	manager.Manager.AddChatMessage(roomID, chatMsg)
 
 	room := manager.Manager.GetRoom(roomID)
 	if room != nil {
-		room.Broadcast(map[string]interface{}{
+		broadcastData := map[string]interface{}{
 			"type":      "chat",
 			"username":  user.Username,
 			"avatar":    user.Avatar,
 			"message":   message,
 			"timestamp": chatMsg.Timestamp,
-		}, "")
+		}
+		
+		// Reply bilgisi varsa ekle
+		if replyTo != nil {
+			broadcastData["reply_to"] = replyTo
+		}
+		
+		room.Broadcast(broadcastData, "")
 	}
 }
 

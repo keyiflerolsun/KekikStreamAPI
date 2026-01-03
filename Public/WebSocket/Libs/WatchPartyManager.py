@@ -809,14 +809,14 @@ class WatchPartyManager:
             except Exception:
                 pass
 
-    async def add_chat_message(self, room_id: str, username: str, avatar: str, message: str) -> ChatMessage | None:
+    async def add_chat_message(self, room_id: str, username: str, avatar: str, message: str, reply_to: dict | None = None) -> ChatMessage | None:
         """Chat mesajı ekle (lock protected)"""
         async with self._lock:
             room = self.rooms.get(room_id)
             if not room:
                 return None
 
-            chat_msg = ChatMessage(username=username, avatar=avatar, message=message)
+            chat_msg = ChatMessage(username=username, avatar=avatar, message=message, reply_to=reply_to)
             room.chat_messages.append(chat_msg)
 
             # Son 100 mesajı tut
@@ -938,6 +938,7 @@ class WatchPartyManager:
                     "avatar"    : msg.avatar,
                     "message"   : msg.message,
                     "timestamp" : msg.timestamp,
+                    "reply_to"  : msg.reply_to,
                 }
                 for msg in chat_snapshot
             ],

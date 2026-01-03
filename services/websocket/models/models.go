@@ -58,10 +58,11 @@ func (u *User) SendJSON(data interface{}) error {
 
 // ChatMessage chat mesajı
 type ChatMessage struct {
-	Username  string `json:"username"`
-	Avatar    string `json:"avatar"`
-	Message   string `json:"message"`
-	Timestamp string `json:"timestamp"`
+	Username  string                 `json:"username"`
+	Avatar    string                 `json:"avatar"`
+	Message   string                 `json:"message"`
+	Timestamp string                 `json:"timestamp"`
+	ReplyTo   map[string]interface{} `json:"reply_to,omitempty"`
 }
 
 // NewChatMessage yeni chat mesajı oluşturur
@@ -71,6 +72,18 @@ func NewChatMessage(username, avatar, message string) *ChatMessage {
 		Avatar:    avatar,
 		Message:   message,
 		Timestamp: time.Now().UTC().Format(time.RFC3339), // UTC ISO format
+		ReplyTo:   nil,
+	}
+}
+
+// NewChatMessageWithReply yanıtlı chat mesajı oluşturur
+func NewChatMessageWithReply(username, avatar, message string, replyTo map[string]interface{}) *ChatMessage {
+	return &ChatMessage{
+		Username:  username,
+		Avatar:    avatar,
+		Message:   message,
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+		ReplyTo:   replyTo,
 	}
 }
 
