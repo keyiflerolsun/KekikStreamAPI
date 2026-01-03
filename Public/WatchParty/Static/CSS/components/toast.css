@@ -135,6 +135,11 @@
     .wp-toast:hover {
         transform: translateY(-2px) scale(1.01);
     }
+    
+    /* Video playing modunda header/users gizlenince toast yukarı kayar */
+    body.video-playing .wp-toast-container {
+        top: 0.5rem;
+    }
 }
 
 /* ========================================

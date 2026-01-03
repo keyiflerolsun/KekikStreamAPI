@@ -488,4 +488,16 @@
     body.video-playing .wp-users-list {
         display: none !important;
     }
+    
+    /* Chat messages alanı header/users gizlenince tüm alanı kaplasın */
+    body.video-playing .wp-chat-messages {
+        flex: 1;
+        min-height: 0;
+    }
+    
+    /* Spacer'ı yeniden hesapla - scroll pozisyonunu korumak için */
+    body.video-playing .wp-chat-spacer {
+        flex-grow: 1;
+        min-height: 0;
+    }
 }

@@ -109,10 +109,36 @@ export const updatePing = (ms) => {
 
 export const updateSyncInfoText = (username, action) => {
     const syncInfoText = document.getElementById('sync-info-text');
+    const overlaySyncText = document.getElementById('overlay-sync-text');
+    const text = `${username} ${action}`;
+    
     if (syncInfoText) {
-        syncInfoText.textContent = `${username} ${action}`;
+        syncInfoText.textContent = text;
         setTimeout(() => { syncInfoText.textContent = 'Senkronize'; }, 3000);
     }
+    
+    // Overlay sync text güncelle ve geçici olarak göster
+    if (overlaySyncText) {
+        overlaySyncText.textContent = text;
+        flashPlayerOverlay();
+        setTimeout(() => { overlaySyncText.textContent = 'Senkronize'; }, 3000);
+    }
+};
+
+// Player overlay'i geçici olarak göster
+const flashPlayerOverlay = () => {
+    const overlay = document.getElementById('player-info-overlay');
+    if (!overlay) return;
+    
+    overlay.classList.add('visible');
+    
+    // Önceki timeout'u temizle
+    if (overlay._hideTimeout) clearTimeout(overlay._hideTimeout);
+    
+    // 3 saniye sonra gizle
+    overlay._hideTimeout = setTimeout(() => {
+        overlay.classList.remove('visible');
+    }, 3000);
 };
 
 export const copyRoomLink = async () => {

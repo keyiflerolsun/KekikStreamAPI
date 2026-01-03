@@ -80,6 +80,64 @@
     font-size: 0.75rem;
 }
 
+/* ========================================
+   Video Info Overlay (Mobile Playing Mode)
+   ======================================== */
+.wp-player-info-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: none;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.4) 60%, transparent 100%);
+    pointer-events: none;
+    z-index: 10;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.wp-overlay-title {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.wp-overlay-stats {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    font-size: 0.6875rem;
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+    flex-shrink: 0;
+}
+
+.wp-overlay-viewers,
+.wp-overlay-sync {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.wp-overlay-viewers i {
+    color: var(--wp-primary);
+}
+
+.wp-overlay-sync i {
+    color: var(--wp-success);
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
     .wp-player-container {
@@ -121,6 +179,23 @@
     body.video-playing .wp-player-wrapper {
         max-height: 25dvh; /* More space for chat */
         min-height: 80px; /* Flexible for keyboard - allows chat messages to remain visible */
+    }
+    
+    /* Show info overlay when video is playing */
+    body.video-playing .wp-player-info-overlay {
+        display: flex;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    /* Show on hover */
+    body.video-playing .wp-player-wrapper:hover .wp-player-info-overlay {
+        opacity: 1;
+    }
+    
+    /* Show when data changes (via JS adding .visible class) */
+    body.video-playing .wp-player-info-overlay.visible {
+        opacity: 1;
     }
 }
 

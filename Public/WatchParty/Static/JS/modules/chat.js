@@ -7,7 +7,7 @@ const state = {
     chatMessages: null,
     usersList: null,
     currentUsername: null,
-    typingTimeouts: {},
+    typingUsers: {}, // { username: timeoutId }
     unreadCount: 0,
     isAtBottom: true
 };
@@ -132,6 +132,29 @@ export const updateUsersList = (users) => {
     }).join('');
 
     if (onlineCount) onlineCount.textContent = users.length.toString();
+    
+    // Overlay viewer count güncelle ve geçici olarak göster
+    const overlayViewerCount = document.getElementById('overlay-viewer-count');
+    if (overlayViewerCount) {
+        overlayViewerCount.textContent = users.length.toString();
+        flashOverlay();
+    }
+};
+
+// Overlay'i geçici olarak göster
+const flashOverlay = () => {
+    const overlay = document.getElementById('player-info-overlay');
+    if (!overlay) return;
+    
+    overlay.classList.add('visible');
+    
+    // Önceki timeout'u temizle
+    if (overlay._hideTimeout) clearTimeout(overlay._hideTimeout);
+    
+    // 3 saniye sonra gizle
+    overlay._hideTimeout = setTimeout(() => {
+        overlay.classList.remove('visible');
+    }, 3000);
 };
 
 export const loadChatHistory = (messages) => {
@@ -156,44 +179,76 @@ export const loadChatHistory = (messages) => {
 export const showTypingIndicator = (username) => {
     if (!state.chatMessages) return;
     
-    const indicatorId = `typing-${username}`;
-    let indicator = document.getElementById(indicatorId);
-    
-    if (!indicator) {
-        // Indicator eklemeden ÖNCE scroll pozisyonunu kontrol et
-        const wasNearBottom = 
-            state.chatMessages.scrollHeight - state.chatMessages.scrollTop - state.chatMessages.clientHeight < 100;
-        
-        indicator = document.createElement('div');
-        indicator.id = indicatorId;
-        indicator.className = 'wp-typing-indicator';
-        indicator.innerHTML = `
-            <div class="wp-typing-dots">
-                <span></span><span></span><span></span>
-            </div>
-            <span>${escapeHtml(username)} yazıyor...</span>
-        `;
-        state.chatMessages.appendChild(indicator);
-        
-        // Sadece kullanıcı alttaysa scroll et
-        if (wasNearBottom) {
-            state.chatMessages.scrollTop = state.chatMessages.scrollHeight;
-        }
+    // Önceki timeout'u temizle
+    if (state.typingUsers[username]) {
+        clearTimeout(state.typingUsers[username]);
     }
     
-    // Auto-hide after 3 seconds
-    if (state.typingTimeouts[username]) clearTimeout(state.typingTimeouts[username]);
-    state.typingTimeouts[username] = setTimeout(() => hideTypingIndicator(username), 3000);
+    // 3 saniye sonra bu kullanıcıyı listeden çıkar
+    state.typingUsers[username] = setTimeout(() => {
+        delete state.typingUsers[username];
+        updateTypingIndicatorUI();
+    }, 3000);
+    
+    // UI'ı güncelle
+    updateTypingIndicatorUI();
+};
+
+const updateTypingIndicatorUI = () => {
+    if (!state.chatMessages) return;
+    
+    const typingUsernames = Object.keys(state.typingUsers);
+    let indicator = document.getElementById('typing-indicator');
+    
+    // Kimse yazmıyorsa indicator'ı kaldır
+    if (typingUsernames.length === 0) {
+        if (indicator) indicator.remove();
+        return;
+    }
+    
+    // Scroll pozisyonunu kontrol et
+    const wasNearBottom = 
+        state.chatMessages.scrollHeight - state.chatMessages.scrollTop - state.chatMessages.clientHeight < 100;
+    
+    // Indicator yoksa oluştur
+    if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.id = 'typing-indicator';
+        indicator.className = 'wp-typing-indicator';
+        state.chatMessages.appendChild(indicator);
+    }
+    
+    // Metni oluştur
+    let text;
+    if (typingUsernames.length === 1) {
+        text = `${escapeHtml(typingUsernames[0])} yazıyor`;
+    } else if (typingUsernames.length === 2) {
+        text = `${escapeHtml(typingUsernames[0])} ve ${escapeHtml(typingUsernames[1])} yazıyor`;
+    } else {
+        const others = typingUsernames.slice(0, -1).map(u => escapeHtml(u)).join(', ');
+        const last = escapeHtml(typingUsernames[typingUsernames.length - 1]);
+        text = `${others} ve ${last} yazıyor`;
+    }
+    
+    indicator.innerHTML = `
+        <div class="wp-typing-dots">
+            <span></span><span></span><span></span>
+        </div>
+        <span>${text}...</span>
+    `;
+    
+    // Sadece kullanıcı alttaysa scroll et
+    if (wasNearBottom) {
+        state.chatMessages.scrollTop = state.chatMessages.scrollHeight;
+    }
 };
 
 export const hideTypingIndicator = (username) => {
-    const indicatorId = `typing-${username}`;
-    const indicator = document.getElementById(indicatorId);
-    if (indicator) indicator.remove();
-    if (state.typingTimeouts[username]) {
-        clearTimeout(state.typingTimeouts[username]);
-        delete state.typingTimeouts[username];
+    if (state.typingUsers[username]) {
+        clearTimeout(state.typingUsers[username]);
+        delete state.typingUsers[username];
     }
+    updateTypingIndicatorUI();
 };
 
 export const trackScrollPosition = () => {

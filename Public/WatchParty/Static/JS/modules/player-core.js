@@ -69,6 +69,14 @@ export const setupVideoEventListeners = () => {
     videoPlayer.addEventListener('play', () => {
         document.body.classList.add('video-playing');
         
+        // Chat scroll'u güncelle (header/users gizlenince layout değişir)
+        requestAnimationFrame(() => {
+            const chatMessages = document.getElementById('chat-messages');
+            if (chatMessages) {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        });
+        
         if (shouldIgnoreEvent()) return;
         if (state.playerState !== PlayerState.READY) return;
 
@@ -78,6 +86,14 @@ export const setupVideoEventListeners = () => {
 
     videoPlayer.addEventListener('pause', () => {
         document.body.classList.remove('video-playing');
+        
+        // Chat scroll'u güncelle (header/users görünür olunca layout değişir)
+        requestAnimationFrame(() => {
+            const chatMessages = document.getElementById('chat-messages');
+            if (chatMessages) {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        });
         
         if (shouldIgnoreEvent()) return;
         if (state.playerState === PlayerState.LOADING) return;
@@ -463,6 +479,10 @@ export const loadVideo = async (url, format = 'hls', userAgent = '', referer = '
     if (title && titleEl && videoInfo) {
         titleEl.textContent = title;
         videoInfo.style.display = 'block';
+        
+        // Overlay title güncelle
+        const overlayTitle = document.getElementById('overlay-video-title');
+        if (overlayTitle) overlayTitle.textContent = title;
     }
 
     state.lastLoadedUrl = url;
@@ -558,4 +578,8 @@ export const updateVideoInfo = (title, duration) => {
     if (state.videoTitle && title) state.videoTitle.textContent = title;
     if (state.videoDuration && duration) state.videoDuration.textContent = formatDuration(duration);
     if (state.videoInfo) state.videoInfo.style.display = 'block';
+    
+    // Overlay video title güncelle
+    const overlayTitle = document.getElementById('overlay-video-title');
+    if (overlayTitle && title) overlayTitle.textContent = title;
 };
