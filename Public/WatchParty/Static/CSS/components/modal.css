@@ -107,36 +107,51 @@
     border-color: var(--wp-error, #ef4444) !important;
 }
 
-.wp-btn {
+/* Modal içindeki butonlar - glassmorphism uyumlu */
+.wp-modal .wp-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    padding: 0.75rem 1.25rem;
+    padding: 0.875rem 1.5rem;
     font-size: 0.9375rem;
     font-weight: 600;
     border: none;
-    border-radius: 10px;
+    border-radius: var(--wp-radius-sm);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
 }
 
-.wp-btn-primary {
-    background: linear-gradient(135deg, var(--wp-primary), var(--wp-primary-dark, #d66a10));
-    color: white;
-    box-shadow: 0 4px 15px rgba(239, 127, 26, 0.3);
+.wp-modal .wp-btn-primary {
+    /* Glassmorphism */
+    background: rgba(239, 127, 26, 0.25);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: var(--wp-primary);
+    border: 1px solid rgba(239, 127, 26, 0.5);
+    box-shadow: 
+        0 4px 15px rgba(239, 127, 26, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
-.wp-btn-primary:hover {
+.wp-modal .wp-btn-primary:hover {
+    background: rgba(239, 127, 26, 0.4);
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(239, 127, 26, 0.4);
+    box-shadow: 
+        0 6px 20px rgba(239, 127, 26, 0.35),
+        0 0 25px rgba(239, 127, 26, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    border-color: rgba(239, 127, 26, 0.7);
 }
 
-.wp-btn-primary:active {
+.wp-modal .wp-btn-primary:active {
     transform: translateY(0);
+    box-shadow: 
+        0 2px 8px rgba(239, 127, 26, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
-.wp-btn-block {
+.wp-modal .wp-btn-block {
     width: 100%;
 }
 

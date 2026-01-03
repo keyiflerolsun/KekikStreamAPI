@@ -120,45 +120,43 @@ const setupViewportResizeHandler = () => {
     // Başlangıç viewport height'ını kaydet
     let initialHeight = window.visualViewport.height;
     
+    // Debounced ve async layout güncellemesi
+    let layoutTimeout;
     const updateLayout = () => {
-        if (!isMobile()) {
-            // Masaüstünde CSS'e bırak
-            mainContainer.style.height = '';
-            playerWrapper.style.maxHeight = '';
-            return;
-        }
-        
-        const currentHeight = window.visualViewport.height;
-        const heightRatio = currentHeight / window.screen.height;
-        
-        // Klavye açık mı? (viewport, ekranın %75'inden küçükse)
-        const isKeyboardOpen = heightRatio < 0.75;
-        
-        if (isKeyboardOpen) {
-            // Klavye açıkken tüm container'ı viewport'a sığdır
-            mainContainer.style.height = `${currentHeight}px`;
-            document.body.classList.add('keyboard-open');
-            
-            // Player'ı büyüt (video daha büyük olsun)
-            const isVideoPlaying = document.body.classList.contains('video-playing');
-            const maxHeightPercent = isVideoPlaying ? 30 : 35;
-            const maxHeight = Math.max(100, currentHeight * (maxHeightPercent / 100));
-            playerWrapper.style.maxHeight = `${maxHeight}px`;
-        } else {
-            // Klavye kapalıyken CSS'e bırak
-            mainContainer.style.height = '';
-            playerWrapper.style.maxHeight = '';
-            document.body.classList.remove('keyboard-open');
-            initialHeight = currentHeight;
-        }
-        
-        // Chat scroll'u güncelle
-        requestAnimationFrame(() => {
-            const chatMessages = document.getElementById('chat-messages');
-            if (chatMessages) {
-                chatMessages.scrollTop = chatMessages.scrollHeight;
+        // Debounce - çok sık tetiklenmesin
+        clearTimeout(layoutTimeout);
+        layoutTimeout = setTimeout(() => {
+            if (!isMobile()) {
+                mainContainer.style.height = '';
+                playerWrapper.style.maxHeight = '';
+                return;
             }
-        });
+            
+            const currentHeight = window.visualViewport.height;
+            const heightRatio = currentHeight / window.screen.height;
+            const isKeyboardOpen = heightRatio < 0.75;
+            
+            if (isKeyboardOpen) {
+                mainContainer.style.height = `${currentHeight}px`;
+                document.body.classList.add('keyboard-open');
+                
+                const isVideoPlaying = document.body.classList.contains('video-playing');
+                const maxHeightPercent = isVideoPlaying ? 30 : 35;
+                const maxHeight = Math.max(100, currentHeight * (maxHeightPercent / 100));
+                playerWrapper.style.maxHeight = `${maxHeight}px`;
+            } else {
+                mainContainer.style.height = '';
+                playerWrapper.style.maxHeight = '';
+                document.body.classList.remove('keyboard-open');
+                initialHeight = currentHeight;
+            }
+            
+            // Chat scroll - ayrı timeout ile
+            setTimeout(() => {
+                const chatMessages = document.getElementById('chat-messages');
+                if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
+            }, 0);
+        }, 50); // 50ms debounce
     };
     
     // visualViewport resize event'i - klavye açılıp kapanınca tetiklenir
@@ -187,46 +185,44 @@ export const setupVideoEventListeners = () => {
         return state.isSyncing || 
                state.playerState === PlayerState.LOADING;
     };
-    
-    // Layout güncellemesi - asenkron, event'i engellemesin
-    const updateChatScroll = () => {
-        setTimeout(() => {
-            const chatMessages = document.getElementById('chat-messages');
-            if (chatMessages) {
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-            }
-        }, 0);
-    };
 
     videoPlayer.addEventListener('play', () => {
-        document.body.classList.add('video-playing');
-        updateChatScroll();
+        // Önce callback'i çağır - senkronizasyon için kritik
+        if (!shouldIgnoreEvent() && state.playerState === PlayerState.READY) {
+            state.playerState = PlayerState.PLAYING;
+            callbacks.onPlay?.(videoPlayer.currentTime);
+        }
         
-        if (shouldIgnoreEvent()) return;
-        if (state.playerState !== PlayerState.READY) return;
-
-        state.playerState = PlayerState.PLAYING;
-        callbacks.onPlay?.(videoPlayer.currentTime);
+        // DOM işlemleri async - blocking değil
+        setTimeout(() => {
+            document.body.classList.add('video-playing');
+            const chatMessages = document.getElementById('chat-messages');
+            if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
+        }, 0);
     });
 
     videoPlayer.addEventListener('pause', () => {
-        document.body.classList.remove('video-playing');
-        updateChatScroll();
+        // Önce callback kontrolü - senkronizasyon için kritik
+        if (!shouldIgnoreEvent() && 
+            state.playerState !== PlayerState.LOADING &&
+            state.playerState === PlayerState.PLAYING &&
+            !videoPlayer.ended) {
+            
+            const timeSinceSeek = Date.now() - state.lastSeekTime;
+            const timeSinceBufferEnd = Date.now() - state.lastBufferEndTime;
+            
+            if (timeSinceSeek >= 150 && timeSinceBufferEnd >= 50) {
+                state.playerState = PlayerState.READY;
+                callbacks.onPause?.(videoPlayer.currentTime);
+            }
+        }
         
-        if (shouldIgnoreEvent()) return;
-        if (state.playerState === PlayerState.LOADING) return;
-        if (state.playerState !== PlayerState.PLAYING) return;
-        if (videoPlayer.ended) return;
-        
-        const timeSinceSeek = Date.now() - state.lastSeekTime;
-        // Seek debounce - 200ms (400ms çok uzundu)
-        if (timeSinceSeek < 200) return;
-        
-        const timeSinceBufferEnd = Date.now() - state.lastBufferEndTime;
-        if (timeSinceBufferEnd < 100) return;
-
-        state.playerState = PlayerState.READY;
-        callbacks.onPause?.(videoPlayer.currentTime);
+        // DOM işlemleri async
+        setTimeout(() => {
+            document.body.classList.remove('video-playing');
+            const chatMessages = document.getElementById('chat-messages');
+            if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
+        }, 0);
     });
 
     let seekTimeout;
@@ -240,7 +236,7 @@ export const setupVideoEventListeners = () => {
         clearTimeout(seekTimeout);
         seekTimeout = setTimeout(() => {
             callbacks.onSeek?.(videoPlayer.currentTime);
-        }, 100); // Debounce - 100ms (150ms'den düşürdük)
+        }, 80); // 80ms debounce
     });
 
     videoPlayer.addEventListener('waiting', () => {
