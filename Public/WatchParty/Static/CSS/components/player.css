@@ -279,3 +279,24 @@
         min-height: 70px;
     }
 }
+
+/* ========================================
+   Mobile: Hide seek bar when video is playing
+   Prevents accidental seeking during playback
+   ======================================== */
+@media (max-width: 1024px) {
+    /* Video oynarken timeline/progress bar'ı gizle */
+    body.video-playing #video-player::-webkit-media-controls-timeline {
+        display: none !important;
+    }
+    
+    body.video-playing #video-player::-webkit-media-controls-current-time-display,
+    body.video-playing #video-player::-webkit-media-controls-time-remaining-display {
+        display: none !important;
+    }
+    
+    /* Firefox için */
+    body.video-playing #video-player::-moz-range-track {
+        display: none !important;
+    }
+}
