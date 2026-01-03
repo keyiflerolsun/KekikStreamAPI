@@ -264,35 +264,38 @@ export const setupVideoEventListeners = () => {
 };
 
 // ============== Yardımcı Fonksiyonlar ==============
-export const waitForSeek = async (timeout = 5000) => {
+export const waitForSeek = async (timeout = 1500) => {
     const { videoPlayer } = state;
-    if (!videoPlayer) return;
+    if (!videoPlayer) return true;
+
+    // Zaten seeked durumundaysa hemen çık
+    if (!videoPlayer.seeking) return true;
 
     return new Promise(resolve => {
         let resolved = false;
 
-        const onSeeked = () => {
+        const done = (success) => {
             if (resolved) return;
             resolved = true;
-            resolve(true);
+            videoPlayer.removeEventListener('seeked', onSeeked);
+            resolve(success);
         };
 
+        const onSeeked = () => done(true);
         videoPlayer.addEventListener('seeked', onSeeked, { once: true });
-
         setTimeout(() => {
-            if (!resolved) {
-                resolved = true;
-                videoPlayer.removeEventListener('seeked', onSeeked);
-                logger.video('Seek zaman aşımı - devam ediliyor');
-                resolve(false);
-            }
+            logger.video('Seek zaman aşımı - devam ediliyor');
+            done(false);
         }, timeout);
     });
 };
 
-export const safePlay = async (timeout = 3000) => {
+export const safePlay = async (timeout = 2000) => {
     const { videoPlayer } = state;
     if (!videoPlayer) return { success: false, error: 'Video oynatıcı yok' };
+    
+    // Zaten oynatılıyorsa hemen çık
+    if (!videoPlayer.paused) return { success: true };
 
     try {
         const playPromise = videoPlayer.play();

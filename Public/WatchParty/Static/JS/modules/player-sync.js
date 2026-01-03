@@ -170,43 +170,29 @@ export const handleSync = async (msg) => {
 const waitForCanPlay = () => new Promise((resolve) => {
     const { videoPlayer } = state;
     if (!videoPlayer) return resolve();
+    
+    // Zaten hazırsa hemen çık
+    if (videoPlayer.readyState >= 3) return resolve();
 
     let poll, failsafe;
     const done = () => {
-        cleanup();
+        clearInterval(poll);
+        clearTimeout(failsafe);
+        videoPlayer.removeEventListener('canplay', done);
+        videoPlayer.removeEventListener('canplaythrough', done);
+        videoPlayer.removeEventListener('loadeddata', done);
         resolve();
     };
 
-    const check = () => {
-        // 3: HAVE_FUTURE_DATA, 4: HAVE_ENOUGH_DATA
-        // Hardening: Live HLS için readyState >= 2 (HAVE_CURRENT_DATA) yeterli olabilir
-        // + seeking değil + buffered var
-        if (videoPlayer.readyState >= 3) {
-            done();
-        } else if (videoPlayer.readyState >= 2 && !videoPlayer.seeking && videoPlayer.buffered.length > 0) {
-            // "Son %1" case için erken çıkış
-            done();
-        }
-    };
+    videoPlayer.addEventListener('canplay', done, { once: true });
+    videoPlayer.addEventListener('canplaythrough', done, { once: true });
+    videoPlayer.addEventListener('loadeddata', done, { once: true });
 
-    const onCanPlay = () => check();
-
-    const cleanup = () => {
-        videoPlayer.removeEventListener('canplay', onCanPlay);
-        videoPlayer.removeEventListener('canplaythrough', onCanPlay);
-        videoPlayer.removeEventListener('loadeddata', onCanPlay);
-        clearInterval(poll);
-        clearTimeout(failsafe);
-    };
-
-    videoPlayer.addEventListener('canplay', onCanPlay);
-    videoPlayer.addEventListener('canplaythrough', onCanPlay);
-    videoPlayer.addEventListener('loadeddata', onCanPlay);
-
-    poll = setInterval(check, 150);
-    failsafe = setTimeout(done, 4000); // aşırı beklemeyi önle
-
-    check();
+    poll = setInterval(() => {
+        if (videoPlayer.readyState >= 3) done();
+    }, 100);
+    
+    failsafe = setTimeout(done, 2000); // 4s -> 2s
 });
 
 // ============== Seek Barrier Ready ==============
