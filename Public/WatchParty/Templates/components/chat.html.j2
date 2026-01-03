@@ -32,10 +32,12 @@
             </div>
 
             <!-- Chat Input -->
-            <form class="wp-chat-input" onsubmit="sendMessage(event)">
+            <form class="wp-chat-input" onsubmit="sendMessage(event); return false;">
                 <input type="text" id="chat-input" class="wp-input" 
                        placeholder="Mesaj yaz..." maxlength="500"
-                       onkeydown="if(event.key==='Enter'){sendMessage(event);}">
+                       enterkeyhint="send"
+                       autocomplete="off"
+                       inputmode="text">
                 <button type="submit" class="wp-btn wp-btn-send">
                     <i class="fa-solid fa-paper-plane"></i>
                 </button>

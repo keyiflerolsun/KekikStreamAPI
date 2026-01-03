@@ -260,10 +260,14 @@ const setupGlobalActions = () => {
 
     // Send chat message
     window.sendMessage = (event) => {
-        event.preventDefault();
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        
         const input = document.getElementById('chat-input');
         const message = input?.value.trim() || '';
-        if (!message) return;
+        if (!message) return false;
 
         // Reply bilgisini al
         const replyTo = getReplyingTo();
@@ -278,8 +282,14 @@ const setupGlobalActions = () => {
             } : null
         });
         
-        if (input) input.value = '';
+        if (input) {
+            input.value = '';
+            // Mobile'da klavyeyi kapat (opsiyonel - bazı kullanıcılar istemeyebilir)
+            // input.blur();
+        }
         clearReply(); // Reply preview'ı temizle
+        
+        return false; // Form submit'i engelle
     };
 
     // Reply to message (msgId ile)
