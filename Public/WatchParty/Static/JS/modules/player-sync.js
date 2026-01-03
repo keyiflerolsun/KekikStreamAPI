@@ -18,8 +18,11 @@ export const applyState = async (serverState) => {
     state.isSyncing = true;
     
     logger.sync(`State: ${serverState.current_time.toFixed(1)}s, playing=${serverState.is_playing}`);
+    
+    // Önce zaman ayarla
     videoPlayer.currentTime = clampTime(serverState.current_time);
 
+    // Sonra play/pause - ÖNCELİKLİ
     if (serverState.is_playing) {
         const result = await safePlay();
         
@@ -31,7 +34,8 @@ export const applyState = async (serverState) => {
             return;
         } else {
             logger.error('Initial play failed:', result.error?.message || 'Unknown error');
-            showToast('Video başlatılamadı', 'error');
+            // Toast async - video başlatmayı engellemesin
+            setTimeout(() => showToast('Video başlatılamadı', 'error'), 0);
             state.playerState = PlayerState.READY;
         }
     } else {
@@ -144,7 +148,7 @@ export const handleSync = async (msg) => {
         }
     }
 
-    // Sync play/pause state
+    // Sync play/pause state - ÖNCELİKLİ
     const r = await applyPlayPause(msg.is_playing);
     if (r.blocked) {
         state.isSyncing = false;
@@ -152,7 +156,11 @@ export const handleSync = async (msg) => {
     }
 
     state.isSyncing = false;
-    updateSyncInfoText(msg.triggered_by, msg.is_playing ? 'oynatıyor' : 'durdurdu');
+    
+    // UI güncellemesi - video başladıktan sonra async
+    setTimeout(() => {
+        updateSyncInfoText(msg.triggered_by, msg.is_playing ? 'oynatıyor' : 'durdurdu');
+    }, 0);
 
     // SEEK BARRIER: Buffer dolduktan sonra "hazırım" gönder
     await maybeSeekBarrierReady(msg, true);
