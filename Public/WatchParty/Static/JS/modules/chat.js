@@ -36,15 +36,41 @@ export const initChat = () => {
     
     // Mobile: Klavye açılınca/kapanınca scroll pozisyonunu düzelt
     if ('visualViewport' in window) {
+        let lastHeight = window.visualViewport.height;
+        
         window.visualViewport.addEventListener('resize', () => {
-            // Kullanıcı en alttaysa, scroll pozisyonunu koru
-            if (state.isAtBottom && state.chatMessages) {
+            const currentHeight = window.visualViewport.height;
+            const heightDiff = lastHeight - currentHeight;
+            const isKeyboardOpening = heightDiff > 50; // Boyut önemli ölçüde azaldıysa
+            const isKeyboardClosing = heightDiff < -50; // Boyut önemli ölçüde arttıysa
+            
+            // Body'ye class ekle/çıkar (CSS optimizasyonları için)
+            if (isKeyboardOpening) {
+                document.body.classList.add('keyboard-open');
+            } else if (isKeyboardClosing) {
+                document.body.classList.remove('keyboard-open');
+            }
+            
+            // Kullanıcı en alttaysa veya klavye hareket ediyorsa scroll'u tazele
+            if (state.chatMessages && (state.isAtBottom || isKeyboardOpening || isKeyboardClosing)) {
+                // Kısa bir gecikme ile DOM'un yerleşmesini bekle
                 setTimeout(() => {
-                    state.chatMessages.scrollTop = state.chatMessages.scrollHeight;
+                    scrollToBottom(isKeyboardOpening ? 'auto' : 'smooth');
                 }, 100);
             }
+            
+            lastHeight = currentHeight;
         });
     }
+};
+
+// En aşağıya kaydır
+export const scrollToBottom = (behavior = 'smooth') => {
+    if (!state.chatMessages) return;
+    state.chatMessages.scrollTo({
+        top: state.chatMessages.scrollHeight,
+        behavior: behavior
+    });
 };
 
 // Room users'ı güncelle (mention için)
@@ -235,10 +261,7 @@ export const addChatMessage = (username, avatar, message, timestamp = null, isHi
     // Akıllı auto-scroll
     // Sadece kullanıcı zaten en alttaysa veya kendi mesajıysa scroll et
     if (!isHistoryLoad && (wasNearBottom || isSelf)) {
-        state.chatMessages.scrollTo({
-            top: state.chatMessages.scrollHeight,
-            behavior: 'smooth'
-        });
+        scrollToBottom('smooth');
     }
     
     return msgId; // ID'yi döndür
@@ -265,7 +288,7 @@ export const addSystemMessage = (message) => {
     
     // Sadece kullanıcı alttaysa scroll et
     if (wasNearBottom) {
-        state.chatMessages.scrollTop = state.chatMessages.scrollHeight;
+        scrollToBottom('auto');
     }
 };
 
@@ -420,7 +443,7 @@ const updateTypingIndicatorUI = () => {
     
     // Sadece kullanıcı alttaysa scroll et
     if (wasNearBottom) {
-        state.chatMessages.scrollTop = state.chatMessages.scrollHeight;
+        scrollToBottom('auto');
     }
 };
 
