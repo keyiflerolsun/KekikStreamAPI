@@ -124,6 +124,118 @@ export const updateSyncInfoText = (username, action) => {
         flashOverlayElement(overlaySync);
         setTimeout(() => { overlaySyncText.textContent = 'Senkronize'; }, 3000);
     }
+    
+    // Host Kontrolü Bildirimi - Video üzerinde floating notification
+    showHostControlNotification(username, action);
+};
+
+// ============== Host Control Notification ==============
+// Kim play/pause/seek yaptığını görsel olarak bildirir
+let hostNotificationTimeout = null;
+
+const showHostControlNotification = (username, action) => {
+    // Sistem mesajlarını gösterme (Heartbeat Sync gibi)
+    if (username === 'System' || username === 'Sistem') return;
+    
+    let notification = document.getElementById('host-control-notification');
+    
+    // Yoksa oluştur
+    if (!notification) {
+        notification = document.createElement('div');
+        notification.id = 'host-control-notification';
+        notification.className = 'wp-host-notification';
+        
+        // player-wrapper'a ekle (position: relative olan element)
+        const playerWrapper = document.querySelector('.wp-player-wrapper');
+        if (playerWrapper) {
+            playerWrapper.appendChild(notification);
+        } else {
+            return;
+        }
+    }
+    
+    // Action'a göre ikon belirle
+    let icon = 'fa-play';
+    if (action.includes('durdurdu') || action.includes('pause')) {
+        icon = 'fa-pause';
+    } else if (action.includes('konumuna') || action.includes('atladı') || action.includes('seek')) {
+        icon = 'fa-forward';
+    } else if (action.includes('oynatıyor') || action.includes('play')) {
+        icon = 'fa-play';
+    }
+    
+    notification.innerHTML = `
+        <i class="fa-solid ${icon}"></i>
+        <span><strong>${username}</strong> ${action}</span>
+    `;
+    
+    // Göster
+    notification.classList.remove('hidden');
+    notification.classList.add('visible');
+    
+    // Önceki timeout'u temizle
+    if (hostNotificationTimeout) {
+        clearTimeout(hostNotificationTimeout);
+    }
+    
+    // 3 saniye sonra gizle
+    hostNotificationTimeout = setTimeout(() => {
+        notification.classList.remove('visible');
+        notification.classList.add('hidden');
+    }, 3000);
+};
+
+// ============== Sync Rate Indicator ==============
+// PlaybackRate değişikliklerini görsel olarak gösterir
+let syncRateTimeout = null;
+
+export const updateSyncRateIndicator = (rate) => {
+    const syncInfoEl = document.querySelector('.wp-sync-info');
+    const syncInfoText = document.getElementById('sync-info-text');
+    const syncInfoIcon = syncInfoEl?.querySelector('i');
+    
+    if (!syncInfoEl || !syncInfoText) return;
+    
+    // Önceki timeout'u temizle
+    if (syncRateTimeout) {
+        clearTimeout(syncRateTimeout);
+        syncRateTimeout = null;
+    }
+    
+    // Rate'e göre durum belirle
+    if (rate > 1.0) {
+        // Hızlandırılıyor (geride kaldık, yakalıyoruz)
+        syncInfoEl.classList.remove('synced', 'slowing');
+        syncInfoEl.classList.add('catching-up');
+        syncInfoText.textContent = `Yakalıyor (${rate.toFixed(2)}x)`;
+        if (syncInfoIcon) {
+            syncInfoIcon.className = 'fa-solid fa-forward';
+        }
+    } else if (rate < 1.0) {
+        // Yavaşlatılıyor (ilerdeyiz, bekliyoruz)
+        syncInfoEl.classList.remove('synced', 'catching-up');
+        syncInfoEl.classList.add('slowing');
+        syncInfoText.textContent = `Bekliyor (${rate.toFixed(2)}x)`;
+        if (syncInfoIcon) {
+            syncInfoIcon.className = 'fa-solid fa-backward';
+        }
+    } else {
+        // Normal hız (senkronize)
+        syncInfoEl.classList.remove('catching-up', 'slowing');
+        syncInfoEl.classList.add('synced');
+        syncInfoText.textContent = 'Senkronize';
+        if (syncInfoIcon) {
+            syncInfoIcon.className = 'fa-solid fa-rotate';
+        }
+    }
+    
+    // 5 saniye sonra senkronize göster (rate 1.0 ise hemen, değilse bekle)
+    if (rate === 1.0) {
+        syncRateTimeout = setTimeout(() => {
+            syncInfoEl.classList.remove('catching-up', 'slowing');
+            syncInfoEl.classList.add('synced');
+        }, 500);
+    }
 };
 
 // Belirli bir overlay elementini geçici olarak göster

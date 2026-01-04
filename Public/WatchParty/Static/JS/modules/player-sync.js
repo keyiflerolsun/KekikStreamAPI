@@ -2,7 +2,7 @@
 
 import { PlayerState, state, waitForSeek, safePlay, showInteractionPrompt } from './player-core.min.js';
 import { formatTime, logger } from './utils.min.js';
-import { showToast, updateSyncInfoText } from './ui.min.js';
+import { showToast, updateSyncInfoText, updateSyncRateIndicator } from './ui.min.js';
 
 // ============== İlk Durumu Uygula ==============
 export const applyState = async (serverState) => {
@@ -284,11 +284,13 @@ export const handleSyncCorrection = async (msg) => {
     if (Math.abs(videoPlayer.playbackRate - safeRate) > 0.001) {
         videoPlayer.playbackRate = safeRate;
 
-        // UI geri bildirim (1.0'dan farklıysa)
+        // UI geri bildirim - görsel indikatör güncelle
+        updateSyncRateIndicator(safeRate);
+        
+        // Debug log
         if (safeRate !== 1.0) {
             const action = safeRate > 1.0 ? 'hızlandırılıyor' : 'yavaşlatılıyor';
             logger.sync(`Soft sync: ${action} (${safeRate.toFixed(2)}x)`);
-            updateSyncInfoText('Sistem', action);
         } else {
             logger.sync('Soft sync: normal hız (1.00x)');
         }
