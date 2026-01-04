@@ -87,7 +87,7 @@ func WatchPartyHandler(c *gin.Context) {
 		case "join":
 			user = handleJoin(conn, roomID, msg)
 		case "ping":
-			handlePing(conn, msg)
+			handlePing(conn, roomID, user, msg)
 		case "get_state":
 			handleGetState(conn, roomID)
 		case "play":
@@ -178,17 +178,82 @@ func handleJoin(conn *websocket.Conn, roomID string, msg map[string]interface{})
 	return user
 }
 
-func handlePing(conn *websocket.Conn, msg map[string]interface{}) {
+func handlePing(conn *websocket.Conn, roomID string, user *models.User, msg map[string]interface{}) {
 	response := map[string]interface{}{"type": "pong"}
 	if pingID, ok := msg["_ping_id"]; ok {
 		response["_ping_id"] = pingID
 	}
 	conn.WriteJSON(response)
 
-	// Heartbeat time tracking (Python parity) - client_time loglanabilir
-	if clientTime, ok := msg["current_time"].(float64); ok {
-		_ = clientTime // Gelecekte drift detection için kullanılabilir
+	// Soft sync: client_time varsa drift hesapla ve gerekirse playbackRate düzelt
+	if clientTime, ok := msg["current_time"].(float64); ok && user != nil {
+		checkSoftSync(conn, roomID, user, clientTime)
 	}
+}
+
+// checkSoftSync küçük drift'lerde playbackRate ile yumuşak senkronizasyon sağlar
+// Geride olan hızlanır (1.03x), ilerde olan yavaşlar (0.97x)
+func checkSoftSync(conn *websocket.Conn, roomID string, user *models.User, clientTime float64) {
+	room := manager.Manager.GetRoom(roomID)
+	if room == nil {
+		return
+	}
+
+	room.Mu.RLock()
+	isPlaying := room.IsPlaying
+	roomCurrentTime := room.CurrentTime
+	roomUpdatedAt := room.UpdatedAt
+	room.Mu.RUnlock()
+
+	// Video oynatılmıyorsa soft sync yapma
+	if !isPlaying {
+		// Ama rate'i 1.0'a resetle
+		if user.LastRateSent != 1.0 {
+			user.LastRateSent = 1.0
+			conn.WriteJSON(map[string]interface{}{
+				"type": "sync_correction",
+				"rate": 1.0,
+			})
+		}
+		return
+	}
+
+	// Rate limit: 3 saniyede bir kontrol
+	now := float64(time.Now().UnixMilli()) / 1000
+	if now-user.LastSyncTime < 3.0 {
+		return
+	}
+
+	// Server time hesapla
+	serverTime := roomCurrentTime + (now - roomUpdatedAt)
+	drift := clientTime - serverTime
+
+	var rate float64 = 1.0
+
+	// Soft sync: 0.5s - 3.0s arası drift için playbackRate ayarla
+	if drift > 0.5 {
+		rate = 0.97 // Client ilerde, yavaşlat
+	} else if drift < -0.5 {
+		rate = 1.03 // Client geride, hızlandır
+	}
+
+	// Büyük drift (>3s) için müdahale etme, hard sync devreye girecek
+	if math.Abs(drift) > 3.0 {
+		return
+	}
+
+	// Rate değişmediyse veya zaten aynı rate gönderilmişse skip
+	if rate == user.LastRateSent {
+		return
+	}
+
+	// Rate gönder
+	user.LastSyncTime = now
+	user.LastRateSent = rate
+	conn.WriteJSON(map[string]interface{}{
+		"type": "sync_correction",
+		"rate": rate,
+	})
 }
 
 func handleGetState(conn *websocket.Conn, roomID string) {

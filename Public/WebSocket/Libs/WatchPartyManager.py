@@ -733,7 +733,7 @@ class WatchPartyManager:
             task.cancel()
 
     async def handle_heartbeat(self, room_id: str, user_id: str, client_time: float):
-        """Heartbeat al, stall/büyük drift varsa hard sync gönder (sadeleştirilmiş)"""
+        """Heartbeat al, soft sync veya hard sync gönder (sadeleştirilmiş)"""
         now = time.perf_counter()
         
         ws = None
@@ -748,8 +748,21 @@ class WatchPartyManager:
             if not user:
                 return
 
-            # Oynatılmıyorsa işlem yapma
+            # Oynatılmıyorsa soft sync rate'i resetle
             if not room.is_playing:
+                if user.last_rate_sent != 1.0:
+                    user.last_rate_sent = 1.0
+                    ws = user.websocket
+                    payload = json.dumps({
+                        "type": "sync_correction",
+                        "rate": 1.0,
+                    }, ensure_ascii=False)
+                # Lock dışına çık ve rate reset gönder
+                if ws and payload:
+                    try:
+                        await ws.send_text(payload)
+                    except Exception:
+                        pass
                 return
 
             # Server time hesapla
@@ -779,16 +792,56 @@ class WatchPartyManager:
 
             drift = client_time - server_time
 
+            # ============== SOFT SYNC (0.5s - 3.0s drift) ==============
+            # Küçük drift'lerde playbackRate ile yumuşak senkronizasyon
+            if 0.5 < abs(drift) <= 3.0 and (now - user.last_sync_time) > 3.0:
+                rate = 0.97 if drift > 0 else 1.03  # İlerde yavaşlat, geride hızlandır
+                
+                # Rate değişmediyse gönderme (spam önleme)
+                if rate != user.last_rate_sent:
+                    user.last_sync_time = now
+                    user.last_rate_sent = rate
+                    ws = user.websocket
+                    payload = json.dumps({
+                        "type": "sync_correction",
+                        "rate": rate,
+                    }, ensure_ascii=False)
+                    
+        # Lock dışı gönderim (soft sync için)
+        if ws and payload:
+            try:
+                await ws.send_text(payload)
+            except Exception:
+                pass
+            return  # Soft sync gönderildiyse hard sync'e geçme
+
+        # ============== HARD SYNC (>3s drift veya stall) ==============
+        async with self._lock:
+            room = self.rooms.get(room_id)
+            if not room:
+                return
+            
+            user = room.users.get(user_id)
+            if not user:
+                return
+            
+            if not room.is_playing:
+                return
+            
+            server_time = room.current_time + (now - room.updated_at)
+            drift = client_time - server_time
+
             # Sadece stall veya büyük drift -> hard sync
             need_sync = (
                 (user.stall_count >= 2 and (now - user.last_sync_time) > 3.0) or
-                (abs(drift) > 2.0 and (now - user.last_sync_time) > 3.0)
+                (abs(drift) > 3.0 and (now - user.last_sync_time) > 3.0)
             )
             
             if not need_sync:
                 return
 
             user.last_sync_time        = now
+            user.last_rate_sent        = 1.0  # Hard sync sonrası rate reset
             user.stall_count           = 0
             room.last_recovery_time    = now
             room.last_auto_resume_time = now
@@ -802,7 +855,7 @@ class WatchPartyManager:
                 "triggered_by" : "System (Heartbeat Sync)"
             }, ensure_ascii=False)
         
-        # Lock dışı gönderim
+        # Lock dışı gönderim (hard sync için)
         if ws and payload:
             try:
                 await ws.send_text(payload)

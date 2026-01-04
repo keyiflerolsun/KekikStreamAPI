@@ -263,9 +263,34 @@ export const handleSeek = async (msg) => {
     updateSyncInfoText(msg.triggered_by, `${formatTime(target)} konumuna atladı`);
 };
 
-// ============== Senkronizasyon Düzeltmesi (Server artık göndermiyor, no-op) ==============
+// ============== Senkronizasyon Düzeltmesi (Soft Sync via PlaybackRate) ==============
+// Geride olan hızlanır (1.03x), ilerde olan yavaşlar (0.97x) - fark edilmeden senkronize olur
 export const handleSyncCorrection = async (msg) => {
-    // Server 1A Simplification ile sync_correction göndermiyor.
-    // Bu handler geriye uyumluluk için bırakıldı ama hiçbir şey yapmıyor.
-    return;
+    const { videoPlayer } = state;
+    if (!videoPlayer) return;
+
+    // LOADING veya WAITING_INTERACTION state'lerinde rate değiştirme
+    if (state.playerState === PlayerState.LOADING || state.playerState === PlayerState.WAITING_INTERACTION) {
+        return;
+    }
+
+    // Rate değerini al (default 1.0)
+    const rate = msg.rate || 1.0;
+
+    // Güvenlik: 0.9 - 1.1 arasında tut (aşırı değerleri engelle)
+    const safeRate = Math.max(0.9, Math.min(1.1, rate));
+
+    // Sadece değişiklik varsa uygula (gereksiz log spam önleme)
+    if (Math.abs(videoPlayer.playbackRate - safeRate) > 0.001) {
+        videoPlayer.playbackRate = safeRate;
+
+        // UI geri bildirim (1.0'dan farklıysa)
+        if (safeRate !== 1.0) {
+            const action = safeRate > 1.0 ? 'hızlandırılıyor' : 'yavaşlatılıyor';
+            logger.sync(`Soft sync: ${action} (${safeRate.toFixed(2)}x)`);
+            updateSyncInfoText('Sistem', action);
+        } else {
+            logger.sync('Soft sync: normal hız (1.00x)');
+        }
+    }
 };
