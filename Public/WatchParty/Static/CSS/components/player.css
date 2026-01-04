@@ -371,15 +371,13 @@
     100% { transform: scale(1); }
 }
 
-/* Mobilde daha kompakt */
-@media (max-width: 768px) {
-    .wp-host-notification {
-        padding: 0.5rem 1rem;
-        font-size: 0.8125rem;
-        gap: 0.5rem;
+/* Mobile Video Playing Mode - Hide Controls */
+@media (max-width: 1024px) {
+    body.video-playing .wp-host-notification {
+        display: none !important;
     }
-    
-    .wp-host-notification i {
-        font-size: 1rem;
+
+    body.video-playing .wp-host-notification i {
+        display: none !important;
     }
 }
