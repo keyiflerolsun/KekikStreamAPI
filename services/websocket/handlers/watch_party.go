@@ -65,7 +65,11 @@ func WatchPartyHandler(c *gin.Context) {
 
 		var msg map[string]interface{}
 		if err := json.Unmarshal(raw, &msg); err != nil {
-			sendError(conn, "Geçersiz JSON formatı")
+			if user != nil {
+				sendError(user, "Geçersiz JSON formatı")
+			} else {
+				sendErrorToConn(conn, "Geçersiz JSON formatı")
+			}
 			continue
 		}
 
@@ -77,7 +81,11 @@ func WatchPartyHandler(c *gin.Context) {
 		// Rate limiting
 		if !rateLimiter.Check(msgType) {
 			if !middleware.HighFreqOps[msgType] {
-				sendError(conn, "Çok hızlı işlem yapıyorsunuz")
+				if user != nil {
+					sendError(user, "Çok hızlı işlem yapıyorsunuz")
+				} else {
+					sendErrorToConn(conn, "Çok hızlı işlem yapıyorsunuz")
+				}
 			}
 			continue
 		}
@@ -87,9 +95,11 @@ func WatchPartyHandler(c *gin.Context) {
 		case "join":
 			user = handleJoin(conn, roomID, msg)
 		case "ping":
-			handlePing(conn, roomID, user, msg)
+			if user != nil {
+				handlePing(conn, roomID, user, msg)
+			}
 		case "get_state":
-			handleGetState(conn, roomID)
+			handleGetState(user, roomID)
 		case "play":
 			if user != nil {
 				handlePlay(roomID, user)
@@ -135,8 +145,20 @@ func WatchPartyHandler(c *gin.Context) {
 	}
 }
 
-func sendError(conn *websocket.Conn, message string) {
-	conn.WriteJSON(map[string]interface{}{
+func sendErrorToConn(conn *websocket.Conn, message string) {
+	// join öncesi user yokken mecbur
+	conn.SetWriteDeadline(time.Now().Add(1 * time.Second))
+	_ = conn.WriteJSON(map[string]interface{}{
+		"type":    "error",
+		"message": message,
+	})
+}
+
+func sendError(user *models.User, message string) {
+	if user == nil {
+		return
+	}
+	_ = user.SendJSON(map[string]interface{}{
 		"type":    "error",
 		"message": message,
 	})
@@ -162,7 +184,7 @@ func handleJoin(conn *websocket.Conn, roomID string, msg map[string]interface{})
 	// Room state gönder - Python uyumlu flat format
 	state := room.GetState()
 	state["type"] = "room_state"
-	conn.WriteJSON(state)
+	_ = user.SendJSON(state)
 
 	// Diğerlerine bildir
 	room.Broadcast(map[string]interface{}{
@@ -191,7 +213,13 @@ func handlePing(conn *websocket.Conn, roomID string, user *models.User, msg map[
 			response["_ping_id"] = pingID
 		}
 	}
-	conn.WriteJSON(response)
+	// Pong gönder - user varsa mutex ile, yoksa deadline ile
+	if user != nil {
+		_ = user.SendJSON(response)
+	} else {
+		conn.SetWriteDeadline(time.Now().Add(1 * time.Second))
+		_ = conn.WriteJSON(response)
+	}
 
 	// Soft sync: client_time varsa drift hesapla ve gerekirse playbackRate düzelt
 	if clientTime, ok := msg["current_time"].(float64); ok && user != nil {
@@ -201,7 +229,7 @@ func handlePing(conn *websocket.Conn, roomID string, user *models.User, msg map[
 			isSyncing = s
 		}
 		if !isSyncing {
-			checkSoftSync(conn, roomID, user, clientTime)
+			checkSoftSync(roomID, user, clientTime)
 		} else {
 			// Syncing modunda sadece stall counter'ları resetle
 			user.LastClientTime = clientTime
@@ -216,7 +244,7 @@ func handlePing(conn *websocket.Conn, roomID string, user *models.User, msg map[
 // checkSoftSync küçük drift'lerde playbackRate ile yumuşak senkronizasyon sağlar
 // Geride olan hızlanır (1.03x), ilerde olan yavaşlar (0.97x)
 // Büyük drift (>3s) veya stall durumunda hard sync tetikler
-func checkSoftSync(conn *websocket.Conn, roomID string, user *models.User, clientTime float64) {
+func checkSoftSync(roomID string, user *models.User, clientTime float64) {
 	room := manager.Manager.GetRoom(roomID)
 	if room == nil {
 		return
@@ -245,7 +273,7 @@ func checkSoftSync(conn *websocket.Conn, roomID string, user *models.User, clien
 		// Ama rate'i 1.0'a resetle
 		if user.LastRateSent != 1.0 {
 			user.LastRateSent = 1.0
-			conn.WriteJSON(map[string]interface{}{
+			_ = user.SendJSON(map[string]interface{}{
 				"type": "sync_correction",
 				"rate": 1.0,
 			})
@@ -287,7 +315,7 @@ func checkSoftSync(conn *websocket.Conn, roomID string, user *models.User, clien
 		room.LastAutoResumeTime = now
 		room.Mu.Unlock()
 
-		conn.WriteJSON(map[string]interface{}{
+		_ = user.SendJSON(map[string]interface{}{
 			"type":         "sync",
 			"is_playing":   true,
 			"current_time": serverTime,
@@ -336,18 +364,21 @@ func checkSoftSync(conn *websocket.Conn, roomID string, user *models.User, clien
 	// Rate gönder
 	user.LastSyncTime = now
 	user.LastRateSent = rate
-	conn.WriteJSON(map[string]interface{}{
+	_ = user.SendJSON(map[string]interface{}{
 		"type": "sync_correction",
 		"rate": rate,
 	})
 }
 
-func handleGetState(conn *websocket.Conn, roomID string) {
+func handleGetState(user *models.User, roomID string) {
+	if user == nil {
+		return
+	}
 	room := manager.Manager.GetRoom(roomID)
 	if room != nil {
 		state := room.GetState()
 		state["type"] = "room_state"
-		conn.WriteJSON(state)
+		_ = user.SendJSON(state)
 	}
 }
 

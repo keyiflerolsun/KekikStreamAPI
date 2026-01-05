@@ -16,14 +16,25 @@ class MessageHandler:
 
     async def send_error(self, message: str):
         """Hata mesajı gönder"""
-        await self.websocket.send_text(json.dumps({
+        payload = json.dumps({
             "type"    : "error",
             "message" : message
-        }, ensure_ascii=False))
+        }, ensure_ascii=False)
+
+        if self.user:
+            async with self.user.send_lock:
+                await self.websocket.send_text(payload)
+        else:
+            await self.websocket.send_text(payload)
 
     async def send_json(self, data: dict):
         """JSON mesajı gönder"""
-        await self.websocket.send_text(json.dumps(data, ensure_ascii=False))
+        payload = json.dumps(data, ensure_ascii=False)
+        if self.user:
+            async with self.user.send_lock:
+                await self.websocket.send_text(payload)
+        else:
+            await self.websocket.send_text(payload)
 
     # ============== Handlers ==============
 
@@ -321,7 +332,7 @@ class MessageHandler:
         if ping_id is not None:
             pong_response["_ping_id"] = ping_id
         
-        await self.websocket.send_text(json.dumps(pong_response))
+        await self.send_json(pong_response)
 
         # Her zaman current_time gönderilir (video durmuşsa bile)
         if self.user:

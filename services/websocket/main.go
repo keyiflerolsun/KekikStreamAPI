@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"kekik-websocket/config"
 	"kekik-websocket/handlers"
+	"kekik-websocket/manager"
 	"kekik-websocket/middleware"
 	"net/http"
 
@@ -18,6 +19,9 @@ func main() {
 
 	// Gin mode
 	gin.SetMode(gin.ReleaseMode)
+
+	// RoomManager cleanup ticker'ı başlat
+	manager.Manager.StartCleanupTicker()
 
 	// PTerm Debug Messages
 	pterm.EnableDebugMessages()

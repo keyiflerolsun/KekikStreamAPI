@@ -5,18 +5,112 @@ package manager
 import (
 	"kekik-websocket/models"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
 // RoomManager oda yönetici
 type RoomManager struct {
-	rooms map[string]*models.Room
-	mu    sync.RWMutex
+	rooms       map[string]*models.Room
+	mu          sync.RWMutex
+	cleanupOnce sync.Once
 }
 
 // Global instance
 var Manager = &RoomManager{
 	rooms: make(map[string]*models.Room),
+}
+
+// StartCleanupTicker periyodik temizlik başlatır (dead users & empty rooms)
+func (m *RoomManager) StartCleanupTicker() {
+	m.cleanupOnce.Do(func() {
+		ticker := time.NewTicker(30 * time.Second)
+		go func() {
+			for range ticker.C {
+				m.cleanup()
+			}
+		}()
+	})
+}
+
+func (m *RoomManager) cleanup() {
+	m.mu.Lock()
+	roomIDs := make([]string, 0, len(m.rooms))
+	for id := range m.rooms {
+		roomIDs = append(roomIDs, id)
+	}
+	m.mu.Unlock()
+
+	for _, rid := range roomIDs {
+		room := m.GetRoom(rid)
+		if room == nil {
+			continue
+		}
+
+		// Dead user'ları tespit et ve snapshot al (lock içinde)
+		room.Mu.Lock()
+		deadUserSnapshots := make([]models.UserSnapshot, 0)
+		for _, user := range room.Users {
+			if atomic.LoadInt64(&user.LastSendFailedAt) > 0 {
+				deadUserSnapshots = append(deadUserSnapshots, models.UserSnapshot{
+					UserID:   user.UserID,
+					Username: user.Username,
+					Avatar:   user.Avatar,
+				})
+			}
+		}
+
+		// Dead user'ları temizle ve host re-election yap
+		for _, snap := range deadUserSnapshots {
+			delete(room.Users, snap.UserID)
+			delete(room.BufferingUsers, snap.UserID)
+			delete(room.BufferStartTimeByUser, snap.UserID)
+			delete(room.BufferEndTimeByUser, snap.UserID)
+			delete(room.SeekSyncWaitingUsers, snap.UserID)
+
+			// Boşalan koltuğu doldur (host re-election)
+			if room.HostID == snap.UserID {
+				room.HostID = ""
+			}
+		}
+
+		// Eğer host boş kaldıysa ama hala içeride birileri varsa yeni host seç
+		if room.HostID == "" && len(room.Users) > 0 {
+			for uid := range room.Users {
+				room.HostID = uid
+				break
+			}
+		}
+
+		userCount := len(room.Users)
+
+		// Snapshot users in map format (client expectations parity + avoid deadlock)
+		usersList := make([]map[string]interface{}, 0, len(room.Users))
+		for _, u := range room.Users {
+			usersList = append(usersList, map[string]interface{}{
+				"user_id":  u.UserID,
+				"username": u.Username,
+				"avatar":   u.Avatar,
+				"is_host":  u.UserID == room.HostID,
+			})
+		}
+		room.Mu.Unlock()
+
+		// Silinen her kullanıcı için odaya haber ver (lock dışında)
+		for _, snap := range deadUserSnapshots {
+			room.Broadcast(map[string]interface{}{
+				"type":     "user_left",
+				"user_id":  snap.UserID,
+				"username": snap.Username,
+				"users":    usersList,
+			}, "")
+		}
+
+		// Oda boşsa (veya sadece dead user'lar vardıysa) sil
+		if userCount == 0 {
+			m.RemoveRoom(rid)
+		}
+	}
 }
 
 // GetOrCreateRoom odayı al veya oluştur

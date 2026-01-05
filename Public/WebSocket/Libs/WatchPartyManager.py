@@ -14,6 +14,81 @@ class WatchPartyManager:
     def __init__(self):
         self.rooms: dict[str, Room] = {}
         self._lock = asyncio.Lock()
+        self._cleanup_task = None
+
+    async def _cleanup_loop(self):
+        """Periyodik temizlik (dead users & empty rooms)"""
+        while True:
+            await asyncio.sleep(30)
+            await self._cleanup()
+
+    async def _cleanup(self):
+        """Temizlik mantığı"""
+        async with self._lock:
+            room_ids = list(self.rooms.keys())
+
+            # Cleanup jobs for this room
+            broadcast_payloads = []
+
+            async with self._lock:
+                room = self.rooms.get(room_id)
+                if not room:
+                    continue
+                
+                # Dead user'ları temizle
+                dead_uids = [uid for uid, user in room.users.items() if user.last_send_failed_at > 0]
+                dead_user_snapshots = []
+
+                for uid in dead_uids:
+                    user = room.users[uid]
+                    dead_user_snapshots.append({
+                        "user_id" : user.user_id,
+                        "username": user.username,
+                        "avatar"  : user.avatar
+                    })
+                    
+                    del room.users[uid]
+                    room.buffering_users.discard(uid)
+                    room.buffer_start_time_by_user.pop(uid, None)
+                    room.buffer_end_time_by_user.pop(uid, None)
+                    room.seek_sync_waiting_users.discard(uid)
+
+                    # Host re-election (robust compare with user_id)
+                    if room.host_id == user.user_id:
+                        room.host_id = None
+                
+                # Eğer host boş kaldıysa ama hala içeride birileri varsa yeni host seç
+                if room.host_id is None and room.users:
+                    room.host_id = next(iter(room.users.keys()))
+                
+                # Silinen her kullanıcı için odaya haber ver (data hazırla)
+                if dead_user_snapshots:
+                    # current users list for the broadcast
+                    users_list = [
+                        {
+                            "user_id" : u.user_id,
+                            "username": u.username,
+                            "avatar"  : u.avatar,
+                            "is_host" : u.user_id == room.host_id
+                        }
+                        for u in room.users.values()
+                    ]
+
+                    for snap in dead_user_snapshots:
+                        broadcast_payloads.append({
+                            "type"    : "user_left",
+                            "user_id" : snap["user_id"],
+                            "username": snap["username"],
+                            "users"   : users_list
+                        })
+                
+                # Oda boşsa sil
+                if not room.users:
+                    del self.rooms[room_id]
+
+            # Lock DIŞI: Broadcast task'ları oluştur
+            for payload in broadcast_payloads:
+                asyncio.create_task(self.broadcast_to_room(room_id, payload))
 
     async def get_room(self, room_id: str) -> Room | None:
         """Odayı getir (lock protected)"""
@@ -31,6 +106,13 @@ class WatchPartyManager:
 
     async def join_room(self, room_id: str, websocket: WebSocket, username: str, avatar: str) -> User | None:
         """Odaya katıl"""
+        # Cleanup task'ı ilk join'de lazy-start yap (event loop güvenliği için)
+        if self._cleanup_task is None:
+            try:
+                self._cleanup_task = asyncio.create_task(self._cleanup_loop())
+            except Exception:
+                pass
+
         async with self._lock:
             room = self.rooms.get(room_id)
             if not room:
@@ -901,9 +983,11 @@ class WatchPartyManager:
         # Lock dışı gönderim (rate reset veya soft sync için)
         if ws and payload:
             try:
-                await ws.send_text(payload)
+                async with user.send_lock:
+                    await ws.send_text(payload)
             except Exception:
-                pass
+                # Send fail oldu - user muhtemelen kopmuş, flag at (ileride cleanup için)
+                user.last_send_failed_at = time.perf_counter()
         
         if early_return or not should_check_hard_sync:
             return
@@ -951,9 +1035,11 @@ class WatchPartyManager:
         # Lock dışı gönderim (hard sync için)
         if ws and payload:
             try:
-                await ws.send_text(payload)
+                async with user.send_lock:
+                    await ws.send_text(payload)
             except Exception:
-                pass
+                # Send fail oldu - user muhtemelen kopmuş, flag at (ileride cleanup için)
+                user.last_send_failed_at = time.perf_counter()
 
     async def add_chat_message(self, room_id: str, username: str, avatar: str, message: str, reply_to: dict | None = None) -> ChatMessage | None:
         """Chat mesajı ekle (lock protected)"""

@@ -4,6 +4,7 @@ package models
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -26,6 +27,9 @@ type User struct {
 	LastBufferTriggerTime float64
 	BufferTriggerCount    int
 	LastRateSent          float64
+
+	// Dead user tracking (send fail olunca set edilir) - unixMilli, atomic
+	LastSendFailedAt int64
 
 	mu sync.Mutex
 }
@@ -189,7 +193,10 @@ func (r *Room) Broadcast(data interface{}, excludeUserID string) {
 
 	// Lock dışında write yap (yavaş client'lar diğer işlemleri bloklamasın)
 	for _, user := range users {
-		user.SendJSON(data)
+		if err := user.SendJSON(data); err != nil {
+			// Send fail oldu - user muhtemelen kopmuş, flag at (ileride cleanup için)
+			atomic.StoreInt64(&user.LastSendFailedAt, time.Now().UnixMilli())
+		}
 	}
 }
 
