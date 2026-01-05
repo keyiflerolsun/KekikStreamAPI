@@ -181,29 +181,64 @@ func handleJoin(conn *websocket.Conn, roomID string, msg map[string]interface{})
 func handlePing(conn *websocket.Conn, roomID string, user *models.User, msg map[string]interface{}) {
 	response := map[string]interface{}{"type": "pong"}
 	if pingID, ok := msg["_ping_id"]; ok {
-		response["_ping_id"] = pingID
+		// Ping ID'yi int'e çevir (JS Number uyumluluğu için)
+		switch v := pingID.(type) {
+		case float64:
+			response["_ping_id"] = int(v)
+		case int:
+			response["_ping_id"] = v
+		default:
+			response["_ping_id"] = pingID
+		}
 	}
 	conn.WriteJSON(response)
 
 	// Soft sync: client_time varsa drift hesapla ve gerekirse playbackRate düzelt
 	if clientTime, ok := msg["current_time"].(float64); ok && user != nil {
-		checkSoftSync(conn, roomID, user, clientTime)
+		// syncing flag: client senkronizasyon sırasındaysa drift/stall hesaplamalarını skip et
+		isSyncing := false
+		if s, ok := msg["syncing"].(bool); ok {
+			isSyncing = s
+		}
+		if !isSyncing {
+			checkSoftSync(conn, roomID, user, clientTime)
+		} else {
+			// Syncing modunda sadece stall counter'ları resetle
+			user.LastClientTime = clientTime
+			user.StallCount = 0
+		}
+	} else if user != nil {
+		// current_time yoksa da stall counter'ları resetle
+		user.StallCount = 0
 	}
 }
 
 // checkSoftSync küçük drift'lerde playbackRate ile yumuşak senkronizasyon sağlar
 // Geride olan hızlanır (1.03x), ilerde olan yavaşlar (0.97x)
+// Büyük drift (>3s) veya stall durumunda hard sync tetikler
 func checkSoftSync(conn *websocket.Conn, roomID string, user *models.User, clientTime float64) {
 	room := manager.Manager.GetRoom(roomID)
 	if room == nil {
 		return
 	}
 
+	now := float64(time.Now().UnixMilli()) / 1000
+
 	room.Mu.RLock()
 	isPlaying := room.IsPlaying
 	roomCurrentTime := room.CurrentTime
 	roomUpdatedAt := room.UpdatedAt
+	pauseReason := room.PauseReason
+	lastSeekTime := room.LastSeekTime
+	lastRecoveryTime := room.LastRecoveryTime
+	videoDuration := room.VideoDuration
+	videoFormat := room.VideoFormat
 	room.Mu.RUnlock()
+
+	// Seek barrier aktifken soft sync yapma (zaten hard sync koordinasyonu var)
+	if pauseReason == "seek" {
+		return
+	}
 
 	// Video oynatılmıyorsa soft sync yapma
 	if !isPlaying {
@@ -218,15 +253,66 @@ func checkSoftSync(conn *websocket.Conn, roomID string, user *models.User, clien
 		return
 	}
 
-	// Rate limit: 3 saniyede bir kontrol
-	now := float64(time.Now().UnixMilli()) / 1000
-	if now-user.LastSyncTime < 3.0 {
+	// Seek sonrası 1sn drift ignore (debounce)
+	if now-lastSeekTime < 1.0 {
+		user.LastClientTime = clientTime
+		user.StallCount = 0
 		return
 	}
+
+	// Stall detection (client time ilerlemiyor)
+	if math.Abs(clientTime-user.LastClientTime) < 0.05 {
+		user.StallCount++
+	} else {
+		user.StallCount = 0
+	}
+	user.LastClientTime = clientTime
 
 	// Server time hesapla
 	serverTime := roomCurrentTime + (now - roomUpdatedAt)
 	drift := clientTime - serverTime
+
+	// ============== HARD SYNC (>3s drift veya stall) ==============
+	needHardSync := (user.StallCount >= 2 && (now-user.LastSyncTime) > 3.0) ||
+		(math.Abs(drift) > 3.0 && (now-user.LastSyncTime) > 3.0)
+
+	if needHardSync {
+		user.LastSyncTime = now
+		user.LastRateSent = 1.0 // Hard sync sonrası rate reset
+		user.StallCount = 0
+
+		// Room recovery time güncelle (lock ile)
+		room.Mu.Lock()
+		room.LastRecoveryTime = now
+		room.LastAutoResumeTime = now
+		room.Mu.Unlock()
+
+		conn.WriteJSON(map[string]interface{}{
+			"type":         "sync",
+			"is_playing":   true,
+			"current_time": serverTime,
+			"force_seek":   true,
+			"triggered_by": "System (Heartbeat Sync)",
+		})
+		pterm.Debug.Printf("Hard Sync: %s -> %.2f [%s]\n", user.Username, serverTime, roomID)
+		return
+	}
+
+	// ============== SOFT SYNC (0.5s - 3.0s drift) ==============
+	// Rate limit: 3 saniyede bir kontrol
+	if now-user.LastSyncTime < 3.0 {
+		return
+	}
+
+	// Recovery sonrası 2sn içinde soft sync yapma
+	if now-lastRecoveryTime < 2.0 {
+		return
+	}
+
+	// VOD end guard: non-HLS + sona yakın (önceki 0.5s) correction yapma (spam önleme)
+	if videoFormat != "hls" && videoDuration >= 1.0 && serverTime >= videoDuration-0.5 {
+		return
+	}
 
 	var rate float64 = 1.0
 
@@ -237,7 +323,7 @@ func checkSoftSync(conn *websocket.Conn, roomID string, user *models.User, clien
 		rate = 1.03 // Client geride, hızlandır
 	}
 
-	// Büyük drift (>3s) için müdahale etme, hard sync devreye girecek
+	// Büyük drift (>3s) için soft sync yapma (hard sync devreye girecek)
 	if math.Abs(drift) > 3.0 {
 		return
 	}
@@ -317,7 +403,7 @@ func handlePause(roomID string, user *models.User, msg map[string]interface{}) {
 			reqTime = float64(v)
 		}
 
-		if reqTime >= 0 {
+		if reqTime >= 0 && !math.IsNaN(reqTime) {
 			room.Mu.RLock()
 			is_playing := room.IsPlaying
 			live_time := room.CurrentTime
@@ -461,12 +547,12 @@ func handleChat(roomID string, user *models.User, msg map[string]interface{}) {
 			"message":   message,
 			"timestamp": chatMsg.Timestamp,
 		}
-		
+
 		// Reply bilgisi varsa ekle
 		if replyTo != nil {
 			broadcastData["reply_to"] = replyTo
 		}
-		
+
 		room.Broadcast(broadcastData, "")
 	}
 }
@@ -482,11 +568,147 @@ func handleTyping(roomID string, user *models.User) {
 }
 
 func handleBufferStart(roomID string, user *models.User) {
+	// Per-user buffer spam prevention (30s'de 3+ trigger ignore)
+	now := float64(time.Now().UnixMilli()) / 1000
+	timeSinceLastBuffer := now - user.LastBufferTriggerTime
+
+	if timeSinceLastBuffer < 30.0 {
+		user.BufferTriggerCount++
+	} else {
+		user.BufferTriggerCount = 1
+	}
+	user.LastBufferTriggerTime = now
+
+	// 30 saniyede 3+ kez buffer tetiklediyse ignore et
+	if user.BufferTriggerCount > 3 {
+		return
+	}
+
+	room := manager.Manager.GetRoom(roomID)
+	if room == nil {
+		return
+	}
+
+	// Buffer start zamanını kaydet
+	room.Mu.Lock()
+	room.BufferStartTimeByUser[user.UserID] = now
+	room.Mu.Unlock()
+
 	manager.Manager.SetBufferingStatus(roomID, user.UserID, true)
+
+	// Delayed buffer pause: 2 saniye bekle, hala buffering varsa odayı pause'a al
+	go func(rid string, uid string, startTime float64) {
+		time.Sleep(2 * time.Second)
+
+		r := manager.Manager.GetRoom(rid)
+		if r == nil {
+			return
+		}
+
+		// Lock al, state güncelle
+		r.Mu.Lock()
+
+		// Bu kullanıcı hala buffering mi?
+		if !r.BufferingUsers[uid] {
+			r.Mu.Unlock()
+			return
+		}
+
+		// Buffer start zamanı değişmediyse (aynı buffer event)
+		if r.BufferStartTimeByUser[uid] != startTime {
+			r.Mu.Unlock()
+			return
+		}
+
+		// Oda zaten pause'da ise veya seek barrier aktifse skip
+		if !r.IsPlaying || r.PauseReason == "seek" {
+			r.Mu.Unlock()
+			return
+		}
+
+		// Buffer pause uygula
+		now := float64(time.Now().UnixMilli()) / 1000
+		elapsed := now - r.UpdatedAt
+		r.CurrentTime += elapsed
+		r.IsPlaying = false
+		r.UpdatedAt = now
+		r.LastPauseTime = now
+		r.PauseReason = "buffer"
+		currentTime := r.CurrentTime
+
+		pterm.Debug.Printf("Buffer Pause: %s triggered [%s]\n", uid, rid)
+
+		// Lock'u bırak, sonra broadcast yap (yavaş client'lar diğer işlemleri bloklamasın)
+		r.Mu.Unlock()
+
+		// Broadcast: buffer pause
+		r.Broadcast(map[string]interface{}{
+			"type":         "sync",
+			"is_playing":   false,
+			"current_time": currentTime,
+			"force_seek":   false,
+			"triggered_by": "System (Buffer Pause)",
+		}, "")
+	}(roomID, user.UserID, now)
 }
 
 func handleBufferEnd(roomID string, user *models.User) {
+	now := float64(time.Now().UnixMilli()) / 1000
+
+	room := manager.Manager.GetRoom(roomID)
+	if room == nil {
+		manager.Manager.SetBufferingStatus(roomID, user.UserID, false)
+		return
+	}
+
+	// Buffer end zamanını kaydet
+	room.Mu.Lock()
+	room.BufferEndTimeByUser[user.UserID] = now
+	room.Mu.Unlock()
+
 	manager.Manager.SetBufferingStatus(roomID, user.UserID, false)
+
+	// Auto resume: Buffer pause durumunda ve hiç buffering kullanıcı kalmadıysa
+	room.Mu.Lock()
+
+	// Buffer pause değilse skip
+	if room.PauseReason != "buffer" {
+		room.Mu.Unlock()
+		return
+	}
+
+	// Hala buffering yapan var mı?
+	if len(room.BufferingUsers) > 0 {
+		room.Mu.Unlock()
+		return
+	}
+
+	// Auto resume çok sık olmasın (3s rate limit)
+	if now-room.LastAutoResumeTime < 3.0 {
+		room.Mu.Unlock()
+		return
+	}
+
+	// Auto resume uygula
+	room.IsPlaying = true
+	room.UpdatedAt = now
+	room.LastAutoResumeTime = now
+	room.PauseReason = ""
+	currentTime := room.CurrentTime
+
+	pterm.Debug.Printf("Auto Resume: all buffers cleared [%s]\n", roomID)
+
+	// Lock'u bırak, sonra broadcast yap
+	room.Mu.Unlock()
+
+	// Broadcast: auto resume
+	room.Broadcast(map[string]interface{}{
+		"type":         "sync",
+		"is_playing":   true,
+		"current_time": currentTime,
+		"force_seek":   false,
+		"triggered_by": "System (Auto Resume)",
+	}, "")
 }
 
 func handleVideoChange(roomID string, user *models.User, msg map[string]interface{}) {

@@ -1,6 +1,5 @@
 // Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-// Shared utilities'ten escapeHtml'i import et ve re-export et
 export { escapeHtml } from '/static/shared/JS/dom-utils.min.js';
 
 // Avatar listesi

@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from fastapi     import WebSocket
 from datetime    import datetime
-import uuid, time
+import uuid, time, asyncio
 
 @dataclass
 class User:
@@ -20,6 +20,10 @@ class User:
     last_buffer_trigger_time : float = 0.0   # Son buffer pause tetikleme zamanı
     buffer_trigger_count     : int   = 0     # Ardışık buffer tetikleme sayısı
     last_rate_sent           : float = 1.0   # Son gönderilen playback rate (spam önleme)
+    # Concurrent send protection
+    send_lock : asyncio.Lock = field(default_factory=asyncio.Lock, repr=False, compare=False)
+    # Dead user tracking (send fail olunca set edilir, cleanup için)
+    last_send_failed_at : float = 0.0
 
 @dataclass
 class ChatMessage:

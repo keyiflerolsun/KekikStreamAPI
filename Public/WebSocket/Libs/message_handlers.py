@@ -330,15 +330,67 @@ class MessageHandler:
                 client_time = float(message.get("current_time", 0.0) or 0.0)
             except (TypeError, ValueError):
                 client_time = 0.0
-            await watch_party_manager.handle_heartbeat(self.room_id, self.user.user_id, client_time)
+            
+            # syncing flag: client senkronizasyon sırasında ise drift/stall hesaplamalarını ignore et
+            # Bool normalize: "true" gibi saçma string değerler karşısında güvenli
+            is_syncing = (message.get("syncing") is True)
+            await watch_party_manager.handle_heartbeat(self.room_id, self.user.user_id, client_time, is_syncing)
 
     async def handle_buffer_start(self):
-        """BUFFER_START mesajını işle - Go parity ile sadeleştirildi"""
+        """BUFFER_START mesajını işle - Go parity: spam prevention + delayed pause"""
+        now = time.perf_counter()
+        
+        # Per-user buffer spam prevention (30s'de 3+ trigger → ignore)
+        time_since_last = now - self.user.last_buffer_trigger_time
+        if time_since_last < 30.0:
+            self.user.buffer_trigger_count += 1
+        else:
+            self.user.buffer_trigger_count = 1
+        self.user.last_buffer_trigger_time = now
+        
+        # 30 saniyede 3+ kez buffer tetiklediyse ignore et
+        if self.user.buffer_trigger_count > 3:
+            return
+        
+        # Buffer start zamanını kaydet
+        await watch_party_manager.mark_buffer_start_time(self.room_id, self.user.user_id, now)
         await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, True)
+        
+        # Delayed buffer pause: 2 saniye bekle, hala buffering varsa odayı pause'a al
+        asyncio.create_task(self._delayed_buffer_pause(self.room_id, self.user.user_id, now))
+    
+    async def _delayed_buffer_pause(self, room_id: str, user_id: str, start_time: float):
+        """2 saniye sonra hala buffering varsa odayı pause'a al (Go parity)"""
+        await asyncio.sleep(2.0)
+        
+        result = await watch_party_manager.check_and_apply_buffer_pause(room_id, user_id, start_time)
+        if result and result.get("should_broadcast"):
+            await watch_party_manager.broadcast_to_room(room_id, {
+                "type"         : "sync",
+                "is_playing"   : False,
+                "current_time" : result["current_time"],
+                "force_seek"   : False,
+                "triggered_by" : "System (Buffer Pause)"
+            })
 
     async def handle_buffer_end(self):
-        """BUFFER_END mesajını işle - Go parity ile sadeleştirildi"""
+        """BUFFER_END mesajını işle - Go parity: auto resume when all buffers cleared"""
+        now = time.perf_counter()
+        
+        # Buffer end zamanını kaydet ve status güncelle
+        await watch_party_manager.mark_buffer_end_time(self.room_id, self.user.user_id, now)
         await watch_party_manager.set_buffering_status(self.room_id, self.user.user_id, False)
+        
+        # Auto resume: Buffer pause durumunda ve hiç buffering kullanıcı kalmadıysa
+        result = await watch_party_manager.check_and_apply_auto_resume(self.room_id, now)
+        if result and result.get("should_broadcast"):
+            await watch_party_manager.broadcast_to_room(self.room_id, {
+                "type"         : "sync",
+                "is_playing"   : True,
+                "current_time" : result["current_time"],
+                "force_seek"   : False,
+                "triggered_by" : "System (Auto Resume)"
+            })
 
     async def handle_get_state(self):
         """GET_STATE mesajını işle"""

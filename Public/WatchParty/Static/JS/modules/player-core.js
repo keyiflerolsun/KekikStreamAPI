@@ -745,6 +745,7 @@ const stopSyncInterval = () => {
 
 // ============== Alıcılar ==============
 export const getCurrentTime = () => state.videoPlayer?.currentTime || 0;
+export const isSyncing = () => state.isSyncing;
 export const isPlaying = () => state.playerState === PlayerState.PLAYING;
 export const getLastLoadedUrl = () => state.lastLoadedUrl;
 

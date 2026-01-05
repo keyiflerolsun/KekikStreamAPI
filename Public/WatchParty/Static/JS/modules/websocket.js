@@ -2,7 +2,7 @@
 
 import { sleep } from './utils.min.js';
 import { showToast, updateSyncStatus, showConnectionModal, hideConnectionModal, updatePing } from './ui.min.js';
-import { setWebSocketRef, getCurrentTime } from './player-core.min.js';
+import { setWebSocketRef, getCurrentTime, isSyncing } from './player-core.min.js';
 
 // ============== Config ==============
 const config = {
@@ -17,7 +17,9 @@ const state = {
     isConnected: false,
     reconnectAttempts: 0,
     heartbeatInterval: null,
-    getHeartbeatData: null
+    getHeartbeatData: null,
+    reconnectTimer: null,      // Duplicate reconnect önleme
+    initialConnectDone: false  // İlk bağlantı için resolve/reject
 };
 
 // Ping tracking
@@ -41,6 +43,12 @@ export const connect = async (url) => {
 
     updateSyncStatus('connecting');
 
+    // Önceki reconnect timer'ı iptal et
+    if (state.reconnectTimer) {
+        clearTimeout(state.reconnectTimer);
+        state.reconnectTimer = null;
+    }
+
     return new Promise((resolve, reject) => {
         state.ws = new WebSocket(url);
         setWebSocketRef(state.ws);
@@ -54,7 +62,12 @@ export const connect = async (url) => {
             updateSyncStatus('connected');
             hideConnectionModal();
             startHeartbeat();
-            resolve();
+            
+            // Sadece ilk bağlantıda resolve et
+            if (!state.initialConnectDone) {
+                state.initialConnectDone = true;
+                resolve();
+            }
         };
 
         state.ws.onmessage = (event) => {
@@ -76,11 +89,21 @@ export const connect = async (url) => {
             if (state.reconnectAttempts < config.maxReconnectAttempts) {
                 state.reconnectAttempts++;
                 showConnectionModal();
-                await sleep(config.reconnectDelay);
-                connect(url);
+                
+                // Önceki timer'ı iptal et (duplicate reconnect önleme)
+                if (state.reconnectTimer) {
+                    clearTimeout(state.reconnectTimer);
+                }
+                state.reconnectTimer = setTimeout(() => {
+                    state.reconnectTimer = null;
+                    connect(url);  // void - yeni Promise dönmez
+                }, config.reconnectDelay);
             } else {
                 showToast('Bağlantı kurulamadı. Lütfen sayfayı yenileyin.', 'error');
-                reject(new Error('Max reconnect attempts reached'));
+                // Sadece ilk bağlantı başarısızsa reject et
+                if (!state.initialConnectDone) {
+                    reject(new Error('Max reconnect attempts reached'));
+                }
             }
         };
 
@@ -92,8 +115,8 @@ export const connect = async (url) => {
 
 const handleMessage = (message) => {
     if (message.type === 'pong') {
-        // Expect `_ping_id` to match an outstanding ping
-        const id = message._ping_id;
+        // Ping ID'yi normalize et (Number ile)
+        const id = Number(message._ping_id);
         if (id && state.pendingPings.has(id)) {
             const sent = state.pendingPings.get(id);
             const rtt = Date.now() - sent;
@@ -139,10 +162,12 @@ const startHeartbeat = () => {
         if (state.ws?.readyState === WebSocket.OPEN) {
             const payload = state.getHeartbeatData?.() || {};
             
-            // Payload'da current_time yoksa player'dan al (sync spam önleme)
+            // Her zaman current_time gönder + syncing flag ekle
+            // Server syncing=true iken drift/stall hesaplarını ignore edecek
             if (payload.current_time == null) {
                 payload.current_time = getCurrentTime();
             }
+            payload.syncing = isSyncing();
             
             // create a ping id and record timestamp
             // overflow prevention

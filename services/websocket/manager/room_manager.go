@@ -133,6 +133,21 @@ func (m *RoomManager) Seek(roomID string, targetTime float64) (int, float64) {
 
 	now := float64(time.Now().UnixMilli()) / 1000
 
+	// Non-HLS duration clamp (Python parity)
+	clampedTime := targetTime
+	if room.VideoDuration > 0 && room.VideoFormat != "hls" {
+		safeEnd := room.VideoDuration - 0.25
+		if safeEnd < 0 {
+			safeEnd = 0
+		}
+		if clampedTime > safeEnd {
+			clampedTime = safeEnd
+		}
+	}
+	if clampedTime < 0 {
+		clampedTime = 0
+	}
+
 	// Seek epoch artır
 	room.SeekSyncEpoch++
 	epoch := room.SeekSyncEpoch
@@ -147,16 +162,16 @@ func (m *RoomManager) Seek(roomID string, targetTime float64) (int, float64) {
 	if room.PauseReason != "seek" {
 		room.SeekSyncWasPlaying = room.IsPlaying
 	}
-	room.SeekSyncTargetTime = targetTime
+	room.SeekSyncTargetTime = clampedTime
 
 	// Pause state'e geç
 	room.IsPlaying = false
-	room.CurrentTime = targetTime
+	room.CurrentTime = clampedTime
 	room.UpdatedAt = now
 	room.LastSeekTime = now
 	room.PauseReason = "seek"
 
-	return epoch, targetTime
+	return epoch, clampedTime
 }
 
 // MarkSeekReady kullanıcı seek sync'e hazır

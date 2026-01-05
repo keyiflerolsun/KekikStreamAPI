@@ -201,7 +201,7 @@ const waitForCanPlay = () => new Promise((resolve) => {
         if (videoPlayer.readyState >= 3) done();
     }, 100);
     
-    failsafe = setTimeout(done, 2000); // 4s -> 2s
+    failsafe = setTimeout(done, 4000); // HLS için 4s timeout
 });
 
 // ============== Seek Barrier Ready ==============
@@ -219,7 +219,8 @@ const maybeSeekBarrierReady = async (msg, wait = true) => {
     // Hardening: Seek epoch "truthy" check + robust logic
     const epoch = Number(msg.seek_epoch) || 0;
     
-    if (msg.seek_sync && epoch > 0 && msg.is_playing === false) {
+    // is_playing kontrolü kaldırıldı - msg.seek_sync && epoch > 0 yeterli
+    if (msg.seek_sync && epoch > 0) {
         if (wait) await waitForCanPlay();
         sendSeekReady(epoch);
     }

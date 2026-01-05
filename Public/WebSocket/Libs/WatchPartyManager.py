@@ -20,14 +20,14 @@ class WatchPartyManager:
         async with self._lock:
             return self.rooms.get(room_id)
 
-    async def get_room_users_sockets(self, room_id: str) -> dict[str, WebSocket]:
-        """Odadaki kullanıcıların socketlerini getir (thread-safe copy)"""
+    async def get_room_users_map(self, room_id: str) -> dict[str, "User"]:
+        """Odadaki kullanıcıları User objesi olarak getir (broadcast için)"""
         async with self._lock:
             room = self.rooms.get(room_id)
             if not room:
                 return {}
-            # Return dict: {user_id: websocket}
-            return {uid: u.websocket for uid, u in room.users.items()}
+            # Return dict: {user_id: User}
+            return dict(room.users)
 
     async def join_room(self, room_id: str, websocket: WebSocket, username: str, avatar: str) -> User | None:
         """Odaya katıl"""
@@ -300,6 +300,81 @@ class WatchPartyManager:
                 return False
             room.buffer_start_time_by_user[user_id] = timestamp
             return True
+
+    async def mark_buffer_end_time(self, room_id: str, user_id: str, timestamp: float) -> bool:
+        """Buffer end zamanını user bazında atomik olarak kaydet"""
+        async with self._lock:
+            room = self.rooms.get(room_id)
+            if not room:
+                return False
+            room.buffer_end_time_by_user[user_id] = timestamp
+            return True
+
+    async def check_and_apply_buffer_pause(self, room_id: str, user_id: str, start_time: float) -> dict | None:
+        """
+        Delayed buffer pause kontrolü (Go parity).
+        2s sonra çağrılır. Hala buffering varsa odayı pause'a al.
+        Returns: None veya {"should_broadcast": bool, "current_time": float}
+        """
+        now = time.perf_counter()
+        
+        async with self._lock:
+            room = self.rooms.get(room_id)
+            if not room:
+                return None
+            
+            # Bu kullanıcı hala buffering mi?
+            if user_id not in room.buffering_users:
+                return None
+            
+            # Buffer start zamanı değişmediyse (aynı buffer event)
+            if room.buffer_start_time_by_user.get(user_id) != start_time:
+                return None
+            
+            # Oda zaten pause'da ise veya seek barrier aktifse skip
+            if not room.is_playing or room.pause_reason == "seek":
+                return None
+            
+            # Buffer pause uygula
+            elapsed = now - room.updated_at
+            room.current_time += elapsed
+            room.is_playing = False
+            room.updated_at = now
+            room.last_pause_time = now
+            room.pause_reason = "buffer"
+            
+            return {"should_broadcast": True, "current_time": room.current_time}
+
+    async def check_and_apply_auto_resume(self, room_id: str, now: float) -> dict | None:
+        """
+        Auto resume kontrolü (Go parity).
+        Buffer pause durumunda ve hiç buffering kullanıcı kalmadıysa resume.
+        Returns: None veya {"should_broadcast": bool, "current_time": float}
+        """
+        async with self._lock:
+            room = self.rooms.get(room_id)
+            if not room:
+                return None
+            
+            # Buffer pause değilse skip
+            if room.pause_reason != "buffer":
+                return None
+            
+            # Hala buffering yapan var mı?
+            if len(room.buffering_users) > 0:
+                return None
+            
+            # Auto resume çok sık olmasın (3s rate limit)
+            if now - room.last_auto_resume_time < 3.0:
+                return None
+            
+            # Auto resume uygula
+            room.is_playing = True
+            room.updated_at = now
+            room.last_auto_resume_time = now
+            room.pause_reason = ""
+            
+            return {"should_broadcast": True, "current_time": room.current_time}
 
     async def buffer_end_and_check_resume(
         self, room_id: str, user_id: str, now: float, min_buffer_duration: float, debounce_window: float
@@ -726,18 +801,22 @@ class WatchPartyManager:
             room.seek_sync_waiting_users.clear()
             task = room.pending_seek_sync_task
             room.pending_seek_sync_task = None
+            # Epoch bump: eski timeout task'ları epoch kontrolünde fail etsin
+            room.seek_sync_epoch += 1
             if room.pause_reason in ("seek", "resume_sync"):
                 room.pause_reason = ""
 
         if task and not task.done():
             task.cancel()
 
-    async def handle_heartbeat(self, room_id: str, user_id: str, client_time: float):
+    async def handle_heartbeat(self, room_id: str, user_id: str, client_time: float, is_syncing: bool = False):
         """Heartbeat al, soft sync veya hard sync gönder (sadeleştirilmiş)"""
         now = time.perf_counter()
         
         ws = None
         payload = None
+        early_return = False
+        should_check_hard_sync = True
 
         async with self._lock:
             room = self.rooms.get(room_id)
@@ -746,6 +825,12 @@ class WatchPartyManager:
             
             user = room.users.get(user_id)
             if not user:
+                return
+
+            # Client syncing modunda ise drift/stall hesaplamalarını skip et
+            if is_syncing:
+                user.last_client_time = client_time
+                user.stall_count = 0
                 return
 
             # Oynatılmıyorsa soft sync rate'i resetle
@@ -757,63 +842,71 @@ class WatchPartyManager:
                         "type": "sync_correction",
                         "rate": 1.0,
                     }, ensure_ascii=False)
-                # Lock dışına çık ve rate reset gönder
-                if ws and payload:
-                    try:
-                        await ws.send_text(payload)
-                    except Exception:
-                        pass
-                return
+                early_return = True
+                should_check_hard_sync = False
 
-            # Server time hesapla
-            server_time = room.current_time + (now - room.updated_at)
+            # Seek barrier aktifken soft sync yapma (zaten hard sync koordinasyonu var)
+            elif room.pause_reason == "seek":
+                early_return = True
+                should_check_hard_sync = False
 
-            # VOD duration clamp (sadece non-HLS, HLS duration güvenilmez)
-            if room.video_duration > 0 and room.video_format != "hls":
-                safe_end = max(0.0, room.video_duration - 0.25)
-                server_time = min(server_time, safe_end)
-                
-                # Video sonuna yakın ve süresi yeterli uzunsa correction yapma
-                if room.video_duration >= 1.0 and server_time >= room.video_duration - 0.5:
-                    return
-
-            # Seek sonrası 1sn drift ignore
-            if now - room.last_seek_time < DEBOUNCE_WINDOW:
-                user.last_client_time = client_time
-                user.stall_count = 0
-                return
-
-            # Stall detection
-            if abs(client_time - user.last_client_time) < 0.05:
-                user.stall_count += 1
             else:
-                user.stall_count = 0
-            user.last_client_time = client_time
+                # Server time hesapla
+                server_time = room.current_time + (now - room.updated_at)
 
-            drift = client_time - server_time
-
-            # ============== SOFT SYNC (0.5s - 3.0s drift) ==============
-            # Küçük drift'lerde playbackRate ile yumuşak senkronizasyon
-            if 0.5 < abs(drift) <= 3.0 and (now - user.last_sync_time) > 3.0:
-                rate = 0.97 if drift > 0 else 1.03  # İlerde yavaşlat, geride hızlandır
-                
-                # Rate değişmediyse gönderme (spam önleme)
-                if rate != user.last_rate_sent:
-                    user.last_sync_time = now
-                    user.last_rate_sent = rate
-                    ws = user.websocket
-                    payload = json.dumps({
-                        "type": "sync_correction",
-                        "rate": rate,
-                    }, ensure_ascii=False)
+                # VOD duration clamp (sadece non-HLS, HLS duration güvenilmez)
+                if room.video_duration > 0 and room.video_format != "hls":
+                    safe_end = max(0.0, room.video_duration - 0.25)
+                    server_time = min(server_time, safe_end)
                     
-        # Lock dışı gönderim (soft sync için)
+                    # Video sonuna yakın ve süresi yeterli uzunsa correction yapma
+                    if room.video_duration >= 1.0 and server_time >= room.video_duration - 0.5:
+                        early_return = True
+                        should_check_hard_sync = False
+
+                if not early_return:
+                    # Seek sonrası 1sn drift ignore
+                    if now - room.last_seek_time < DEBOUNCE_WINDOW:
+                        user.last_client_time = client_time
+                        user.stall_count = 0
+                        early_return = True
+                        should_check_hard_sync = False
+
+                if not early_return:
+                    # Stall detection
+                    if abs(client_time - user.last_client_time) < 0.05:
+                        user.stall_count += 1
+                    else:
+                        user.stall_count = 0
+                    user.last_client_time = client_time
+
+                    drift = client_time - server_time
+
+                    # ============== SOFT SYNC (0.5s - 3.0s drift) ==============
+                    # Küçük drift'lerde playbackRate ile yumuşak senkronizasyon
+                    if 0.5 < abs(drift) <= 3.0 and (now - user.last_sync_time) > 3.0:
+                        rate = 0.97 if drift > 0 else 1.03  # İlerde yavaşlat, geride hızlandır
+                        
+                        # Rate değişmediyse gönderme (spam önleme)
+                        if rate != user.last_rate_sent:
+                            user.last_sync_time = now
+                            user.last_rate_sent = rate
+                            ws = user.websocket
+                            payload = json.dumps({
+                                "type": "sync_correction",
+                                "rate": rate,
+                            }, ensure_ascii=False)
+                            should_check_hard_sync = False  # Soft sync gönderilecekse hard sync yapma
+                    
+        # Lock dışı gönderim (rate reset veya soft sync için)
         if ws and payload:
             try:
                 await ws.send_text(payload)
             except Exception:
                 pass
-            return  # Soft sync gönderildiyse hard sync'e geçme
+        
+        if early_return or not should_check_hard_sync:
+            return
 
         # ============== HARD SYNC (>3s drift veya stall) ==============
         async with self._lock:
@@ -879,28 +972,31 @@ class WatchPartyManager:
             return chat_msg
 
     async def broadcast_to_room(self, room_id: str, message: dict, exclude_user_id: str | None = None) -> None:
-        """Odadaki herkese mesaj gönder (parallel safe send)"""
-        users = await self.get_room_users_sockets(room_id)
+        """Odadaki herkese mesaj gönder (parallel safe send with per-user lock)"""
+        users = await self.get_room_users_map(room_id)
         if not users:
             return
 
         message_str = json.dumps(message, ensure_ascii=False)
         
-        # Helper: Safe send with timeout
-        async def _safe_send(ws, msg, timeout=1.5):
+        # Helper: Safe send with timeout + per-user lock (concurrent send protection)
+        # timeout 0.8s - 0.5s çok agresif olabilir (mobil + GC)
+        async def _safe_send(user, msg, timeout=0.8):
             try:
-                await asyncio.wait_for(ws.send_text(msg), timeout=timeout)
+                async with user.send_lock:
+                    await asyncio.wait_for(user.websocket.send_text(msg), timeout=timeout)
             except Exception:
-                pass # Fail silently for slow clients
+                # Send fail oldu - user muhtemelen kopmuş, flag at (ileride cleanup için)
+                user.last_send_failed_at = time.perf_counter()
 
         tasks = []
-        for user_id, websocket in users.items():
+        for user_id, user in users.items():
             if exclude_user_id and user_id == exclude_user_id:
                 continue
-            tasks.append(_safe_send(websocket, message_str))
+            tasks.append(_safe_send(user, message_str))
             
         if tasks:
-            await asyncio.gather(*tasks)
+            await asyncio.gather(*tasks, return_exceptions=True)
 
     async def get_playback_snapshot(self, room_id: str) -> dict | None:
         """Playback state'ini atomic olarak oku"""
@@ -967,15 +1063,16 @@ class WatchPartyManager:
             live_time = min(live_time, safe_end)
 
         return {
-            "room_id"       : room_snapshot["room_id"],
-            "video_url"     : room_snapshot["video_url"],
-            "video_title"   : room_snapshot["video_title"],
-            "video_format"  : room_snapshot["video_format"],
-            "subtitle_url"  : room_snapshot["subtitle_url"],
-            "current_time"  : live_time,
-            "is_playing"    : room_snapshot["is_playing"],
-            "user_agent"    : room_snapshot["user_agent"],
-            "referer"       : room_snapshot["referer"],
+            "room_id"        : room_snapshot["room_id"],
+            "video_url"      : room_snapshot["video_url"],
+            "video_title"    : room_snapshot["video_title"],
+            "video_format"   : room_snapshot["video_format"],
+            "video_duration" : room_snapshot["video_duration"],  # UI + clamp için
+            "subtitle_url"   : room_snapshot["subtitle_url"],
+            "current_time"   : live_time,
+            "is_playing"     : room_snapshot["is_playing"],
+            "user_agent"     : room_snapshot["user_agent"],
+            "referer"        : room_snapshot["referer"],
             "users"         : [
                 {
                     "user_id"  : user.user_id,

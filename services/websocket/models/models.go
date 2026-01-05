@@ -49,10 +49,12 @@ func NewUser(conn *websocket.Conn, username, avatar string) *User {
 	}
 }
 
-// SendJSON JSON mesaj gönderir
+// SendJSON JSON mesaj gönderir (user-level mutex + write deadline)
 func (u *User) SendJSON(data interface{}) error {
 	u.mu.Lock()
 	defer u.mu.Unlock()
+	// Slow client'ı bloke etmeden 1s timeout ile drop
+	u.Conn.SetWriteDeadline(time.Now().Add(1 * time.Second))
 	return u.Conn.WriteJSON(data)
 }
 
@@ -173,14 +175,21 @@ func (r *Room) GetUserCount() int {
 }
 
 // Broadcast tüm kullanıcılara mesaj gönderir
+// Lock optimizasyonu: Önce snapshot al, lock'u bırak, sonra write yap
 func (r *Room) Broadcast(data interface{}, excludeUserID string) {
+	// Snapshot al
 	r.Mu.RLock()
-	defer r.Mu.RUnlock()
-
+	users := make([]*User, 0, len(r.Users))
 	for id, user := range r.Users {
 		if id != excludeUserID {
-			user.SendJSON(data)
+			users = append(users, user)
 		}
+	}
+	r.Mu.RUnlock()
+
+	// Lock dışında write yap (yavaş client'lar diğer işlemleri bloklamasın)
+	for _, user := range users {
+		user.SendJSON(data)
 	}
 }
 
