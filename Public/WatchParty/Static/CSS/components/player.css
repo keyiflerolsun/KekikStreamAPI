@@ -134,7 +134,15 @@
 
 .wp-overlay-sync i {
     color: var(--wp-success);
+    transition: all 0.3s ease;
 }
+
+/* Sync States for Overlay */
+.wp-overlay-sync.catching-up { color: #2ecc71; }
+.wp-overlay-sync.catching-up i { color: #2ecc71; animation: pulse-fast 0.5s ease-in-out infinite; }
+
+.wp-overlay-sync.slowing { color: #3498db; }
+.wp-overlay-sync.slowing i { color: #3498db; animation: pulse-slow 1s ease-in-out infinite; }
 
 /* Responsive */
 @media (max-width: 1024px) {

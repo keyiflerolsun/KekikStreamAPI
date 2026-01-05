@@ -191,11 +191,16 @@ const showHostControlNotification = (username, action) => {
 let syncRateTimeout = null;
 
 export const updateSyncRateIndicator = (rate) => {
+    // Hem Chat bölümündeki hem de Video üzerindeki overlay indikatörlerini seç
     const syncInfoEl = document.querySelector('.wp-sync-info');
     const syncInfoText = document.getElementById('sync-info-text');
-    const syncInfoIcon = syncInfoEl?.querySelector('i');
+    const overlaySyncEl = document.querySelector('.wp-overlay-sync');
+    const overlaySyncText = document.getElementById('overlay-sync-text');
     
-    if (!syncInfoEl || !syncInfoText) return;
+    const elements = [syncInfoEl, overlaySyncEl].filter(el => el != null);
+    const texts = [syncInfoText, overlaySyncText].filter(el => el != null);
+    
+    if (elements.length === 0) return;
     
     // Önceki timeout'u temizle
     if (syncRateTimeout) {
@@ -203,40 +208,41 @@ export const updateSyncRateIndicator = (rate) => {
         syncRateTimeout = null;
     }
     
+    let statusText = 'Senkronize';
+    let iconClass = 'fa-solid fa-rotate';
+    let currentClass = 'synced';
+    
     // Rate'e göre durum belirle
     if (rate > 1.0) {
-        // Hızlandırılıyor (geride kaldık, yakalıyoruz)
-        syncInfoEl.classList.remove('synced', 'slowing');
-        syncInfoEl.classList.add('catching-up');
-        syncInfoText.textContent = `Yakalıyor (${rate.toFixed(2)}x)`;
-        if (syncInfoIcon) {
-            syncInfoIcon.className = 'fa-solid fa-forward';
-        }
+        statusText = `Yakalıyor (${rate.toFixed(2)}x)`;
+        iconClass = 'fa-solid fa-forward';
+        currentClass = 'catching-up';
     } else if (rate < 1.0) {
-        // Yavaşlatılıyor (ilerdeyiz, bekliyoruz)
-        syncInfoEl.classList.remove('synced', 'catching-up');
-        syncInfoEl.classList.add('slowing');
-        syncInfoText.textContent = `Bekliyor (${rate.toFixed(2)}x)`;
-        if (syncInfoIcon) {
-            syncInfoIcon.className = 'fa-solid fa-backward';
-        }
-    } else {
-        // Normal hız (senkronize)
-        syncInfoEl.classList.remove('catching-up', 'slowing');
-        syncInfoEl.classList.add('synced');
-        syncInfoText.textContent = 'Senkronize';
-        if (syncInfoIcon) {
-            syncInfoIcon.className = 'fa-solid fa-rotate';
-        }
+        statusText = `Bekliyor (${rate.toFixed(2)}x)`;
+        iconClass = 'fa-solid fa-backward';
+        currentClass = 'slowing';
     }
     
-    // 5 saniye sonra senkronize göster (rate 1.0 ise hemen, değilse bekle)
-    if (rate === 1.0) {
-        syncRateTimeout = setTimeout(() => {
-            syncInfoEl.classList.remove('catching-up', 'slowing');
-            syncInfoEl.classList.add('synced');
-        }, 500);
-    }
+    // Tüm elementleri güncelle
+    elements.forEach(el => {
+        el.classList.remove('synced', 'catching-up', 'slowing');
+        el.classList.add(currentClass);
+        
+        const icon = el.querySelector('i');
+        if (icon) icon.className = iconClass;
+        
+        // Eğer overlay'deysek ve rate 1.0 değilse, kullanıcıya göstermek için "flash" yap
+        if (el === overlaySyncEl && rate !== 1.0) {
+            flashOverlayElement(el);
+        }
+    });
+    
+    texts.forEach(t => {
+        t.textContent = statusText;
+    });
+    
+    // Rate 1.0 ise (senkronize olduysa), 3 saniye sonra (veya rate değişince) indikatörü temizlemiyoruz 
+    // çünkü 'synced' sınıfı zaten default state. Sadece metni 'Senkronize' tutuyoruz.
 };
 
 
