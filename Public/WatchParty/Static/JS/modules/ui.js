@@ -210,7 +210,7 @@ export const updateSyncRateIndicator = (rate) => {
     
     let statusText = 'Senkronize';
     let iconClass = 'fa-solid fa-rotate';
-    let currentClass = 'synced';
+    let currentClass = '';
     
     // Rate'e göre durum belirle
     if (rate > 1.0) {
@@ -225,11 +225,14 @@ export const updateSyncRateIndicator = (rate) => {
     
     // Tüm elementleri güncelle
     elements.forEach(el => {
-        el.classList.remove('synced', 'catching-up', 'slowing');
-        el.classList.add(currentClass);
-        
+        el.classList.remove('catching-up', 'slowing');
+        if (currentClass) el.classList.add(currentClass);
+
         const icon = el.querySelector('i');
-        if (icon) icon.className = iconClass;
+        if (icon) {
+            // FontAwesome SVG dönüşümü ihtimaline karşı class'ı güvenli set et
+            icon.className = iconClass;
+        }
         
         // Eğer overlay'deysek ve rate 1.0 değilse, kullanıcıya göstermek için "flash" yap
         if (el === overlaySyncEl && rate !== 1.0) {
@@ -240,9 +243,7 @@ export const updateSyncRateIndicator = (rate) => {
     texts.forEach(t => {
         t.textContent = statusText;
     });
-    
-    // Rate 1.0 ise (senkronize olduysa), 3 saniye sonra (veya rate değişince) indikatörü temizlemiyoruz 
-    // çünkü 'synced' sınıfı zaten default state. Sadece metni 'Senkronize' tutuyoruz.
+
 };
 
 

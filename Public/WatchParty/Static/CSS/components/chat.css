@@ -544,12 +544,7 @@
 .wp-sync-info.slowing { background: rgba(52, 152, 219, 0.15); border-color: rgba(52, 152, 219, 0.4); color: #3498db; }
 .wp-sync-info.slowing i { color: #3498db; animation: pulse-slow 1s ease-in-out infinite; }
 
-/* Synced (default) */
-.wp-sync-info.synced { background: rgba(255, 255, 255, 0.05); border-color: transparent; color: var(--wp-text-muted); }
-.wp-sync-info.synced i { color: var(--wp-primary); }
-
 #sync-info-text { transition: all 0.2s ease; }
-.wp-sync-info:not(.synced) #sync-info-text { font-weight: 600; }
 
 /* ────────────────────────────────────────────────────────────
    5. ANIMATIONS

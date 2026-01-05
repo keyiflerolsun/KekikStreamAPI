@@ -24,12 +24,13 @@ class WatchPartyManager:
 
     async def _cleanup(self):
         """Temizlik mantığı"""
+        room_ids = []
         async with self._lock:
             room_ids = list(self.rooms.keys())
 
-            # Cleanup jobs for this room
+        for room_id in room_ids:
             broadcast_payloads = []
-
+            
             async with self._lock:
                 room = self.rooms.get(room_id)
                 if not room:
