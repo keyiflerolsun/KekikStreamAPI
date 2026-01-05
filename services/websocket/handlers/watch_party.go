@@ -407,6 +407,14 @@ func handlePlay(roomID string, user *models.User) {
 	room.Mu.Unlock()
 
 	currentTime := manager.Manager.Play(roomID)
+
+	// Rate reset - Manager.Play sonrası oda kilitlenip kullanıcılar güncellenir
+	room.Mu.Lock()
+	for _, u := range room.Users {
+		u.LastRateSent = 1.0
+	}
+	room.Mu.Unlock()
+
 	room.Broadcast(map[string]interface{}{
 		"type":         "sync",
 		"is_playing":   true,
@@ -457,6 +465,10 @@ func handlePause(roomID string, user *models.User, msg map[string]interface{}) {
 		room.SeekSyncWaitingUsers = make(map[string]bool)
 		room.PauseReason = "manual"
 	}
+	// Her türlü hard sync durumunda kullanıcıların LastRateSent durumunu sıfırla
+	for _, u := range room.Users {
+		u.LastRateSent = 1.0
+	}
 	room.Mu.Unlock()
 
 	currentTime := manager.Manager.Pause(roomID)
@@ -498,6 +510,13 @@ func broadcastSeek(room *models.Room, user *models.User, targetTime float64, tri
 		if shouldResume {
 			r := manager.Manager.GetRoom(rid)
 			if r != nil {
+				// Rate reset
+				r.Mu.Lock()
+				for _, u := range r.Users {
+					u.LastRateSent = 1.0
+				}
+				r.Mu.Unlock()
+
 				r.Broadcast(map[string]interface{}{
 					"type":         "sync",
 					"is_playing":   true,
@@ -509,6 +528,13 @@ func broadcastSeek(room *models.Room, user *models.User, targetTime float64, tri
 			}
 		}
 	}(room.RoomID, epoch)
+
+	// Rate reset
+	room.Mu.Lock()
+	for _, u := range room.Users {
+		u.LastRateSent = 1.0
+	}
+	room.Mu.Unlock()
 
 	room.Broadcast(map[string]interface{}{
 		"type":         "sync",
@@ -540,6 +566,13 @@ func handleSeekReady(roomID string, user *models.User, msg map[string]interface{
 	if shouldResume {
 		room := manager.Manager.GetRoom(roomID)
 		if room != nil {
+			// Rate reset
+			room.Mu.Lock()
+			for _, u := range room.Users {
+				u.LastRateSent = 1.0
+			}
+			room.Mu.Unlock()
+
 			room.Broadcast(map[string]interface{}{
 				"type":         "sync",
 				"is_playing":   true,
@@ -667,6 +700,11 @@ func handleBufferStart(roomID string, user *models.User) {
 		r.PauseReason = "buffer"
 		currentTime := r.CurrentTime
 
+		// Her türlü hard sync durumunda kullanıcıların LastRateSent durumunu sıfırla
+		for _, u := range r.Users {
+			u.LastRateSent = 1.0
+		}
+
 		pterm.Debug.Printf("Buffer Pause: %s triggered [%s]\n", uid, rid)
 
 		// Lock'u bırak, sonra broadcast yap (yavaş client'lar diğer işlemleri bloklamasın)
@@ -726,6 +764,11 @@ func handleBufferEnd(roomID string, user *models.User) {
 	room.LastAutoResumeTime = now
 	room.PauseReason = ""
 	currentTime := room.CurrentTime
+
+	// Her türlü hard sync durumunda kullanıcıların LastRateSent durumunu sıfırla
+	for _, u := range room.Users {
+		u.LastRateSent = 1.0
+	}
 
 	pterm.Debug.Printf("Auto Resume: all buffers cleared [%s]\n", roomID)
 

@@ -305,6 +305,11 @@ class WatchPartyManager:
             room.current_time = t
             room.updated_at = now
             room.pause_reason = reason
+
+            # Reset all user rate trackers on hard sync
+            for user in room.users.values():
+                user.last_rate_sent = 1.0
+
             return t
 
     async def resume_soft(self, room_id: str, now: float) -> float | None:
@@ -324,6 +329,11 @@ class WatchPartyManager:
             room.is_playing = True
             room.updated_at = now
             room.pause_reason = ""
+
+            # Reset all user rate trackers on hard sync
+            for user in room.users.values():
+                user.last_rate_sent = 1.0
+
             return t
 
     async def set_buffering_status(self, room_id: str, user_id: str, is_buffering: bool) -> bool:
@@ -424,7 +434,11 @@ class WatchPartyManager:
             room.updated_at = now
             room.last_pause_time = now
             room.pause_reason = "buffer"
-            
+
+            # Reset all user rate trackers on hard sync
+            for user in room.users.values():
+                user.last_rate_sent = 1.0
+
             return {"should_broadcast": True, "current_time": room.current_time}
 
     async def check_and_apply_auto_resume(self, room_id: str, now: float) -> dict | None:
@@ -455,7 +469,11 @@ class WatchPartyManager:
             room.updated_at = now
             room.last_auto_resume_time = now
             room.pause_reason = ""
-            
+
+            # Reset all user rate trackers on hard sync
+            for user in room.users.values():
+                user.last_rate_sent = 1.0
+
             return {"should_broadcast": True, "current_time": room.current_time}
 
     async def buffer_end_and_check_resume(
@@ -764,6 +782,10 @@ class WatchPartyManager:
             room.updated_at = now
             room.pause_reason = reason
             room.buffering_users.clear()
+            
+            # Reset all user rate trackers on hard sync
+            for user in room.users.values():
+                user.last_rate_sent = 1.0
 
         if old_task and not old_task.done():
             old_task.cancel()
@@ -809,6 +831,10 @@ class WatchPartyManager:
             if should_resume:
                 room.is_playing = True
                 room.updated_at = now
+            
+            # Reset all user rate trackers on hard sync
+            for user in room.users.values():
+                user.last_rate_sent = 1.0
 
             # Seek-sync state'i sıfırla (timeout'un tekrar tetiklenmesini önle)
             room.seek_sync_was_playing = False

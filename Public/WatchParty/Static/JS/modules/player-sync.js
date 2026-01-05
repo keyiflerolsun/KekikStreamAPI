@@ -145,6 +145,13 @@ export const handleSync = async (msg) => {
 
     state.isSyncing = true;
     
+    // Her türlü hard sync (seek/pause/play) durumunda hızı 1.0'a çek
+    const isHard = msg.force_seek || msg.seek_sync || (msg.triggered_by && (msg.triggered_by.includes('Seek') || msg.triggered_by.includes('Buffer')));
+    if (isHard && videoPlayer.playbackRate !== 1.0) {
+        videoPlayer.playbackRate = 1.0;
+        updateSyncRateIndicator(1.0);
+    }
+    
     const target = clampTime(msg.current_time);
     const timeDiff = Math.abs(videoPlayer.currentTime - target);
     const shouldSeek = msg.force_seek || timeDiff > 1.0;  // Soft sync: 1 saniye tolerans
