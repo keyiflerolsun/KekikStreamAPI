@@ -331,8 +331,6 @@ export const updateUsersList = (users) => {
     }
 };
 
-// Belirli bir overlay elementini geçici olarak göster
-// flashOverlayElement is now imported from /static/shared/JS/dom-utils.min.js
 
 export const loadChatHistory = (messages) => {
     if (!state.chatMessages || !messages) return;

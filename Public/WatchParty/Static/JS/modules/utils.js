@@ -1,5 +1,8 @@
 // Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
+// Shared utilities'ten escapeHtml'i import et ve re-export et
+export { escapeHtml } from '/static/shared/JS/dom-utils.min.js';
+
 // Avatar listesi
 const AVATARS = [
     '🎬','🎥','🎞️','📽️','🍿','🎭','🎪',
@@ -34,13 +37,6 @@ export const saveUsername = (username) => {
     } catch {
         // localStorage kullanılamıyorsa sessizce geç
     }
-};
-
-export const escapeHtml = (text) => {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
 };
 
 export const formatTime = (seconds) => {

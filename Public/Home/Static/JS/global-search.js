@@ -1,10 +1,5 @@
 // Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-/**
- * Global Search Entry Point
- * Initializes global search functionality
- */
-
 import { ready } from './utils/dom.min.js';
 import { GlobalSearch } from './components/search.min.js';
 

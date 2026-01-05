@@ -239,8 +239,6 @@ export const updateSyncRateIndicator = (rate) => {
     }
 };
 
-// Belirli bir overlay elementini geçici olarak göster
-// flashOverlayElement is now imported from /static/shared/JS/dom-utils.min.js
 
 // Tüm overlay elementlerini geçici olarak göster (ilk giriş için)
 export const flashAllOverlayElements = () => {

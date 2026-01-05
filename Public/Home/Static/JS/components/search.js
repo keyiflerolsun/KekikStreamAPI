@@ -1,10 +1,5 @@
 // Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-/**
- * Global Search Component
- * Implements progressive search across all plugins
- */
-
 import { $, $$, escapeHtml, scrollTo, addClass, removeClass } from '../utils/dom.min.js';
 import { AbortableFetch } from '../utils/fetch.min.js';
 
@@ -31,9 +26,6 @@ export class GlobalSearch {
         this.activeFilters = new Set();
     }
     
-    /**
-     * Initialize search component
-     */
     init() {
         if (!this.searchInput) return;
         
@@ -54,10 +46,7 @@ export class GlobalSearch {
         // Auto-focus
         this.searchInput.focus();
     }
-    
-    /**
-     * Perform global search
-     */
+
     async performSearch() {
         const query = this.searchInput.value.trim();
         
@@ -129,12 +118,6 @@ export class GlobalSearch {
         }
     }
     
-    /**
-     * Search in a specific plugin
-     * @param {string} pluginName - Plugin name
-     * @param {string} query - Search query
-     * @returns {Promise<Array>}
-     */
     async searchInPlugin(pluginName, query, fetchHelper = null, fetchConfig = {}) {
         try {
             const url = `/api/v1/search?plugin=${encodeURIComponent(pluginName)}&query=${encodeURIComponent(query)}`;
@@ -156,10 +139,6 @@ export class GlobalSearch {
         }
     }
     
-    /**
-     * Add loading card for plugin
-     * @param {string} pluginName - Plugin name
-     */
     addLoadingCard(pluginName) {
         const loadingCard = document.createElement('div');
         loadingCard.className = 'loading-card';
@@ -171,10 +150,6 @@ export class GlobalSearch {
         this.resultsGrid.appendChild(loadingCard);
     }
     
-    /**
-     * Remove loading card
-     * @param {string} pluginName - Plugin name
-     */
     removeLoadingCard(pluginName) {
         const loadingCard = $(`#loading-${pluginName}`);
         if (loadingCard) {
@@ -183,11 +158,6 @@ export class GlobalSearch {
         }
     }
     
-    /**
-     * Replace loading card with results
-     * @param {string} pluginName - Plugin name
-     * @param {Array} results - Search results
-     */
     replaceLoadingWithResults(pluginName, results) {
         const loadingCard = $(`#loading-${pluginName}`);
         if (!loadingCard) return;
@@ -214,12 +184,6 @@ export class GlobalSearch {
         });
     }
     
-    /**
-     * Create result card element
-     * @param {string} pluginName - Plugin name
-     * @param {Object} result - Result data
-     * @returns {Element}
-     */
     createResultCard(pluginName, result) {
         const card = document.createElement('a');
         card.href = `/icerik/${encodeURIComponent(pluginName)}?url=${result.url}`;
@@ -239,12 +203,6 @@ export class GlobalSearch {
         return card;
     }
     
-    /**
-     * Update search status message
-     * @param {number} completed - Completed searches
-     * @param {number} total - Total searches
-     * @param {number} resultsCount - Results count
-     */
     updateSearchStatus(completed, total, resultsCount) {
         if (completed === total) {
             if (resultsCount === 0) {
@@ -257,9 +215,6 @@ export class GlobalSearch {
         }
     }
     
-    /**
-     * Show no results message
-     */
     showNoResults() {
         this.resultsGrid.innerHTML = `
             <div class="no-results" style="grid-column: 1 / -1;">
@@ -271,9 +226,6 @@ export class GlobalSearch {
         this.showStatus('Sonuç bulunamadı', 'error');
     }
     
-    /**
-     * Clear search and reset UI
-     */
     clearSearch() {
         this.searchInput.value = '';
         this.searchResults.style.display = 'none';
@@ -292,9 +244,6 @@ export class GlobalSearch {
         this.fetchHelper.abort();
     }
     
-    /**
-     * Render plugin filters
-     */
     renderFilters() {
         if (this.searchResultsByPlugin.size === 0) {
             this.pluginFilters.style.display = 'none';
@@ -325,10 +274,6 @@ export class GlobalSearch {
         this.pluginFilters.style.display = 'block';
     }
     
-    /**
-     * Toggle plugin filter
-     * @param {string} pluginName - Plugin name to toggle
-     */
     toggleFilter(pluginName) {
         if (this.activeFilters.has(pluginName)) {
             this.activeFilters.delete(pluginName);
@@ -340,18 +285,12 @@ export class GlobalSearch {
         this.applyFilters();
     }
     
-    /**
-     * Clear all active filters
-     */
     clearFilters() {
         this.activeFilters.clear();
         this.updateFilterButtons();
         this.applyFilters();
     }
     
-    /**
-     * Update filter button states
-     */
     updateFilterButtons() {
         const buttons = $$('.filter-button', this.filtersContainer);
         buttons.forEach(button => {
@@ -366,9 +305,6 @@ export class GlobalSearch {
         });
     }
     
-    /**
-     * Apply active filters to results
-     */
     applyFilters() {
         this.resultsGrid.innerHTML = '';
         
@@ -396,11 +332,6 @@ export class GlobalSearch {
         }
     }
     
-    /**
-     * Show status message
-     * @param {string} message - Status message
-     * @param {string} type - Status type (searching, success, error)
-     */
     showStatus(message, type = '') {
         this.searchStatus.textContent = message;
         this.searchStatus.className = 'search-status';

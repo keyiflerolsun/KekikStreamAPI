@@ -467,8 +467,6 @@ export const safePlay = async (timeout = 2000) => {
     }
 };
 
-// ============== Format Algılama ==============
-// detectFormat is now imported from /static/shared/JS/video-utils.min.js
 
 // ============== HLS Yükleme ==============
 const loadHls = (url, userAgent = '', referer = '', useProxy = false) => {

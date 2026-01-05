@@ -1,10 +1,5 @@
 // Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-/**
- * Logger Utility
- * Utility for logging and diagnostics
- */
-
 export class Logger {
     constructor(debugMode = false, maxLogs = 200) {
         this.logs = [];
@@ -13,13 +8,6 @@ export class Logger {
         this.startTime = Date.now();
     }
     
-    /**
-     * Log a message
-     * @param {string} level - Log level (INFO, WARN, ERROR)
-     * @param {string} message - Log message
-     * @param {*} data - Additional data
-     * @returns {Object} Log entry
-     */
     log(level, message, data = null) {
         const logEntry = {
             time: new Date().toISOString().substr(11, 8),
@@ -45,55 +33,26 @@ export class Logger {
         return logEntry;
     }
     
-    /**
-     * Log info message
-     * @param {string} message - Message
-     * @param {*} data - Additional data
-     * @returns {Object}
-     */
     info(message, data = null) {
         return this.log('INFO', message, data);
     }
     
-    /**
-     * Log warning message
-     * @param {string} message - Message
-     * @param {*} data - Additional data
-     * @returns {Object}
-     */
     warn(message, data = null) {
         return this.log('WARN', message, data);
     }
     
-    /**
-     * Log error message
-     * @param {string} message - Message
-     * @param {*} data - Additional data
-     * @returns {Object}
-     */
     error(message, data = null) {
         return this.log('ERROR', message, data);
     }
     
-    /**
-     * Clear all logs
-     */
     clear() {
         this.logs = [];
     }
     
-    /**
-     * Get all logs
-     * @returns {Array}
-     */
     getLogs() {
         return this.logs;
     }
     
-    /**
-     * Get formatted logs as string
-     * @returns {string}
-     */
     getFormattedLogs() {
         return this.logs.map(entry => {
             const dataStr = entry.data ? 
@@ -103,10 +62,6 @@ export class Logger {
         }).join('\n');
     }
     
-    /**
-     * Export logs to file
-     * @param {string} filename - Filename
-     */
     exportLogs(filename = null) {
         const logText = this.getFormattedLogs();
         const blob = new Blob([logText], { type: 'text/plain' });
@@ -123,11 +78,6 @@ export class Logger {
     }
 }
 
-/**
- * Create a simple console logger
- * @param {string} prefix - Log prefix
- * @returns {Object}
- */
 export function createConsoleLogger(prefix = '') {
     return {
         info: (msg, ...args) => console.log(`[${prefix}] ${msg}`, ...args),

@@ -167,13 +167,6 @@ export default class VideoPlayer {
             this.loadingTimeout = null;
         }
 
-        // Event listener'ları temizle - bind edilmiş fonksiyonları saklamadığımız için removeEventListener çalışmayabilir
-        // Ancak yeni video yüklendiğinde video elementi sıfırlanıyor mu? Hayır.
-        // Bu yüzden event listenerları düzgün temizlemek için referansları saklamamız gerekirdi.
-        // Basitlik için video elementini klonlayıp değiştirmek bir yöntem olabilir ama şimdilik manuel temizleme deneyelim.
-        // Not: Arrow function kullandığımız için removeEventListener zorlaşır.
-        // Çözüm: Event listenerları sınıf metodu olarak tanımlayıp bind etmek.
-        
         // Mevcut track'leri temizle
         while (this.videoPlayer.firstChild) {
             this.videoPlayer.removeChild(this.videoPlayer.firstChild);
@@ -286,12 +279,6 @@ export default class VideoPlayer {
         // Video ayarları
         this.videoPlayer.muted = false;
 
-        // Event listener'ları ekle (bind ile context koru)
-        // Not: removeEventListener için referansları saklamak daha iyi olurdu ama basitlik için
-        // her loadVideo çağrısında video elementini temizleyip yeniden oluşturmak yerine
-        // onVideoLoaded gibi metodları arrow function veya bind ile kullanıyoruz.
-        // Ancak cleanup'ta remove edemiyoruz bu şekilde.
-        // Daha temiz bir yaklaşım: video elementini klonla ve değiştir.
         const newVideoPlayer = this.videoPlayer.cloneNode(true);
         this.videoPlayer.parentNode.replaceChild(newVideoPlayer, this.videoPlayer);
         this.videoPlayer = newVideoPlayer;
@@ -311,8 +298,6 @@ export default class VideoPlayer {
 
         this.logger.info('Proxy URL oluşturuldu', proxyUrl);
 
-        // URL'den format tespiti (shared utility kullan)
-        // detectFormat is now imported from /static/shared/JS/video-utils.min.js
 
         // Video formatını proxy'den Content-Type ile belirle
         this.logger.info('Video formatı tespit ediliyor (Content-Type sorgulanıyor)...');

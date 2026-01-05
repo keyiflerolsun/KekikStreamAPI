@@ -1,16 +1,5 @@
 // Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-/**
- * Fetch and HTTP Utilities
- * Modern fetch wrappers with error handling
- */
-
-/**
- * Fetch JSON data
- * @param {string} url - URL to fetch
- * @param {Object} options - Fetch options
- * @returns {Promise<any>}
- */
 export async function fetchJSON(url, options = {}) {
     try {
         const response = await fetch(url, options);
@@ -26,13 +15,6 @@ export async function fetchJSON(url, options = {}) {
     }
 }
 
-/**
- * Fetch with timeout
- * @param {string} url - URL to fetch
- * @param {Object} options - Fetch options
- * @param {number} timeout - Timeout in ms
- * @returns {Promise<Response>}
- */
 export async function fetchWithTimeout(url, options = {}, timeout = 5000) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -53,23 +35,12 @@ export async function fetchWithTimeout(url, options = {}, timeout = 5000) {
     }
 }
 
-/**
- * Abortable Fetch Class
- * Allows creating abortable fetch requests
- */
 export class AbortableFetch {
     constructor() {
         // Keep track of all active controllers so we can support concurrent requests
         this.controllers = new Set();
     }
     
-    /**
-     * Execute fetch request
-     * @param {string} url - URL to fetch
-     * @param {Object} options - Fetch options
-     * @param {Object} config - Additional config, e.g. { abortPrevious: true }
-     * @returns {Promise<Response>}
-     */
     async fetch(url, options = {}, config = {}) {
         const { abortPrevious = true } = config;
         // Abort previous requests if requested
@@ -97,9 +68,6 @@ export class AbortableFetch {
         }
     }
     
-    /**
-     * Abort current request
-     */
     abort() {
         if (this.controllers && this.controllers.size > 0) {
             this.controllers.forEach(ctrl => {
@@ -109,22 +77,11 @@ export class AbortableFetch {
         }
     }
     
-    /**
-     * Check if request is active
-     * @returns {boolean}
-     */
     isActive() {
         return this.controllers && this.controllers.size > 0;
     }
 }
 
-/**
- * POST request helper
- * @param {string} url - URL to POST
- * @param {Object} data - Data to send
- * @param {Object} options - Additional fetch options
- * @returns {Promise<any>}
- */
 export async function post(url, data, options = {}) {
     return fetchJSON(url, {
         method: 'POST',
@@ -137,13 +94,6 @@ export async function post(url, data, options = {}) {
     });
 }
 
-/**
- * GET request helper
- * @param {string} url - URL to GET
- * @param {Object} params - URL parameters
- * @param {Object} options - Additional fetch options
- * @returns {Promise<any>}
- */
 export async function get(url, params = {}, options = {}) {
     const queryString = new URLSearchParams(params).toString();
     const fullUrl = queryString ? `${url}?${queryString}` : url;
