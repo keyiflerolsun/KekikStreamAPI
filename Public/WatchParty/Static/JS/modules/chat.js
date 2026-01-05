@@ -1,6 +1,7 @@
 // Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 import { escapeHtml } from './utils.min.js';
+import { flashOverlayElement, isNearBottom } from '/static/shared/JS/dom-utils.min.js';
 
 // ============== State ==============
 const state = {
@@ -191,9 +192,7 @@ export const addChatMessage = (username, avatar, message, timestamp = null, isHi
     const isSelf = state.currentUsername && username === state.currentUsername;
     
     // ÖNEMLİ: Mesaj eklenmeden ÖNCE scroll pozisyonunu kontrol et
-    const wasNearBottom = !isHistoryLoad && (
-        state.chatMessages.scrollHeight - state.chatMessages.scrollTop - state.chatMessages.clientHeight < 100
-    );
+    const wasNearBottom = !isHistoryLoad && isNearBottom(state.chatMessages);
 
     // Notification kontrolü (kendi mesajım değilse ve history yüklemesi değilse)
     const isNotification = !isSelf && !isHistoryLoad && checkForNotification(username, message, replyTo);
@@ -271,8 +270,7 @@ export const addSystemMessage = (message) => {
     if (!state.chatMessages) return;
     
     // Sistem mesajı eklemeden ÖNCE scroll pozisyonunu kontrol et
-    const wasNearBottom = 
-        state.chatMessages.scrollHeight - state.chatMessages.scrollTop - state.chatMessages.clientHeight < 100;
+    const wasNearBottom = isNearBottom(state.chatMessages);
 
     const msgElement = document.createElement('div');
     msgElement.className = 'wp-chat-system';
@@ -334,19 +332,7 @@ export const updateUsersList = (users) => {
 };
 
 // Belirli bir overlay elementini geçici olarak göster
-const flashOverlayElement = (element) => {
-    if (!element) return;
-    
-    element.classList.add('flash-visible');
-    
-    // Önceki timeout'u temizle
-    if (element._hideTimeout) clearTimeout(element._hideTimeout);
-    
-    // 3 saniye sonra gizle
-    element._hideTimeout = setTimeout(() => {
-        element.classList.remove('flash-visible');
-    }, 3000);
-};
+// flashOverlayElement is now imported from /static/shared/JS/dom-utils.min.js
 
 export const loadChatHistory = (messages) => {
     if (!state.chatMessages || !messages) return;
@@ -405,8 +391,7 @@ const updateTypingIndicatorUI = () => {
     }
     
     // Scroll pozisyonunu kontrol et
-    const wasNearBottom = 
-        state.chatMessages.scrollHeight - state.chatMessages.scrollTop - state.chatMessages.clientHeight < 100;
+    const wasNearBottom = isNearBottom(state.chatMessages);
     
     // Indicator yoksa oluştur
     if (!indicator) {
@@ -459,8 +444,8 @@ export const trackScrollPosition = () => {
     if (!state.chatMessages) return;
     
     state.chatMessages.addEventListener('scroll', () => {
-        const { scrollTop, scrollHeight, clientHeight } = state.chatMessages;
-        state.isAtBottom = scrollHeight - scrollTop - clientHeight < 100;
+        const isBottom = isNearBottom(state.chatMessages);
+        state.isAtBottom = isBottom;
         
         if (state.isAtBottom) {
             state.unreadCount = 0;

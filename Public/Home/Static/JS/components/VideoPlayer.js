@@ -1,7 +1,8 @@
 // Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 import VideoLogger from './VideoLogger.min.js';
-import { detectGoServices, buildProxyUrl as buildServiceProxyUrl, getProxyBaseUrl } from '/static/shared/JS/service-detector.min.js';
+import { detectGoServices, buildProxyUrl as buildServiceProxyUrl } from '/static/shared/JS/service-detector.min.js';
+import { detectFormat, parseRemoteUrl, createHlsConfig } from '/static/shared/JS/video-utils.min.js';
 
 export default class VideoPlayer {
     constructor() {
@@ -310,15 +311,8 @@ export default class VideoPlayer {
 
         this.logger.info('Proxy URL oluşturuldu', proxyUrl);
 
-        // URL'den format tespiti (player-core.js ile uyumlu)
-        const detectFormatFromUrl = (url) => {
-            const lowerUrl = url.toLowerCase();
-            if (lowerUrl.includes('.m3u8') || lowerUrl.includes('/hls/') || lowerUrl.includes('/m3u8/')) return 'hls';
-            if (lowerUrl.includes('.mp4') || lowerUrl.includes('/mp4/')) return 'mp4';
-            if (lowerUrl.includes('.mkv')) return 'mkv';
-            if (lowerUrl.includes('.webm')) return 'webm';
-            return 'native';
-        };
+        // URL'den format tespiti (shared utility kullan)
+        // detectFormat is now imported from /static/shared/JS/video-utils.min.js
 
         // Video formatını proxy'den Content-Type ile belirle
         this.logger.info('Video formatı tespit ediliyor (Content-Type sorgulanıyor)...');
@@ -333,7 +327,7 @@ export default class VideoPlayer {
                                            contentType.includes('mpeg');
                 
                 // URL pattern'den HLS kontrolü (Content-Type boş veya yanlışsa fallback)
-                const urlFormat = detectFormatFromUrl(originalUrl);
+                const urlFormat = detectFormat(originalUrl);
                 const isHLSByUrl = urlFormat === 'hls';
                 
                 this.logger.info(`Format tespiti: Content-Type=${isHLSByContentType ? 'HLS' : 'other'}, URL=${urlFormat}`);
@@ -349,7 +343,7 @@ export default class VideoPlayer {
                 this.logger.error('Content-Type alınamadı, URL pattern ile tahmin ediliyor', error.message);
                 
                 // Fallback: URL pattern'den format tespiti
-                const urlFormat = detectFormatFromUrl(originalUrl);
+                const urlFormat = detectFormat(originalUrl);
                 if (urlFormat === 'hls') {
                     this.loadHLSVideo(originalUrl, referer, userAgent);
                 } else {
@@ -426,109 +420,18 @@ export default class VideoPlayer {
         this.logger.info('HLS video formatı tespit edildi');
         this.retryCount = 0; // Reset retry count for new video
         
-        // Uzak sunucunun origin'ini al (absolute path'leri çözümlemek için)
-        try {
-            let remoteUrl = originalUrl;
-            if (originalUrl.includes('/proxy/video?url=')) {
-                const match = originalUrl.match(/url=([^&]+)/);
-                if (match) {
-                    remoteUrl = decodeURIComponent(match[1]);
-                }
-            }
-            
-            if (remoteUrl.startsWith('http')) {
-                const urlObj = new URL(remoteUrl);
-                this.lastLoadedOrigin = urlObj.origin;
-                this.lastLoadedBaseUrl = remoteUrl.substring(0, remoteUrl.lastIndexOf('/') + 1);
-            }
-        } catch (e) {
-            this.lastLoadedOrigin = null;
-            this.lastLoadedBaseUrl = null;
-        }
+        // Uzak sunucunun origin'ini al (absolute path'leri çözümlemek için) - use shared utility
+        const { origin, baseUrl } = parseRemoteUrl(originalUrl);
+        this.lastLoadedOrigin = origin;
+        this.lastLoadedBaseUrl = baseUrl;
 
         // HLS video için
         if (Hls.isSupported()) {
             this.logger.info('HLS.js destekleniyor, yükleniyor');
 
             try {
-                // HLS.js yapılandırması
-                const hlsConfig = {
-                    capLevelToPlayerSize: true,
-                    maxLoadingDelay: 4,
-                    minAutoBitrate: 0,
-                    maxBufferLength: 30,
-                    maxMaxBufferLength: 600,
-                    startLevel: -1, // Otomatik kalite seçimi
-                    // Tüm istekleri proxy üzerinden yönlendir
-                    xhrSetup: (xhr, requestUrl) => {
-                        // 1. Zaten tam proxy URL ise, base URL'i kaydet ve devam et
-                        if (requestUrl.includes('/proxy/video?url=')) {
-                            const match = requestUrl.match(/url=([^&]+)/);
-                            if (match) {
-                                try {
-                                    const decodedUrl = decodeURIComponent(match[1]);
-                                    const proxyBase = getProxyBaseUrl();
-                                    let finalRemoteUrl = decodedUrl;
-                                    
-                                    // Eğer decodedUrl zaten bizim proxy originimizi içeriyorsa (hata durumu), onu temizle
-                                    if (decodedUrl.startsWith(proxyBase)) {
-                                        const innerMatch = decodedUrl.match(/\/proxy\/video\?url=([^&]+)/);
-                                        if (innerMatch) {
-                                            finalRemoteUrl = decodeURIComponent(innerMatch[1]);
-                                        }
-                                    }
-
-                                    if (finalRemoteUrl.startsWith('http')) {
-                                        this.lastLoadedBaseUrl = finalRemoteUrl.substring(0, finalRemoteUrl.lastIndexOf('/') + 1);
-                                        this.lastLoadedOrigin = new URL(finalRemoteUrl).origin;
-                                    }
-                                } catch (e) { /* ignore */ }
-                            }
-                            return;
-                        }
-                        
-                        const proxyOrigin = getProxyBaseUrl();
-                        
-                        // 2. Browser tarafından yanlış çözümlenmiş mutlak yollar (Manifest'te / ile başlayan path'ler)
-                        if (requestUrl.startsWith(proxyOrigin) && !requestUrl.includes('/proxy/')) {
-                            const path = requestUrl.substring(proxyOrigin.length);
-                            if (this.lastLoadedOrigin) {
-                                const correctUrl = this.lastLoadedOrigin.replace(/\/$/, '') + '/' + path.replace(/^\//, '');
-                                xhr.open('GET', buildServiceProxyUrl(correctUrl, userAgent, referer, 'video'), true);
-                                return;
-                            }
-                        }
-                        
-                        // 3. Yanlış çözümlenmiş göreli yollar (Manifest'teki relative path'ler proxy adresine eklenirse)
-                        if (requestUrl.includes('/proxy/') && !requestUrl.includes('/proxy/video?url=')) {
-                            const parts = requestUrl.split('/proxy/');
-                            const relativePath = parts[parts.length - 1]; // segment.ts veya sub/segment.ts
-
-                            if (this.lastLoadedBaseUrl) {
-                                const correctUrl = this.lastLoadedBaseUrl.replace(/\/$/, '') + '/' + relativePath.replace(/^\//, '');
-                                xhr.open('GET', buildServiceProxyUrl(correctUrl, userAgent, referer, 'video'), true);
-                                return;
-                            }
-                        }
- 
-                        // 4. Diğer tüm durumlar (Normal URL'ler) -> Proxy'ye sar
-                        try {
-                            const proxyUrl = buildServiceProxyUrl(requestUrl, userAgent, referer, 'video');
-                            
-                            // Base URL'i kaydet (eğer http ile başlıyorsa)
-                            if (requestUrl.startsWith('http')) {
-                                this.lastLoadedBaseUrl = requestUrl.substring(0, requestUrl.lastIndexOf('/') + 1);
-                                this.lastLoadedOrigin = new URL(requestUrl).origin;
-                            }
-                            
-                            xhr.open('GET', proxyUrl, true);
-                        } catch (error) {
-                            console.error('HLS Proxy Error:', error);
-                            const fallbackUrl = buildServiceProxyUrl(requestUrl, userAgent, referer, 'video');
-                            xhr.open('GET', fallbackUrl, true);
-                        }
-                    }
-                };
+                // HLS.js yapılandırması - use shared config factory
+                const hlsConfig = createHlsConfig(userAgent, referer, this, true);
 
                 const hls = new Hls(hlsConfig);
                 this.currentHls = hls;

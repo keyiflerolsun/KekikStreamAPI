@@ -1,6 +1,7 @@
 // Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 import { escapeHtml } from './utils.min.js';
+import { flashOverlayElement } from '/static/shared/JS/dom-utils.min.js';
 
 // ============== State ==============
 const state = {
@@ -239,19 +240,7 @@ export const updateSyncRateIndicator = (rate) => {
 };
 
 // Belirli bir overlay elementini geçici olarak göster
-const flashOverlayElement = (element) => {
-    if (!element) return;
-    
-    element.classList.add('flash-visible');
-    
-    // Önceki timeout'u temizle
-    if (element._hideTimeout) clearTimeout(element._hideTimeout);
-    
-    // 3 saniye sonra gizle
-    element._hideTimeout = setTimeout(() => {
-        element.classList.remove('flash-visible');
-    }, 3000);
-};
+// flashOverlayElement is now imported from /static/shared/JS/dom-utils.min.js
 
 // Tüm overlay elementlerini geçici olarak göster (ilk giriş için)
 export const flashAllOverlayElements = () => {
