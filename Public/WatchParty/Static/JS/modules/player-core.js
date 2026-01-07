@@ -241,7 +241,7 @@ const setupViewportResizeHandler = () => {
             const currentHeight = window.visualViewport.height;
             const heightRatio = currentHeight / window.screen.height;
             const isKeyboardOpen = heightRatio < 0.75;
-            
+
             if (isKeyboardOpen) {
                 mainContainer.style.height = `${currentHeight}px`;
                 document.body.classList.add('keyboard-open');
