@@ -224,6 +224,20 @@
   border-radius: var(--border-radius-sm);
 }
 
+.season-title {
+  color: var(--text-color);
+  margin-top: var(--spacing-xl);
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-xs);
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.season-title:first-of-type {
+  margin-top: 0;
+}
+
 .episodes-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
