@@ -162,9 +162,7 @@
         inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-.wp-online-count {
-    color: var(--wp-success);
-}
+
 
 .wp-sync-status.connected {
     color: var(--wp-success);
@@ -177,6 +175,48 @@
 .wp-sync-status.disconnected {
     color: var(--wp-error);
 }
+
+/* ========================================
+   Sync Info Badge
+   ======================================== */
+.wp-sync-info {
+    /* Default Hidden/Subtle */
+    opacity: 0.7;
+    transition: all 0.3s ease;
+}
+
+.wp-sync-info i { font-size: 0.8125rem; transition: all 0.3s ease; }
+
+/* Active States - Make them prominent */
+.wp-sync-info.catching-up, 
+.wp-sync-info.slowing {
+    opacity: 1;
+    font-weight: 600;
+}
+
+/* Catching up (speeding up) */
+.wp-sync-info.catching-up { 
+    background: rgba(46, 204, 113, 0.2); 
+    border-color: rgba(46, 204, 113, 0.5); 
+    color: #2ecc71; 
+    box-shadow: 0 0 12px rgba(46, 204, 113, 0.2);
+}
+.wp-sync-info.catching-up i { animation: pulse-fast 0.5s ease-in-out infinite; }
+
+/* Slowing down */
+.wp-sync-info.slowing { 
+    background: rgba(52, 152, 219, 0.2); 
+    border-color: rgba(52, 152, 219, 0.5); 
+    color: #3498db; 
+    box-shadow: 0 0 12px rgba(52, 152, 219, 0.2);
+}
+.wp-sync-info.slowing i { animation: pulse-slow 1s ease-in-out infinite; }
+
+#sync-info-text { transition: all 0.2s ease; }
+
+/* Animations required if not already in global */
+@keyframes pulse-fast { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.1); } }
+@keyframes pulse-slow { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.7; transform: scale(0.95); } }
 
 /* ========================================
    Responsive - Tablet & Mobile

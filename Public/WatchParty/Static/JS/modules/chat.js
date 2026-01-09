@@ -320,7 +320,15 @@ export const updateUsersList = (users) => {
         `;
     }).join('');
 
-    if (onlineCount) onlineCount.textContent = users.length.toString();
+
+
+    // Update new UI counters
+    const mobileCount = document.getElementById('mobile-users-count');
+    const desktopCount = document.getElementById('desktop-users-count');
+    const listHeaderCount = document.getElementById('users-list-count');
+    
+    if (mobileCount) mobileCount.textContent = users.length.toString();
+    if (desktopCount) desktopCount.textContent = users.length.toString();
     
     // Overlay viewer count güncelle ve geçici olarak göster
     const overlayViewers = document.querySelector('.wp-overlay-viewers');
@@ -678,3 +686,18 @@ export const checkForNotification = (username, message, replyTo) => {
     return shouldNotify;
 };
 
+
+export const showWelcomeMessage = () => {
+    if (!state.chatMessages) return;
+    
+    // Eğer mesaj varsa gösterme
+    if (state.chatMessages.children.length > 0 && !state.chatMessages.querySelector('.wp-chat-welcome')) return;
+
+    state.chatMessages.innerHTML = `
+        <div class="wp-chat-welcome">
+            <i class="fa-solid fa-hand-sparkles"></i>
+            <h3>Hoş geldiniz!</h3>
+            <p>Sohbete katılın.</p>
+        </div>
+    `;
+};

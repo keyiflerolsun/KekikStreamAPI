@@ -3,22 +3,49 @@
             <!-- Toast Container - Fixed in chat section, NOT in scrollable messages -->
             <div class="wp-toast-container" id="toast-container"></div>
             
-            <div class="wp-chat-header">
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                    <i class="fa-solid fa-comments" id="chat-icon"></i>
+        <div class="wp-chat-header">
+            <!-- Mobile Tabs -->
+            <div class="wp-mobile-tabs">
+                <button class="wp-tab-btn active" data-tab="chat" onclick="window.switchTab('chat')">
+                    <i class="fa-solid fa-comments"></i>
                     <span>Sohbet</span>
-                </div>
-                
-                <div class="wp-sync-info" style="font-size: 0.75rem;">
-                    <i class="fa-solid fa-rotate"></i>
-                    <span id="sync-info-text">Senkronize</span>
-                </div>
+                </button>
+                <div class="wp-tab-divider"></div>
+                <button class="wp-tab-btn" data-tab="users" onclick="window.switchTab('users')">
+                    <i class="fa-solid fa-users"></i>
+                    <span>Kişiler</span>
+                    <span id="mobile-users-count" class="wp-tab-badge">0</span>
+                </button>
             </div>
 
-            <!-- Users List -->
+            <!-- Desktop Header Title -->
+            <div class="wp-desktop-header-title">
+                <i class="fa-solid fa-comments"></i>
+                <span>Sohbet</span>
+            </div>
+            
+            <!-- Desktop Controls -->
+            <div class="wp-header-controls">
+
+                
+                <!-- Desktop Users Button -->
+                <button class="wp-header-btn wp-desktop-only" onclick="window.toggleUsersModal()" title="Kişiler">
+                    <i class="fa-solid fa-users"></i>
+                    <span id="desktop-users-count" class="wp-header-badge">0</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Users Modal Overlay (Desktop) -->
+        <div class="wp-users-modal-overlay" id="users-modal-overlay" onclick="window.toggleUsersModal()"></div>
+
+        <!-- Users List Container -->
+        <div class="wp-users-list-container" id="users-list-container">
+
             <div class="wp-users-list" id="users-list">
                 <!-- Users will be dynamically added -->
             </div>
+        </div>
 
             <!-- Chat Messages -->
             <div class="wp-chat-messages" id="chat-messages">

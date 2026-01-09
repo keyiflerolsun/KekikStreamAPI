@@ -3,7 +3,7 @@
 // Module Imports
 import { getRandomAvatar, getSavedUsername, saveUsername } from './modules/utils.min.js';
 import { initUI, showToast, copyRoomLink, toggleElement, showLoadingOverlay, showUsernameModal, flashAllOverlayElements } from './modules/ui.min.js';
-import { initChat, addChatMessage, addSystemMessage, updateUsersList, loadChatHistory, setCurrentUsername, showTypingIndicator, setReplyingTo, clearReply, getReplyingTo, setRoomUsers, setNotificationCallback, scrollToReplyMessage } from './modules/chat.min.js';
+import { initChat, addChatMessage, addSystemMessage, updateUsersList, loadChatHistory, setCurrentUsername, showTypingIndicator, setReplyingTo, clearReply, getReplyingTo, setRoomUsers, setNotificationCallback, scrollToReplyMessage, showWelcomeMessage } from './modules/chat.min.js';
 import {
     initPlayer,
     setPlayerCallbacks,
@@ -162,6 +162,12 @@ const handleRoomState = async (roomState) => {
     // if (roomState.chat_messages) {
     //     loadChatHistory(roomState.chat_messages);
     // }
+    
+    // Eğer mesaj yoksa Welcome göster (Chat history loaded olmadığı varsayımıyla)
+    // Eğer yüklenirse chat.js showWelcomeMessage zaten kontrol eder.
+    if (!roomState.chat_messages || roomState.chat_messages.length === 0) {
+        showWelcomeMessage();
+    }
 };
 
 const handleUserJoined = (msg) => {

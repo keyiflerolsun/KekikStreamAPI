@@ -379,3 +379,34 @@ export const showUsernameModal = (avatar, savedUsername = '') => {
         });
     });
 };
+
+// ============== Tabs & Modals (Desktop/Mobile) ==============
+export const switchTab = (tabName) => {
+    // 1. Update Buttons
+    const buttons = document.querySelectorAll('.wp-tab-btn');
+    buttons.forEach(btn => {
+        if (btn.dataset.tab === tabName) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+
+    // 2. Update Content
+    const chatSection = document.querySelector('.wp-chat-section');
+    if (chatSection) {
+        if (tabName === 'users') {
+            chatSection.classList.add('tab-users-active');
+        } else {
+            chatSection.classList.remove('tab-users-active');
+        }
+    }
+};
+
+export const toggleUsersModal = () => {
+    document.body.classList.toggle('users-modal-open');
+};
+
+// Global Attachments
+window.switchTab = switchTab;
+window.toggleUsersModal = toggleUsersModal;
