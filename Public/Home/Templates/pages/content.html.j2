@@ -90,16 +90,19 @@
         <div class="episodes-container">
             <h2 class="episodes-title">Bölümler</h2>
             
-            <div class="episodes-grid">
-                {% for episode in content.episodes %}
-                    <a href="/izle/{{ eklenti_adi }}?url={{ episode.url }}&baslik={{ content.title }} - {{ episode.season }}x{{ episode.episode }}" class="episode-card">
-                        <div class="episode-title">{{ episode.title }}</div>
-                        {% if episode.season and episode.episode %}
-                            <div class="episode-info">{{ episode.season }}x{{ episode.episode }}</div>
-                        {% endif %}
-                    </a>
-                {% endfor %}
-            </div>
+            {% for season, episodes in content.episodes | groupby('season') %}
+                <h3 class="season-title">Sezon {{ season }}</h3>
+                <div class="episodes-grid">
+                    {% for episode in episodes %}
+                        <a href="/izle/{{ eklenti_adi }}?url={{ episode.url }}&baslik={{ content.title }} - {{ episode.season }}x{{ episode.episode }}" class="episode-card">
+                            <div class="episode-title">{{ episode.title }}</div>
+                            {% if episode.season and episode.episode %}
+                                <div class="episode-info">{{ episode.season }}x{{ episode.episode }}</div>
+                            {% endif %}
+                        </a>
+                    {% endfor %}
+                </div>
+            {% endfor %}
         </div>
     {% endif %}
 </div>
