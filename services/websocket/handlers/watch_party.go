@@ -300,9 +300,10 @@ func checkSoftSync(roomID string, user *models.User, clientTime float64) {
 	serverTime := roomCurrentTime + (now - roomUpdatedAt)
 	drift := clientTime - serverTime
 
-	// ============== HARD SYNC (>3s drift veya stall) ==============
-	needHardSync := (user.StallCount >= 2 && (now-user.LastSyncTime) > 3.0) ||
-		(math.Abs(drift) > 3.0 && (now-user.LastSyncTime) > 3.0)
+	// ============== HARD SYNC (>2s drift veya stall) ==============
+	// Mobil ve web client'lar 1-1.5s'de hazır oluyor, 2s yeterli
+	needHardSync := (user.StallCount >= 2 && (now-user.LastSyncTime) > 2.0) ||
+		(math.Abs(drift) > 2.0 && (now-user.LastSyncTime) > 2.0)
 
 	if needHardSync {
 		user.LastSyncTime = now
@@ -326,9 +327,9 @@ func checkSoftSync(roomID string, user *models.User, clientTime float64) {
 		return
 	}
 
-	// ============== SOFT SYNC (0.5s - 3.0s drift) ==============
-	// Rate limit: 3 saniyede bir kontrol
-	if now-user.LastSyncTime < 3.0 {
+	// ============== SOFT SYNC (0.5s - 2.0s drift) ==============
+	// Rate limit: 2 saniyede bir kontrol (daha reaktif)
+	if now-user.LastSyncTime < 2.0 {
 		return
 	}
 
@@ -351,8 +352,8 @@ func checkSoftSync(roomID string, user *models.User, clientTime float64) {
 		rate = 1.03 // Client geride, hızlandır
 	}
 
-	// Büyük drift (>3s) için soft sync yapma (hard sync devreye girecek)
-	if math.Abs(drift) > 3.0 {
+	// Büyük drift (>2s) için soft sync yapma (hard sync devreye girecek)
+	if math.Abs(drift) > 2.0 {
 		return
 	}
 
@@ -503,9 +504,9 @@ func broadcastSeek(room *models.Room, user *models.User, targetTime float64, tri
 		return
 	}
 
-	// Seek Sync Timeout (8 saniye Python uyumlu)
+	// Seek Sync Timeout (5 saniye - mobil daha hızlı hazır oluyor)
 	go func(rid string, e int) {
-		time.Sleep(8 * time.Second)
+		time.Sleep(5 * time.Second)
 		shouldResume, currentTime := manager.Manager.MarkSeekReady(rid, "system", e)
 		if shouldResume {
 			r := manager.Manager.GetRoom(rid)

@@ -20,15 +20,15 @@ export const applyState = async (serverState) => {
     const target = clampTime(serverState.current_time);
     const diff = Math.abs(videoPlayer.currentTime - target);
     
-    // Playing iken daha toleranslı, paused iken daha hassas
-    const threshold = serverState.is_playing ? 0.6 : 0.3;
+    // Backend ile uyumlu threshold'lar: soft=0.5s, hard=2.0s (paused iken 0.3s)
+    const threshold = serverState.is_playing ? 0.5 : 0.3;
     
     logger.sync(`State: ${target.toFixed(1)}s (diff: ${diff.toFixed(2)}s, thr: ${threshold}), playing=${serverState.is_playing}`);
     
     // Sadece anlamlı fark varsa seek yap (micro-seek spam'ı önle)
     if (diff > threshold) {
         videoPlayer.currentTime = target;
-        await waitForSeek(3000); // HLS için daha uzun timeout
+        await waitForSeek(3000); // 3s timeout (mobil ile uyumlu)
     }
 
     // Sonra play/pause - ÖNCELİKLİ
@@ -154,13 +154,13 @@ export const handleSync = async (msg) => {
     
     const target = clampTime(msg.current_time);
     const timeDiff = Math.abs(videoPlayer.currentTime - target);
-    const shouldSeek = msg.force_seek || timeDiff > 1.0;  // Soft sync: 1 saniye tolerans
+    const shouldSeek = msg.force_seek || timeDiff > 2.0;  // Backend ile uyumlu: 2s hard threshold
     
     if (shouldSeek) {
         // clampTime ile güvenli seek
         if (Math.abs(videoPlayer.currentTime - target) > 0.05 || msg.force_seek) {
             videoPlayer.currentTime = target;
-            await waitForSeek();
+            await waitForSeek(3000); // 3s timeout (mobil ile uyumlu)
         }
     }
 
@@ -208,7 +208,7 @@ const waitForCanPlay = () => new Promise((resolve) => {
         if (videoPlayer.readyState >= 3) done();
     }, 100);
     
-    failsafe = setTimeout(done, 4000); // HLS için 4s timeout
+    failsafe = setTimeout(done, 3000); // 3s timeout (backend ve mobil ile uyumlu)
 });
 
 // ============== Seek Barrier Ready ==============

@@ -888,7 +888,7 @@ class WatchPartyManager:
     # ==================== PUBLIC BARRIER API ====================
 
     async def begin_seek_sync(
-        self, room_id: str, target_time: float, was_playing: bool, now: float, timeout: float = 8.0
+        self, room_id: str, target_time: float, was_playing: bool, now: float, timeout: float = 5.0
     ) -> tuple[int, float]:
         """Seek-sync başlat: herkesin hazır olmasını bekle"""
         return await self._begin_barrier(
@@ -991,9 +991,9 @@ class WatchPartyManager:
 
                     drift = client_time - server_time
 
-                    # ============== SOFT SYNC (0.5s - 3.0s drift) ==============
-                    # Küçük drift'lerde playbackRate ile yumuşak senkronizasyon
-                    if 0.5 < abs(drift) <= 3.0 and (now - user.last_sync_time) > 3.0:
+                    # ============== SOFT SYNC (0.5s - 2.0s drift) ==============
+                    # Küçük drift'lerde playbackRate ile yumuşak senkronizasyon (Go backend ile uyumlu)
+                    if 0.5 < abs(drift) <= 2.0 and (now - user.last_sync_time) > 2.0:
                         rate = 0.97 if drift > 0 else 1.03  # İlerde yavaşlat, geride hızlandır
                         
                         # Rate değişmediyse gönderme (spam önleme)
@@ -1035,10 +1035,11 @@ class WatchPartyManager:
             server_time = room.current_time + (now - room.updated_at)
             drift = client_time - server_time
 
-            # Sadece stall veya büyük drift -> hard sync
+            # ============== HARD SYNC (>2s drift veya stall) ==============
+            # Go backend ile uyumlu: Mobil ve web client'lar 1-1.5s'de hazır oluyor, 2s yeterli
             need_sync = (
-                (user.stall_count >= 2 and (now - user.last_sync_time) > 3.0) or
-                (abs(drift) > 3.0 and (now - user.last_sync_time) > 3.0)
+                (user.stall_count >= 2 and (now - user.last_sync_time) > 2.0) or
+                (abs(drift) > 2.0 and (now - user.last_sync_time) > 2.0)
             )
             
             if not need_sync:

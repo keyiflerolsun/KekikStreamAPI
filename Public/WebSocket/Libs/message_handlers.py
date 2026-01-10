@@ -107,7 +107,7 @@ class MessageHandler:
                         was_playing = snap["is_playing"]
 
                         epoch, final_time = await watch_party_manager.begin_seek_sync(
-                            self.room_id, target_time=req_time, was_playing=was_playing, now=now, timeout=8.0
+                            self.room_id, target_time=req_time, was_playing=was_playing, now=now, timeout=5.0
                         )
 
                         if epoch > 0:
@@ -174,7 +174,7 @@ class MessageHandler:
         # Seek-sync başlat (oda pause'a çekilir, pause_reason="seek")
         # Artık tuple döndürüyor: (epoch, clamped_target_time)
         epoch, final_time = await watch_party_manager.begin_seek_sync(
-            self.room_id, target_time=current_time, was_playing=was_playing, now=now, timeout=8.0
+            self.room_id, target_time=current_time, was_playing=was_playing, now=now, timeout=5.0
         )
 
         if epoch <= 0:
