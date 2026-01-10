@@ -377,11 +377,14 @@ export default class VideoPlayer {
 
         // Watch Party butonunun linkini güncelle
         const watchPartyButton = document.getElementById('watch-party-button');
-        if (watchPartyButton) {
+        const watchPartyAppButton = document.getElementById('watch-party-app-button');
+
+        if (watchPartyButton || watchPartyAppButton) {
             // Math.random() tabanlı ID (HTTP ve tüm tarayıcılarda çalışır)
             const newRoomId = Math.random().toString(36).substring(2, 10).toUpperCase();
             const wpParams = new URLSearchParams();
             wpParams.set('url', selectedVideo.url);
+            
             // Sayfa başlığını al (player-title elementinden)
             const playerTitleEl = document.querySelector('.player-title');
             const pageTitle = playerTitleEl ? playerTitleEl.textContent.trim() : document.title;
@@ -394,7 +397,23 @@ export default class VideoPlayer {
                 wpParams.set('subtitle', selectedVideo.subtitles[0].url);
             }
             
-            watchPartyButton.href = `${window.location.origin}/watch-party/${newRoomId}?${wpParams.toString()}`;
+            // Web Butonu guncelle
+            if (watchPartyButton) {
+                watchPartyButton.href = `${window.location.origin}/watch-party/${newRoomId}?${wpParams.toString()}`;
+            }
+
+            // Uygulama (Deep Link) Butonu guncelle
+            if (watchPartyAppButton) {
+                // Sadece mobil cihazlarda göster
+                const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+                if (isMobile) {
+                    watchPartyAppButton.style.display = 'inline-flex';
+                    // watchtogether://join/ROOM_ID?params...
+                    watchPartyAppButton.href = `watchtogether://join/${newRoomId}?${wpParams.toString()}`;
+                } else {
+                    watchPartyAppButton.style.display = 'none';
+                }
+            }
         }
 
         // Video yükleme tamamlandı (asenkron işlemler devam edebilir ama UI hazır)
