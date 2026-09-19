@@ -1,0 +1,10 @@
+node_modules/
+dist/
+*.local
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+
+# Vite build output is committed at ../Public/App (handled by the api-repo),
+# so this ignore is scoped to the frontend working tree only.

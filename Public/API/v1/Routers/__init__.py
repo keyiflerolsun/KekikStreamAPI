@@ -25,5 +25,6 @@ from . import (
     load_item,
     load_links,
     extract,
-    ytdlp_extract
+    ytdlp_extract,
+    stream_proxy
 )

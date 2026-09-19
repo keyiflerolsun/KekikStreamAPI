@@ -10,6 +10,18 @@ from csscompressor import compress as css_minify
 import re
 from pathlib import PurePath
 
+# Dizinler, başlangıç varlık taramasının (rglob) dışında tutulur. Frontend
+# kaynak ağacı (node_modules dahil) ve derlenmiş SPA çıktısı (Public/App) Vite
+# ile yönetilir; bu aracın bunlara `.min.*` kopyaları yazmaması gerekir.
+SKIP_DIRS = {"frontend", "node_modules", ".venv", "venv"}
+
+def _is_skipped(path: Path) -> bool:
+    parts = set(path.parts)
+    if parts & SKIP_DIRS:
+        return True
+    posix = path.as_posix()
+    return posix.startswith("Public/App/") or posix == "Public/App"
+
 def minify_assets():
     """Tüm CSS ve JS dosyalarını minify et"""
 
@@ -19,7 +31,7 @@ def minify_assets():
     # CSS dosyalarını minify et
     for css_file in Path(".").rglob("*.css"):
         # Zaten minified ise atla
-        if css_file.name.endswith(".min.css"):
+        if css_file.name.endswith(".min.css") or _is_skipped(css_file):
             continue
 
         try:
@@ -53,7 +65,7 @@ def minify_assets():
     # JS dosyalarını minify et
     for js_file in Path(".").rglob("*.js"):
         # Zaten minified ise atla
-        if js_file.name.endswith(".min.js"):
+        if js_file.name.endswith(".min.js") or _is_skipped(js_file):
             continue
 
         try:

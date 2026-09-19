@@ -88,6 +88,7 @@ graph TB
 | `/api/v1/load_links`         | Video bağlantıları  |
 | `/api/v1/extract`            | Link extraction     |
 | `/api/v1/ytdlp-extract`      | yt-dlp video bilgisi |
+| `/api/v1/stream-proxy?t=...` | Yayın akışı proxy'si (tarayıcı oynatımı) |
 
 ---
 
@@ -120,6 +121,27 @@ curl "http://127.0.0.1:3310/api/v1/load_links?plugin=Dizilla&encoded_url=..."
   ]
 }
 ```
+
+---
+
+## 🖥️ Web Uygulaması (SPA)
+
+Modern tarayıcı arayüzü `/app` yolunda sunulur (mount: `Public/App/`, SPA fallback
+ile). Vite ile derlenen React + TypeScript tek sayfa uygulamasıdır; kaynak kodu
+`frontend/` dizinindedir. Tarayıcıdan `http://127.0.0.1:3310/app` adresine
+gidin.
+
+Geliştirme komutları (`frontend/` içinde):
+
+```bash
+# Gereksinimler: Node.js >= 20, pnpm >= 10
+pnpm install
+pnpm dev          # Vite dev sunucusu (:5173), /api -> 127.0.0.1:3310 proxy
+pnpm build        # üretim derlemesi -> ../Public/App/
+pnpm test         # Vitest (çevrimdışı)
+```
+
+Ayrıntılar için bkz. [`frontend/README.md`](frontend/README.md).
 
 ---
 

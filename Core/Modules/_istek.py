@@ -7,6 +7,12 @@ from user_agents import parse
 from ._IP_Log    import ip_log
 import asyncio
 
+# Uç noktaların sorgu parametreleri çözümlenebilir stream/embed belirteçleri taşır
+# (ör. load_links `encoded_url` içinde doğrudan `.m3u8` URL'si, stream-proxy `t`).
+# Bu rotalarda "veri" kesinlikle loglanmaz — sadece yol yazılır, böylece yayın
+# URL'leri Logs/ dizinine asla sızmaz. (`stream-proxy` ayrıca aşağıda tamamen atlanır.)
+_STREAM_VERI_GIZLENECEK_YOLLAR = ("/load_links", "/stream-proxy", "/extract", "/ytdlp-extract")
+
 @kekik_FastAPI.middleware("http")
 async def istekten_once_sonra(request: Request, call_next):
     baslangic_zamani = time()
@@ -48,8 +54,13 @@ async def istekten_once_sonra(request: Request, call_next):
         "host"   : request.url.hostname
     }
 
+    # Akış-belirteci taşıyan rotalarda sorgu/veri sözlüğünü hiç loglama; yalnızca
+    # yol kaydı kalsın. Arama gibi düz-metin parametreli rotalarda normal davranış korunur.
+    if any(gizli_yol in request.url.path for gizli_yol in _STREAM_VERI_GIZLENECEK_YOLLAR):
+        log_veri["veri"] = None
+
     # Dosya işlemleri için daha uzun timeout
-    uzun_timeout_paths = ("/upload", "/download", "/export", "/import", "/backup")
+    uzun_timeout_paths = ("/upload", "/download", "/export", "/import", "/backup", "/stream-proxy")
     timeout_suresi     = 120 if any(p in request.url.path for p in uzun_timeout_paths) else 30
 
     try:
@@ -75,7 +86,7 @@ async def istekten_once_sonra(request: Request, call_next):
         response        = JSONResponse(status_code=500, content={"ups": "Sunucu Hatası.."})
         konsol.log(f"[red]❌ Beklenmeyen hata:[/] {request.url.path} - {exc}")
 
-    for skip_path in ("/favicon.ico", "/static", "/webfonts", "/manifest.json", "com.chrome.devtools.json"):
+    for skip_path in ("/favicon.ico", "/static", "/webfonts", "/manifest.json", "com.chrome.devtools.json", "/stream-proxy", "/app"):
         if skip_path in request.url.path:
             return response
 
